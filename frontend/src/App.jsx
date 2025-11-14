@@ -6,6 +6,7 @@ import TestSession from './pages/TestSession'
 import Progress from './pages/Progress'
 import Documents from './pages/Documents'
 import Decks from './pages/Decks'
+import Settings from './pages/Settings'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/decks/:deckId" element={<TestSession />} />
         <Route path="/test/:testId" element={<TestSession />} />
         <Route path="/progress" element={<Progress />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>
   )

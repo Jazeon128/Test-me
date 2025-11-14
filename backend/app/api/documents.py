@@ -168,19 +168,19 @@ def process_document(
             document.num_pages = parsed_doc.num_pages
             db.commit()
 
-        # Check if we have API keys configured
-        if not settings.ANTHROPIC_API_KEY and not settings.OPENAI_API_KEY:
-            logger.error("❌ No AI API keys configured! Please set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env")
-            return
-
         # Generate questions
         logger.info(f"🤖 Generating {num_questions} questions for document {document_id}...")
-        generator = QuestionGenerator()
-        questions_data = generator.generate_questions(
-            parsed_doc,
-            num_questions=num_questions,
-            difficulty=difficulty
-        )
+        try:
+            generator = QuestionGenerator(db=db)
+            questions_data = generator.generate_questions(
+                parsed_doc,
+                num_questions=num_questions,
+                difficulty=difficulty
+            )
+        except ValueError as e:
+            logger.error(f"❌ {str(e)}")
+            logger.error("Please configure your AI API key in Settings page or .env file")
+            return
 
         logger.info(f"✅ Generated {len(questions_data)} questions for document {document_id}")
 

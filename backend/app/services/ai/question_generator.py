@@ -3,21 +3,45 @@ import re
 from typing import List, Dict, Optional
 from anthropic import Anthropic
 from openai import OpenAI
+from sqlalchemy.orm import Session
 from ...config import settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
+
+
+def get_setting(db: Session, key: str) -> Optional[str]:
+    """Get a setting value from database"""
+    from ...models.settings import Settings
+    setting = db.query(Settings).filter(Settings.key == key).first()
+    return setting.value if setting else None
 
 
 class QuestionGenerator:
     """Generate multiple-choice questions from document content using AI"""
 
-    def __init__(self):
-        self.provider = settings.AI_PROVIDER
+    def __init__(self, db: Session = None):
+        # Try to get settings from database first, fall back to env vars
+        if db:
+            self.provider = get_setting(db, "ai_provider") or settings.AI_PROVIDER
+            api_key = get_setting(db, "api_key")
+        else:
+            self.provider = settings.AI_PROVIDER
+            api_key = None
+
+        # Fall back to environment variables if no DB settings
+        if not api_key:
+            if self.provider == "anthropic":
+                api_key = settings.ANTHROPIC_API_KEY
+            elif self.provider == "openai":
+                api_key = settings.OPENAI_API_KEY
+
+        if not api_key:
+            raise ValueError(f"No API key configured for provider: {self.provider}")
 
         if self.provider == "anthropic":
-            self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            self.client = Anthropic(api_key=api_key)
             self.model = "claude-3-5-sonnet-20241022"
         elif self.provider == "openai":
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            self.client = OpenAI(api_key=api_key)
             self.model = "gpt-4-turbo-preview"
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")

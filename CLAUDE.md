@@ -215,10 +215,36 @@ npm run lint
 ### Anki Export
 
 **Export Format:**
-- Generates .apkg file using genanki
-- Card format: Question on front, answer + explanation + source on back
-- Includes difficulty tags
-- Preserves source references
+- Generates `.apkg` files using genanki library
+- Professional card template with custom CSS styling
+- Fully compatible with Anki desktop and mobile apps
+
+**Card Structure:**
+- **Front**: Question with all 4 options (A, B, C, D)
+- **Back**:
+  - All options with correct answer highlighted in green
+  - Detailed explanation
+  - Source reference from original document
+  - Difficulty tag
+
+**How to Export:**
+1. **Via Frontend UI**:
+   - Go to Decks page (`/decks`)
+   - Click Download icon (📥) on any deck
+   - File downloads as `{deck_name}.apkg`
+
+2. **Via API**:
+   ```bash
+   curl -o my_deck.apkg http://localhost:8000/api/tests/{test_id}/export/anki
+   ```
+
+**Import to Anki:**
+1. Open Anki desktop or mobile app
+2. File → Import → Select the `.apkg` file
+3. Questions appear as new deck with custom styling
+4. Each card tagged with difficulty level
+
+**Implementation:** `backend/app/services/anki_export.py`
 
 ## Database Schema
 

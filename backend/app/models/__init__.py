@@ -3,6 +3,7 @@ from .document import Document
 from .question import Question, QuestionOption
 from .test import Test, TestQuestion
 from .user_progress import UserProgress
+from .settings import Settings
 
 __all__ = [
     "Base",
@@ -12,4 +13,5 @@ __all__ = [
     "Test",
     "TestQuestion",
     "UserProgress",
+    "Settings",
 ]

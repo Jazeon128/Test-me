@@ -16,9 +16,12 @@ export default function Upload() {
   const onDrop = async (acceptedFiles) => {
     if (acceptedFiles.length === 0) return
 
-    const file = acceptedFiles[0]
     const formData = new FormData()
-    formData.append('file', file)
+    acceptedFiles.forEach(file => {
+      formData.append('files', file)
+    })
+    formData.append('num_questions', numQuestions)
+    formData.append('difficulty', difficulty)
 
     setUploading(true)
     setError(null)
@@ -32,7 +35,7 @@ export default function Upload() {
 
       setResult(response.data)
       setTimeout(() => {
-        navigate('/documents')
+        navigate(`/decks/${response.data.deck_id}`)
       }, 2000)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to upload document')
@@ -49,7 +52,7 @@ export default function Upload() {
       'text/markdown': ['.md'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
-    maxFiles: 1,
+    multiple: true,
     disabled: uploading,
   })
 
@@ -120,9 +123,9 @@ export default function Upload() {
             <>
               <UploadIcon className="h-16 w-16 text-gray-400 mb-4" />
               <p className="text-lg font-medium text-gray-700 mb-2">
-                {isDragActive ? 'Drop the file here' : 'Drag & drop a file here'}
+                {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
               </p>
-              <p className="text-sm text-gray-500 mb-4">or click to select a file</p>
+              <p className="text-sm text-gray-500 mb-4">or click to select files (multiple files supported)</p>
               <div className="flex gap-2 flex-wrap justify-center">
                 <span className="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-600">PDF</span>
                 <span className="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-600">HTML</span>

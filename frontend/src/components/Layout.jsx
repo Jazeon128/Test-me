@@ -1,11 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, FileText, TrendingUp, BookOpen } from 'lucide-react'
+import { Home, Upload, FileText, TrendingUp, BookOpen, Layers } from 'lucide-react'
 
 export default function Layout({ children }) {
   const location = useLocation()
 
   const isActive = (path) => {
-    return location.pathname === path
+    if (path === '/') {
+      return location.pathname === path
+        ? 'bg-primary-100 text-primary-700'
+        : 'text-gray-700 hover:bg-gray-100'
+    }
+    return location.pathname.startsWith(path)
       ? 'bg-primary-100 text-primary-700'
       : 'text-gray-700 hover:bg-gray-100'
   }
@@ -35,6 +40,13 @@ export default function Layout({ children }) {
                 >
                   <Upload size={18} />
                   Upload
+                </Link>
+                <Link
+                  to="/decks"
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/decks')}`}
+                >
+                  <Layers size={18} />
+                  Decks
                 </Link>
                 <Link
                   to="/documents"

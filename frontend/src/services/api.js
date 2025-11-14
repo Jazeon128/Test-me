@@ -20,6 +20,15 @@ export const documentsAPI = {
   delete: (id) => api.delete(`/documents/${id}`),
 }
 
+// Decks API
+export const decksAPI = {
+  create: (data) => api.post('/decks/', data),
+  list: () => api.get('/decks/'),
+  get: (id) => api.get(`/decks/${id}`),
+  update: (id, data) => api.put(`/decks/${id}`, data),
+  delete: (id) => api.delete(`/decks/${id}`),
+}
+
 // Questions API
 export const questionsAPI = {
   get: (id) => api.get(`/questions/${id}`),

@@ -141,6 +141,7 @@ export default function Settings() {
           >
             <option value="openai">OpenAI (GPT-4)</option>
             <option value="anthropic">Anthropic (Claude)</option>
+            <option value="gemini">Google (Gemini)</option>
           </select>
         </div>
 
@@ -157,14 +158,18 @@ export default function Settings() {
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={provider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+              placeholder={
+                provider === 'openai' ? 'sk-...' :
+                provider === 'anthropic' ? 'sk-ant-...' :
+                'AIza...'
+              }
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
           <p className="mt-2 text-sm text-gray-500">
-            {provider === 'openai'
-              ? 'Get your API key from https://platform.openai.com/api-keys'
-              : 'Get your API key from https://console.anthropic.com/'}
+            {provider === 'openai' ? 'Get your API key from https://platform.openai.com/api-keys' :
+             provider === 'anthropic' ? 'Get your API key from https://console.anthropic.com/' :
+             'Get your API key from https://aistudio.google.com/app/apikey'}
           </p>
         </div>
 
@@ -243,7 +248,7 @@ export default function Settings() {
               <span className="flex-shrink-0 w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
                 1
               </span>
-              <span>Choose your preferred AI provider (OpenAI or Anthropic)</span>
+              <span>Choose your preferred AI provider (OpenAI, Anthropic, or Google Gemini)</span>
             </li>
             <li className="flex gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-xs">

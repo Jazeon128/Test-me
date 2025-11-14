@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, FileText, TrendingUp, BookOpen, Layers } from 'lucide-react'
+import { Home, Upload, FileText, TrendingUp, BookOpen, Layers, Settings } from 'lucide-react'
 
 export default function Layout({ children }) {
   const location = useLocation()
@@ -61,6 +61,13 @@ export default function Layout({ children }) {
                 >
                   <TrendingUp size={18} />
                   Progress
+                </Link>
+                <Link
+                  to="/settings"
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/settings')}`}
+                >
+                  <Settings size={18} />
+                  Settings
                 </Link>
               </div>
             </div>

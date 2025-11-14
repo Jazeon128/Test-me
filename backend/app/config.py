@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     # AI Configuration
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-    AI_PROVIDER: str = "anthropic"  # or "openai"
+    GEMINI_API_KEY: str = ""
+    AI_PROVIDER: str = "anthropic"  # "anthropic", "openai", or "gemini"
 
     # Application
     DEBUG: bool = True

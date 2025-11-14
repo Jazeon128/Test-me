@@ -3,6 +3,7 @@ import re
 from typing import List, Dict, Optional
 from anthropic import Anthropic
 from openai import OpenAI
+import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ...config import settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
@@ -33,6 +34,8 @@ class QuestionGenerator:
                 api_key = settings.ANTHROPIC_API_KEY
             elif self.provider == "openai":
                 api_key = settings.OPENAI_API_KEY
+            elif self.provider == "gemini":
+                api_key = settings.GEMINI_API_KEY
 
         if not api_key:
             raise ValueError(f"No API key configured for provider: {self.provider}")
@@ -43,6 +46,10 @@ class QuestionGenerator:
         elif self.provider == "openai":
             self.client = OpenAI(api_key=api_key)
             self.model = "gpt-4-turbo-preview"
+        elif self.provider == "gemini":
+            genai.configure(api_key=api_key)
+            self.client = genai.GenerativeModel("gemini-1.5-pro")
+            self.model = "gemini-1.5-pro"
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
 
@@ -128,6 +135,10 @@ class QuestionGenerator:
                     temperature=0.7,
                 )
                 content = response.choices[0].message.content
+
+            elif self.provider == "gemini":
+                response = self.client.generate_content(prompt)
+                content = response.text
 
             # Parse the response
             question_data = self._parse_response(content)

@@ -43,8 +43,10 @@ async def startup_event():
         logger.info("✅ Anthropic API key configured")
     if config_settings.OPENAI_API_KEY:
         logger.info("✅ OpenAI API key configured")
-    if not config_settings.ANTHROPIC_API_KEY and not config_settings.OPENAI_API_KEY:
-        logger.warning("⚠️  No AI API keys configured! Please set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env")
+    if config_settings.GEMINI_API_KEY:
+        logger.info("✅ Gemini API key configured")
+    if not config_settings.ANTHROPIC_API_KEY and not config_settings.OPENAI_API_KEY and not config_settings.GEMINI_API_KEY:
+        logger.warning("⚠️  No AI API keys configured! Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY in .env")
 
 
 @app.get("/")
@@ -53,7 +55,7 @@ async def root():
         "message": "Test Me API",
         "version": "0.1.0",
         "docs": "/docs",
-        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY),
+        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY or config_settings.GEMINI_API_KEY),
     }
 
 
@@ -62,7 +64,7 @@ async def health_check():
     return {
         "status": "healthy",
         "ai_provider": config_settings.AI_PROVIDER,
-        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY),
+        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY or config_settings.GEMINI_API_KEY),
     }
 
 

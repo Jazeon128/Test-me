@@ -55,10 +55,10 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
     """Set AI configuration"""
 
     # Validate provider
-    if config.provider not in ["anthropic", "openai"]:
+    if config.provider not in ["anthropic", "openai", "gemini"]:
         raise HTTPException(
             status_code=400,
-            detail="Invalid provider. Must be 'anthropic' or 'openai'"
+            detail="Invalid provider. Must be 'anthropic', 'openai', or 'gemini'"
         )
 
     # Validate API key format
@@ -78,6 +78,11 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=400,
             detail="Invalid OpenAI API key. Must start with 'sk-'"
+        )
+    elif config.provider == "gemini" and not config.api_key.startswith("AIza"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Gemini API key. Must start with 'AIza'"
         )
 
     # Save settings

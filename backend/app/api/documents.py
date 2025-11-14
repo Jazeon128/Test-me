@@ -27,7 +27,9 @@ async def upload_document(
     files: List[UploadFile] = File(...),
     num_questions: int = 10,
     difficulty: str = "mixed",
-    deck_id: Optional[int] = None,
+    deck_id: Optional[str] = None,
+    deck_name: Optional[str] = None,
+    deck_description: Optional[str] = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ):
@@ -39,6 +41,8 @@ async def upload_document(
         num_questions: Number of questions to generate per document (default 10)
         difficulty: Question difficulty - "easy", "medium", "hard", or "mixed"
         deck_id: Optional deck ID to add questions to existing deck
+        deck_name: Name for new deck (if creating)
+        deck_description: Description for new deck (if creating)
     """
     type_mapping = {
         ".pdf": DocumentType.PDF,
@@ -52,14 +56,16 @@ async def upload_document(
 
     # Get or create deck
     deck = None
-    if deck_id:
-        deck = db.query(Test).filter(Test.id == deck_id).first()
+    if deck_id and deck_id != 'new':
+        # Use existing deck
+        deck = db.query(Test).filter(Test.id == int(deck_id)).first()
         if not deck:
             raise HTTPException(status_code=404, detail="Deck not found")
     else:
-        # Create new deck for these documents
-        deck_name = f"Deck - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        deck = Test(name=deck_name, description=f"Questions from {len(files)} document(s)")
+        # Create new deck
+        final_deck_name = deck_name or f"Deck - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        final_deck_description = deck_description or f"Questions from {len(files)} document(s)"
+        deck = Test(name=final_deck_name, description=final_deck_description)
         db.add(deck)
         db.commit()
         db.refresh(deck)

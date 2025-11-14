@@ -147,36 +147,45 @@ class QuestionGenerator:
     def _build_prompt(self, text: str, difficulty: str) -> str:
         """Build the prompt for question generation"""
         difficulty_instructions = {
-            "easy": "Create a straightforward question testing basic recall or understanding.",
-            "medium": "Create a question requiring comprehension and some analysis.",
-            "hard": "Create a challenging question requiring deep understanding and critical thinking.",
-            "mixed": "Create a question with appropriate difficulty based on the content."
+            "easy": "Create a straightforward exam-style question testing basic recall and key facts. This should be answerable by a student who has read and understood the material.",
+            "medium": "Create an exam-style question requiring comprehension and application of concepts. This should test whether a student can apply knowledge to new situations or identify relationships.",
+            "hard": "Create a challenging exam-style question requiring analysis, synthesis, or evaluation. This should test deep understanding, critical thinking, or the ability to compare/contrast concepts.",
+            "mixed": "Create an exam-style question with appropriate difficulty. Write it as if preparing students for a standardized test or final exam."
         }
 
-        prompt = f"""Based on the following text, generate ONE high-quality multiple-choice question.
+        prompt = f"""You are creating exam preparation questions. Based on the following text, generate ONE high-quality multiple-choice exam question.
 
 TEXT:
 {text}
 
 REQUIREMENTS:
-1. {difficulty_instructions.get(difficulty, difficulty_instructions["medium"])}
-2. The question must be directly answerable from the text
-3. Provide exactly 4 answer options (A, B, C, D)
-4. Only ONE option should be correct
-5. Make incorrect options plausible but clearly wrong
-6. Include a brief explanation of why the correct answer is right
+1. {difficulty_instructions.get(difficulty, difficulty_instructions["mixed"])}
+2. Write the question as if it would appear on an actual exam or standardized test
+3. The question must be directly answerable from the text provided
+4. Provide exactly 4 answer options (A, B, C, D)
+5. Only ONE option should be correct
+6. Make incorrect options plausible and tempting to students who haven't fully understood the material
+7. Use clear, professional exam language
+8. Include a brief explanation of why the correct answer is right (for study purposes)
+
+EXAM QUESTION STYLES TO USE:
+- "Which of the following..."
+- "According to the text..."
+- "What is the primary/main..."
+- "The author suggests that..."
+- "Based on the passage..."
 
 RESPOND ONLY with valid JSON in this exact format:
 {{
-  "question": "Your question here?",
+  "question": "Your exam-style question here?",
   "options": [
-    {{"option": "A", "text": "First option"}},
-    {{"option": "B", "text": "Second option"}},
-    {{"option": "C", "text": "Third option"}},
-    {{"option": "D", "text": "Fourth option"}}
+    {{"option": "A", "text": "First plausible option"}},
+    {{"option": "B", "text": "Second plausible option"}},
+    {{"option": "C", "text": "Third plausible option"}},
+    {{"option": "D", "text": "Fourth plausible option"}}
   ],
   "correct_answer": "A",
-  "explanation": "Brief explanation of why this is correct",
+  "explanation": "Brief explanation of why this answer is correct and why distractors are wrong",
   "difficulty": "easy|medium|hard"
 }}
 

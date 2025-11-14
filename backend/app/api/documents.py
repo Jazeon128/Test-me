@@ -66,8 +66,19 @@ async def upload_document(
         if not deck:
             raise HTTPException(status_code=404, detail="Deck not found")
     else:
-        # Create new deck
-        final_deck_name = deck_name or f"Deck - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        # Create new deck with meaningful name based on uploaded files
+        if not deck_name:
+            if len(files) == 1:
+                # Single file: use filename without extension
+                base_name = os.path.splitext(files[0].filename)[0]
+                final_deck_name = f"{base_name}"
+            else:
+                # Multiple files: use first filename + count
+                base_name = os.path.splitext(files[0].filename)[0]
+                final_deck_name = f"{base_name} + {len(files)-1} more"
+        else:
+            final_deck_name = deck_name
+
         final_deck_description = deck_description or f"Questions from {len(files)} document(s)"
         deck = Test(name=final_deck_name, description=final_deck_description)
         db.add(deck)

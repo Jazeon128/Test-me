@@ -38,12 +38,6 @@ export default function Upload() {
   const onDrop = async (acceptedFiles) => {
     if (acceptedFiles.length === 0) return
 
-    // Validate deck selection
-    if (selectedDeck === 'new' && !newDeckName.trim()) {
-      setError('Please enter a deck name')
-      return
-    }
-
     const formData = new FormData()
     acceptedFiles.forEach(file => {
       formData.append('files', file)
@@ -53,8 +47,13 @@ export default function Upload() {
 
     // Handle deck creation or selection
     if (selectedDeck === 'new') {
-      formData.append('deck_name', newDeckName)
-      formData.append('deck_description', deckDescription)
+      // Deck name is optional - backend will use filename if not provided
+      if (newDeckName.trim()) {
+        formData.append('deck_name', newDeckName)
+      }
+      if (deckDescription.trim()) {
+        formData.append('deck_description', deckDescription)
+      }
     } else {
       formData.append('deck_id', selectedDeck)
     }
@@ -135,16 +134,19 @@ export default function Upload() {
             <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deck Name *
+                  Deck Name (optional)
                 </label>
                 <input
                   type="text"
                   value={newDeckName}
                   onChange={(e) => setNewDeckName(e.target.value)}
-                  placeholder="e.g., Biology Final Exam"
+                  placeholder="Leave blank to use filename"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   disabled={uploading}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  If not provided, the deck will be named after your uploaded file(s)
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

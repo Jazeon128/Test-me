@@ -59,7 +59,19 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     ).first()
 
     if not progress:
-        progress = UserProgress(question_id=request.question_id)
+        progress = UserProgress(
+            question_id=request.question_id,
+            easiness_factor=2.5,
+            interval=0,
+            repetitions=0,
+            times_seen=0,
+            times_correct=0,
+            times_incorrect=0,
+            average_time_seconds=0.0,
+            streak=0,
+            best_streak=0,
+            is_mastered=False,
+        )
         db.add(progress)
 
     # Update basic stats

@@ -1,0 +1,254 @@
+{
+  "commands": {
+    "/process_issue": {
+      "description": "Read GitHub issue, analyze requirements, search context, and create detailed implementation plan",
+      "parameters": {
+        "issue_number": {
+          "type": "integer",
+          "required": true,
+          "description": "GitHub issue number to process"
+        }
+      },
+      "actions": [
+        "Read issue details using GitHub CLI",
+        "Search scratchpad for related work",
+        "Search git history for related commits",
+        "Analyze cost and performance implications",
+        "Break down into atomic tasks",
+        "Create detailed plan in scratchpad/issue-{number}-plan.md",
+        "Update CLAUDE.md current sprint section"
+      ],
+      "output": "Detailed implementation plan with cost analysis and task breakdown"
+    },
+    
+    "/estimate_cost": {
+      "description": "Calculate infrastructure and operational costs for proposed changes",
+      "parameters": {
+        "scope": {
+          "type": "string",
+          "required": false,
+          "description": "Scope of cost estimation (feature|sprint|project)"
+        }
+      },
+      "actions": [
+        "Analyze infrastructure requirements",
+        "Calculate resource usage",
+        "Estimate monthly operational costs",
+        "Compare against budget constraints",
+        "Suggest cost optimizations"
+      ],
+      "output": "Cost breakdown with optimization recommendations"
+    },
+    
+    "/deploy_safe": {
+      "description": "Deploy with comprehensive monitoring, cost tracking, and automated rollback",
+      "parameters": {
+        "environment": {
+          "type": "string",
+          "required": true,
+          "description": "Target environment (staging|production)"
+        },
+        "rollback_enabled": {
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "Enable automatic rollback on failure"
+        }
+      },
+      "actions": [
+        "Run pre-deployment validations",
+        "Execute infrastructure changes",
+        "Deploy application updates",
+        "Configure monitoring and alerts",
+        "Run post-deployment health checks",
+        "Enable automated rollback if configured"
+      ],
+      "output": "Deployment status with monitoring links and rollback procedures"
+    },
+    
+    "/update_context": {
+      "description": "Update CLAUDE.md with new learnings, patterns, and project context",
+      "parameters": {
+        "category": {
+          "type": "string",
+          "required": false,
+          "description": "Category of update (pattern|gotcha|optimization|decision)"
+        }
+      },
+      "actions": [
+        "Analyze recent work for patterns",
+        "Document new learnings and gotchas",
+        "Update cost optimization strategies",
+        "Record architectural decisions",
+        "Update troubleshooting section",
+        "Refresh quick reference commands"
+      ],
+      "output": "Updated CLAUDE.md with preserved context and new learnings"
+    },
+    
+    "/clear_focused": {
+      "description": "Clear context while preserving project essentials and learnings",
+      "parameters": {
+        "preserve_level": {
+          "type": "string",
+          "required": false,
+          "default": "standard",
+          "description": "Level of context to preserve (minimal|standard|detailed)"
+        }
+      },
+      "actions": [
+        "Save current work context to CLAUDE.md",
+        "Preserve project patterns and optimizations",
+        "Maintain cost budgets and constraints",
+        "Keep quality gates and testing strategies",
+        "Archive completed issue plans",
+        "Reset working memory for next issue"
+      ],
+      "output": "Clean context ready for next development cycle"
+    },
+    
+    "/validate_deployment": {
+      "description": "Run comprehensive validation of deployed features",
+      "parameters": {
+        "validation_type": {
+          "type": "string",
+          "required": false,
+          "default": "full",
+          "description": "Type of validation (quick|full|cost|security|performance)"
+        }
+      },
+      "actions": [
+        "Run health checks on all services",
+        "Validate performance benchmarks",
+        "Check cost metrics against budget",
+        "Verify security configurations",
+        "Test new feature functionality",
+        "Validate monitoring and alerting"
+      ],
+      "output": "Validation report with pass/fail status and recommendations"
+    },
+    
+    "/analyze_performance": {
+      "description": "Analyze system performance and identify optimization opportunities",
+      "parameters": {
+        "time_range": {
+          "type": "string",
+          "required": false,
+          "default": "24h",
+          "description": "Time range for analysis (1h|24h|7d|30d)"
+        }
+      },
+      "actions": [
+        "Collect performance metrics",
+        "Analyze resource utilization",
+        "Identify bottlenecks",
+        "Calculate cost per operation",
+        "Suggest optimizations",
+        "Create performance report"
+      ],
+      "output": "Performance analysis with optimization recommendations"
+    },
+    
+    "/security_scan": {
+      "description": "Run security scans and validate security configurations",
+      "parameters": {
+        "scan_type": {
+          "type": "string",
+          "required": false,
+          "default": "comprehensive",
+          "description": "Type of scan (quick|comprehensive|infrastructure|code)"
+        }
+      },
+      "actions": [
+        "Scan code for vulnerabilities",
+        "Check infrastructure security",
+        "Validate access controls",
+        "Review secrets management",
+        "Check compliance requirements",
+        "Generate security report"
+      ],
+      "output": "Security scan results with remediation steps"
+    },
+    
+    "/generate_docs": {
+      "description": "Generate or update project documentation",
+      "parameters": {
+        "doc_type": {
+          "type": "string",
+          "required": false,
+          "default": "api",
+          "description": "Type of documentation (api|architecture|deployment|troubleshooting)"
+        }
+      },
+      "actions": [
+        "Analyze current code and architecture",
+        "Generate documentation from code comments",
+        "Update architecture diagrams",
+        "Create deployment guides",
+        "Update troubleshooting docs",
+        "Validate documentation completeness"
+      ],
+      "output": "Updated documentation with current system state"
+    },
+    
+    "/optimize_costs": {
+      "description": "Analyze current costs and implement optimization strategies",
+      "parameters": {
+        "optimization_level": {
+          "type": "string",
+          "required": false,
+          "default": "aggressive",
+          "description": "Level of optimization (conservative|balanced|aggressive)"
+        }
+      },
+      "actions": [
+        "Analyze current resource usage",
+        "Identify underutilized resources",
+        "Calculate potential savings",
+        "Implement cost optimizations",
+        "Update monitoring and alerts",
+        "Document optimization strategies"
+      ],
+      "output": "Cost optimization report with implemented changes and projected savings"
+    }
+  },
+  
+  "workflow_templates": {
+    "issue_plan_template": "scratchpad/templates/issue_plan_template.md",
+    "deployment_checklist": "scratchpad/templates/deployment_checklist.md",
+    "performance_report": "scratchpad/templates/performance_report_template.md",
+    "cost_analysis": "scratchpad/templates/cost_analysis_template.md"
+  },
+  
+  "integration": {
+    "github_cli": {
+      "required": true,
+      "commands": ["gh issue view", "gh pr create", "gh workflow run"]
+    },
+    "terraform": {
+      "required": false,
+      "commands": ["terraform plan", "terraform apply", "terraform destroy"]
+    },
+    "docker": {
+      "required": false,
+      "commands": ["docker build", "docker run", "docker compose"]
+    },
+    "monitoring": {
+      "required": false,
+      "tools": ["prometheus", "grafana", "datadog", "newrelic"]
+    }
+  },
+  
+  "aliases": {
+    "/pi": "/process_issue",
+    "/ec": "/estimate_cost", 
+    "/ds": "/deploy_safe",
+    "/uc": "/update_context",
+    "/cf": "/clear_focused",
+    "/vd": "/validate_deployment",
+    "/ap": "/analyze_performance",
+    "/ss": "/security_scan",
+    "/gd": "/generate_docs",
+    "/oc": "/optimize_costs"
+  }
+}

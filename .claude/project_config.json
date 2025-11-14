@@ -1,0 +1,74 @@
+{
+  "project_type": "template",
+  "framework": "multi-framework",
+  "cloud_provider": "multi-cloud",
+  "
+  
+  "cost_optimization": {
+    "enabled": true,
+    "monthly_budget_usd": 100,
+    "auto_shutdown": true,
+    "cost_alerts": {
+      "warning_threshold": 0.7,
+      "critical_threshold": 0.9
+    },
+    "resource_limits": {
+      "max_instances": 5,
+      "max_storage_gb": 100,
+      "max_daily_spend": 10
+    }
+  },
+  
+  "quality_gates": {
+    "testing_required": ["unit", "integration", "security"],
+    "coverage_threshold": 0.8,
+    "performance_benchmarks": {
+      "response_time_ms": 500,
+      "memory_usage_mb": 512,
+      "cpu_usage_percent": 70
+    },
+    "security_scanning": true,
+    "code_quality_tools": ["linter", "type_checker", "security_scanner"]
+  },
+  
+  "deployment": {
+    "strategy": "blue-green",
+    "environments": ["development", "staging", "production"],
+    "auto_rollback": true,
+    "health_checks": true,
+    "monitoring_required": true
+  },
+  
+  "ai_assistance": {
+    "context_management": "automatic",
+    "pattern_learning": true,
+    "cost_awareness": true,
+    "documentation_updates": true,
+    "code_review": false
+  },
+  
+  "workflow": {
+    "issue_processing": true,
+    "scratchpad_planning": true,
+    "git_integration": true,
+    "ci_cd_integration": true,
+    "monitoring_integration": true
+  },
+  
+  "notifications": {
+    "deployment_success": true,
+    "deployment_failure": true,
+    "cost_alerts": true,
+    "security_alerts": true,
+    "performance_alerts": false
+  },
+  
+  "project_specific": {
+    "database_type": "",
+    "api_framework": "",
+    "frontend_framework": "",
+    "infrastructure_as_code": "",
+    "monitoring_stack": "",
+    "ci_cd_platform": "github-actions"
+  }
+}

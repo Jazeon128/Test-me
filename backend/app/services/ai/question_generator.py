@@ -50,7 +50,9 @@ class QuestionGenerator:
         self,
         parsed_doc: ParsedDocument,
         num_questions: int = 10,
-        difficulty: str = "mixed"
+        difficulty: str = "mixed",
+        custom_prompt: Optional[str] = None,
+        example_questions: Optional[List[Dict]] = None
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -59,6 +61,8 @@ class QuestionGenerator:
             parsed_doc: The parsed document with sections
             num_questions: Number of questions to generate
             difficulty: "easy", "medium", "hard", or "mixed"
+            custom_prompt: Optional custom instructions for question generation
+            example_questions: Optional list of example questions to inspire style
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
@@ -72,7 +76,7 @@ class QuestionGenerator:
         batch_size = 5
         for i in range(0, len(selected_sections), batch_size):
             batch_sections = selected_sections[i : i + batch_size]
-            batch_questions = self._generate_batch(batch_sections, difficulty)
+            batch_questions = self._generate_batch(batch_sections, difficulty, custom_prompt, example_questions)
             all_questions.extend(batch_questions)
 
         # Limit to requested number
@@ -92,21 +96,21 @@ class QuestionGenerator:
 
         return selected
 
-    def _generate_batch(self, sections: List[ParsedSection], difficulty: str) -> List[Dict]:
+    def _generate_batch(self, sections: List[ParsedSection], difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> List[Dict]:
         """Generate questions for a batch of sections"""
         questions = []
 
         for section in sections:
             # Generate 1 question per section
-            question = self._generate_single_question(section, difficulty)
+            question = self._generate_single_question(section, difficulty, custom_prompt, example_questions)
             if question:
                 questions.append(question)
 
         return questions
 
-    def _generate_single_question(self, section: ParsedSection, difficulty: str) -> Optional[Dict]:
+    def _generate_single_question(self, section: ParsedSection, difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> Optional[Dict]:
         """Generate a single multiple-choice question from a section"""
-        prompt = self._build_prompt(section.text, difficulty)
+        prompt = self._build_prompt(section.text, difficulty, custom_prompt, example_questions)
 
         try:
             if self.provider == "anthropic":
@@ -144,7 +148,7 @@ class QuestionGenerator:
             print(f"Error generating question: {e}")
             return None
 
-    def _build_prompt(self, text: str, difficulty: str) -> str:
+    def _build_prompt(self, text: str, difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> str:
         """Build the prompt for question generation"""
         difficulty_instructions = {
             "easy": "Create a straightforward exam-style question testing basic recall and key facts. This should be answerable by a student who has read and understood the material.",
@@ -152,6 +156,20 @@ class QuestionGenerator:
             "hard": "Create a challenging exam-style question requiring analysis, synthesis, or evaluation. This should test deep understanding, critical thinking, or the ability to compare/contrast concepts.",
             "mixed": "Create an exam-style question with appropriate difficulty. Write it as if preparing students for a standardized test or final exam."
         }
+
+        # Build example questions section if provided
+        examples_section = ""
+        if example_questions and len(example_questions) > 0:
+            examples_section = "\n\nEXAMPLE QUESTIONS (use these as inspiration for style and format):\n"
+            for i, ex in enumerate(example_questions[:3], 1):  # Limit to 3 examples
+                examples_section += f"\nExample {i}:\n"
+                examples_section += f"Question: {ex.get('question', '')}\n"
+                examples_section += f"Difficulty: {ex.get('difficulty', 'medium')}\n"
+
+        # Build custom prompt section if provided
+        custom_section = ""
+        if custom_prompt:
+            custom_section = f"\n\nADDITIONAL INSTRUCTIONS:\n{custom_prompt}\n"
 
         prompt = f"""You are creating exam preparation questions. Based on the following text, generate ONE high-quality multiple-choice exam question.
 
@@ -173,7 +191,7 @@ EXAM QUESTION STYLES TO USE:
 - "According to the text..."
 - "What is the primary/main..."
 - "The author suggests that..."
-- "Based on the passage..."
+- "Based on the passage..."{examples_section}{custom_section}
 
 RESPOND ONLY with valid JSON in this exact format:
 {{

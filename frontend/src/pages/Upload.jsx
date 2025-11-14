@@ -17,6 +17,8 @@ export default function Upload() {
   const [newDeckName, setNewDeckName] = useState('')
   const [deckDescription, setDeckDescription] = useState('')
   const [loadingDecks, setLoadingDecks] = useState(true)
+  const [regenerate, setRegenerate] = useState(false)
+  const [customPrompt, setCustomPrompt] = useState('')
 
   useEffect(() => {
     loadDecks()
@@ -55,6 +57,12 @@ export default function Upload() {
       formData.append('deck_description', deckDescription)
     } else {
       formData.append('deck_id', selectedDeck)
+    }
+
+    // Add regenerate flag and custom prompt
+    formData.append('regenerate', regenerate)
+    if (customPrompt.trim()) {
+      formData.append('custom_prompt', customPrompt)
     }
 
     setUploading(true)
@@ -153,6 +161,46 @@ export default function Upload() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Regenerate Option - Only show when adding to existing deck */}
+        {selectedDeck !== 'new' && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={regenerate}
+                onChange={(e) => setRegenerate(e.target.checked)}
+                className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                disabled={uploading}
+              />
+              <div>
+                <span className="font-medium text-gray-900">Regenerate all questions</span>
+                <p className="text-sm text-gray-600 mt-1">
+                  Delete existing questions and regenerate them from all documents (old + new) combined.
+                  This allows questions to cover material from multiple sources.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* Custom Prompt */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Custom Instructions (Optional)
+          </label>
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="e.g., Focus on definitions and key terms, Use AP Biology exam style, Include calculations and formulas, etc."
+            rows="3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            disabled={uploading}
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Provide additional instructions to guide question generation style and content
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

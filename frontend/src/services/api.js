@@ -48,6 +48,9 @@ export const testsAPI = {
   exportAnki: (id) => api.get(`/tests/${id}/export/anki`, {
     responseType: 'blob'
   }),
+  exportCSV: (id) => api.get(`/tests/${id}/export/csv`, {
+    responseType: 'blob'
+  }),
 }
 
 // Progress API
@@ -62,6 +65,17 @@ export const progressAPI = {
       include_review: includeReview,
     })
   },
+}
+
+// Exam Templates API
+export const examTemplatesAPI = {
+  getCertTypes: () => api.get('/exam-templates/cert-types'),
+  getArchetypes: (certType = 'gcp_ace') => api.get('/exam-templates/archetypes', { params: { cert_type: certType } }),
+  getArchetypeDetails: (archetype, certType = 'gcp_ace') => api.get(`/exam-templates/archetypes/${archetype}`, { params: { cert_type: certType } }),
+  validateConfig: (config) => api.post('/exam-templates/validate', config),
+  previewTemplate: (config, sampleText = 'Sample text') => api.post('/exam-templates/preview', { config, sample_text: sampleText }),
+  getExampleConfig: (certType = 'gcp_ace', archetype = null) => api.get('/exam-templates/example-config', { params: { cert_type: certType, archetype } }),
+  getDistractorStrategies: () => api.get('/exam-templates/distractor-strategies'),
 }
 
 export default api

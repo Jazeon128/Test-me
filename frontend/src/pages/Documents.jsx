@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { documentsAPI, testsAPI } from '../services/api'
+import { documentsAPI, testsAPI, questionsAPI } from '../services/api'
 import { FileText, Trash2, Download, Play } from 'lucide-react'
 
 export default function Documents() {
@@ -36,15 +36,20 @@ export default function Documents() {
     }
   }
 
-  const handleExportAnki = async (documentId) => {
+  const handleExportAnki = async (documentId, documentTitle) => {
     try {
-      // Get document details to create a test
+      // Get document details and questions
       const docResponse = await documentsAPI.get(documentId)
-      const questionsResponse = await documentsAPI.getQuestions(documentId)
+      const questionsResponse = await questionsAPI.getByDocument(documentId)
+
+      if (!questionsResponse.data || questionsResponse.data.length === 0) {
+        alert('No questions available for this document')
+        return
+      }
 
       // Create a test from all questions
       const testResponse = await testsAPI.create({
-        name: `${docResponse.data.title || docResponse.data.filename} - Full Deck`,
+        name: `${docResponse.data.title || docResponse.data.filename}`,
         description: 'Auto-generated deck for Anki export',
         question_ids: questionsResponse.data.map(q => q.id)
       })
@@ -56,12 +61,13 @@ export default function Documents() {
       const url = window.URL.createObjectURL(new Blob([ankiResponse.data]))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `${docResponse.data.title || 'deck'}.apkg`)
+      const filename = (docResponse.data.title || documentTitle || 'deck').replace(/[^a-z0-9]/gi, '_')
+      link.setAttribute('download', `${filename}.apkg`)
       document.body.appendChild(link)
       link.click()
       link.remove()
     } catch (error) {
-      alert('Failed to export to Anki')
+      alert('Failed to export to Anki: ' + (error.response?.data?.detail || error.message))
       console.error(error)
     }
   }
@@ -127,13 +133,15 @@ export default function Documents() {
                   <Play size={16} />
                   Practice
                 </button>
-                <button
-                  onClick={() => handleExportAnki(doc.id)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-                  title="Export to Anki"
-                >
-                  <Download size={16} />
-                </button>
+                {doc.num_questions > 0 && (
+                  <button
+                    onClick={() => handleExportAnki(doc.id, doc.title || doc.filename)}
+                    className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                    title="Export to Anki"
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(doc.id)}
                   className="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"

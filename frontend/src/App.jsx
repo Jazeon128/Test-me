@@ -7,6 +7,7 @@ import Progress from './pages/Progress'
 import Documents from './pages/Documents'
 import Decks from './pages/Decks'
 import Settings from './pages/Settings'
+import ImportQuestions from './pages/ImportQuestions'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/import-questions" element={<ImportQuestions />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/decks" element={<Decks />} />
         <Route path="/decks/:deckId" element={<TestSession />} />

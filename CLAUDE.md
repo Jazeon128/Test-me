@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Test Me** is a full-stack gamified learning platform that transforms documents (PDF, HTML, Markdown, DOCX) into AI-generated multiple-choice questions with spaced repetition learning and Anki export capabilities.
+**Test Me** is a full-stack gamified learning platform that transforms documents (PDF, HTML, Markdown, DOCX) into AI-generated multiple-choice questions with spaced repetition learning and multiple export formats (Anki .apkg and CSV).
 
 **Type**: Web Application (Full-Stack)
 **Stack**: FastAPI (Python) + React (Vite) + SQLite
@@ -82,7 +82,7 @@ npm run lint
 1. **API Layer** (`app/api/`):
    - `documents.py` - Document upload, processing, deletion
    - `questions.py` - Question retrieval and management
-   - `tests.py` - Test creation and session management
+   - `tests.py` - Test creation, session management, Anki/CSV export
    - `decks.py` - Deck management and regeneration
    - `progress.py` - Answer submission, review sessions, statistics
    - `settings.py` - Settings management
@@ -114,7 +114,9 @@ npm run lint
      - Tracks easiness factor, interval, repetitions
      - Adjusts difficulty based on time taken (30s default)
 
-   - `anki_export.py` - Generates .apkg files using genanki
+   - **Export Services**:
+     - `anki_export.py` - Generates .apkg files using genanki
+     - `csv_export.py` - Generates CSV files compatible with Anki import
 
 4. **Database Layer** (`app/db/`):
    - `database.py` - SQLAlchemy setup and session management
@@ -131,7 +133,7 @@ npm run lint
    - `TestSession.jsx` - Quiz interface with 30s timer
    - `Progress.jsx` - Statistics and analytics
    - `Settings.jsx` - Settings configuration
-   - `Decks.jsx` - Deck management
+   - `Decks.jsx` - Deck management with Anki and CSV export
 
 2. **Components** (`components/`):
    - Reusable UI components
@@ -212,7 +214,11 @@ npm run lint
 4. Multi-file upload to generate cohesive deck
 5. Each question tracks individual SM-2 state
 
-### Anki Export
+### Export Options
+
+Test Me supports multiple export formats for maximum flexibility:
+
+#### Anki .apkg Export
 
 **Export Format:**
 - Generates `.apkg` files using genanki library
@@ -230,7 +236,7 @@ npm run lint
 **How to Export:**
 1. **Via Frontend UI**:
    - Go to Decks page (`/decks`)
-   - Click Download icon (📥) on any deck
+   - Click green Download icon (📥) on any deck
    - File downloads as `{deck_name}.apkg`
 
 2. **Via API**:
@@ -245,6 +251,51 @@ npm run lint
 4. Each card tagged with difficulty level
 
 **Implementation:** `backend/app/services/anki_export.py`
+
+#### CSV Export
+
+**Export Format:**
+- Generates simplified CSV files compatible with Anki import
+- UTF-8 encoding with BOM for Excel compatibility
+- Proper quoting for special characters and multiline text
+
+**CSV Structure:**
+```csv
+Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Source, Difficulty
+```
+
+**Fields:**
+- `Question` - The question text/scenario
+- `OptionA-D` - The four answer options
+- `CorrectAnswer` - Letter indicating correct answer (A, B, C, or D)
+- `Explanation` - Detailed explanation of the answer
+- `Source` - Formatted source reference (e.g., "Page 5, Section: Intro, "quote"")
+- `Difficulty` - Question difficulty level (easy, medium, hard)
+
+**How to Export:**
+1. **Via Frontend UI**:
+   - Go to Decks page (`/decks`)
+   - Click blue FileText icon (📄) on any deck
+   - File downloads as `{deck_name}.csv`
+
+2. **Via API**:
+   ```bash
+   curl -o my_deck.csv http://localhost:8000/api/tests/{test_id}/export/csv
+   ```
+
+**Use Cases:**
+- Import into Anki using standard CSV import
+- Open in Excel/Google Sheets for review
+- Process with custom scripts
+- Share with users who don't have Anki
+- Archive questions in human-readable format
+
+**Example CSV Output:**
+```csv
+"What is 2+2?","3","4","5","6","B","2+2 equals 4 by basic arithmetic.","Page 1, Section: Introduction","easy"
+```
+
+**Implementation:** `backend/app/services/csv_export.py`
 
 ## Database Schema
 
@@ -328,6 +379,15 @@ Base URL configured in `frontend/src/services/` - defaults to `http://localhost:
 3. Format prompts for provider's API
 4. Update settings model and API
 
+### Adding New Export Format
+
+1. Create exporter service in `backend/app/services/` (e.g., `json_export.py`)
+2. Extend pattern from `csv_export.py` or `anki_export.py`
+3. Add endpoint to `backend/app/api/tests.py` (e.g., `/tests/{test_id}/export/json`)
+4. Add API method to `frontend/src/services/api.js` (e.g., `exportJSON`)
+5. Add export button to `frontend/src/pages/Decks.jsx`
+6. Test with various question sets
+
 ## File Upload Locations
 
 - Uploaded files: `backend/uploads/`
@@ -337,6 +397,27 @@ Base URL configured in `frontend/src/services/` - defaults to `http://localhost:
 ## API Documentation
 
 Interactive API docs available at `http://localhost:8000/docs` when backend is running.
+
+### Key Export Endpoints
+
+**Anki Export:**
+```
+GET /api/tests/{test_id}/export/anki
+Response: application/octet-stream (.apkg file)
+```
+
+**CSV Export:**
+```
+GET /api/tests/{test_id}/export/csv
+Response: text/csv; charset=utf-8 (.csv file)
+```
+
+Both endpoints:
+- Require test to exist and have questions
+- Return file with Content-Disposition header
+- Use test name for filename
+- Handle special characters properly
+- Clean up temporary files automatically
 
 ## Known Patterns
 
@@ -389,6 +470,7 @@ python scripts/backup_db.py --restore backups/test_me_backup_20251114_193734.db
 
 ## Recent Features
 
+- **CSV Export**: Added CSV export option alongside Anki .apkg export for maximum flexibility
 - **Google Gemini Support**: Added Gemini 1.5 Pro as third AI provider option
 - **Smart Deck Naming**: Decks automatically named after uploaded files instead of timestamps
 - **Database Backup**: Comprehensive backup/restore script with cleanup

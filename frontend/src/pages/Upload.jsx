@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI } from '../services/api'
 import { Upload as UploadIcon, FileText, CheckCircle, AlertCircle, Plus } from 'lucide-react'
+import ExamTemplateBuilder from '../components/ExamTemplateBuilder'
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -18,7 +19,7 @@ export default function Upload() {
   const [deckDescription, setDeckDescription] = useState('')
   const [loadingDecks, setLoadingDecks] = useState(true)
   const [regenerate, setRegenerate] = useState(false)
-  const [customPrompt, setCustomPrompt] = useState('')
+  const [examTemplateConfig, setExamTemplateConfig] = useState(null)
 
   useEffect(() => {
     loadDecks()
@@ -58,10 +59,10 @@ export default function Upload() {
       formData.append('deck_id', selectedDeck)
     }
 
-    // Add regenerate flag and custom prompt
+    // Add regenerate flag and exam template config
     formData.append('regenerate', regenerate)
-    if (customPrompt.trim()) {
-      formData.append('custom_prompt', customPrompt)
+    if (examTemplateConfig) {
+      formData.append('exam_template_config', JSON.stringify(examTemplateConfig))
     }
 
     setUploading(true)
@@ -118,16 +119,22 @@ export default function Upload() {
           <select
             value={selectedDeck}
             onChange={(e) => setSelectedDeck(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-2"
             disabled={uploading || loadingDecks}
           >
-            <option value="new">Create New Deck</option>
+            <option value="new">➕ Create New Deck</option>
+            {decks.length > 0 && <option disabled>───────────────────</option>}
             {decks.map((deck) => (
               <option key={deck.id} value={deck.id}>
-                {deck.name} ({deck.num_questions} questions)
+                📚 {deck.name} ({deck.num_questions} questions)
               </option>
             ))}
           </select>
+          <p className="text-xs text-gray-500 mt-1">
+            {selectedDeck === 'new'
+              ? '✨ A new deck will be created for these questions'
+              : '📥 Questions will be added to the selected deck'}
+          </p>
 
           {/* New Deck Name Input */}
           {selectedDeck === 'new' && (
@@ -187,22 +194,13 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Custom Prompt */}
+        {/* Exam Template Builder */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Custom Instructions (Optional)
-          </label>
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="e.g., Focus on definitions and key terms, Use AP Biology exam style, Include calculations and formulas, etc."
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          <h3 className="text-lg font-semibold mb-4">Exam Question Configuration</h3>
+          <ExamTemplateBuilder
+            onConfigChange={setExamTemplateConfig}
             disabled={uploading}
           />
-          <p className="text-sm text-gray-500 mt-1">
-            Provide additional instructions to guide question generation style and content
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

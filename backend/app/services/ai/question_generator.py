@@ -7,6 +7,7 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ...config import settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
+from ..exam_templates import ExamTemplateManager
 
 
 def get_setting(db: Session, key: str) -> Optional[str]:
@@ -48,10 +49,14 @@ class QuestionGenerator:
             self.model = "gpt-4-turbo-preview"
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
+            # Use gemini-1.5-pro without -latest suffix
             self.client = genai.GenerativeModel("gemini-1.5-pro")
             self.model = "gemini-1.5-pro"
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
+
+        # Initialize exam template manager
+        self.exam_template_manager = ExamTemplateManager()
 
     def generate_questions(
         self,
@@ -59,7 +64,8 @@ class QuestionGenerator:
         num_questions: int = 10,
         difficulty: str = "mixed",
         custom_prompt: Optional[str] = None,
-        example_questions: Optional[List[Dict]] = None
+        example_questions: Optional[List[Dict]] = None,
+        exam_template_config: Optional[Dict] = None
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -70,21 +76,42 @@ class QuestionGenerator:
             difficulty: "easy", "medium", "hard", or "mixed"
             custom_prompt: Optional custom instructions for question generation
             example_questions: Optional list of example questions to inspire style
+            exam_template_config: Optional exam template configuration (GCP ACE, AWS SAA style)
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
         """
         # Select diverse sections to cover different parts of the document
-        selected_sections = self._select_sections(parsed_doc.sections, num_questions)
+        # If we need more questions than sections, we'll reuse sections
+        num_sections = len(parsed_doc.sections)
+        sections_needed = min(num_questions, num_sections)
+
+        selected_sections = self._select_sections(parsed_doc.sections, sections_needed)
 
         all_questions = []
 
-        # Generate questions in batches (process multiple sections at once)
-        batch_size = 5
-        for i in range(0, len(selected_sections), batch_size):
-            batch_sections = selected_sections[i : i + batch_size]
-            batch_questions = self._generate_batch(batch_sections, difficulty, custom_prompt, example_questions)
-            all_questions.extend(batch_questions)
+        # Calculate how many questions to generate per section
+        questions_per_section = max(1, (num_questions + sections_needed - 1) // sections_needed)  # Ceiling division
+
+        # Generate questions from each section
+        for section in selected_sections:
+            # Generate multiple questions per section if needed
+            for _ in range(questions_per_section):
+                if len(all_questions) >= num_questions:
+                    break
+
+                question = self._generate_single_question(
+                    section,
+                    difficulty,
+                    custom_prompt,
+                    example_questions,
+                    exam_template_config
+                )
+                if question:
+                    all_questions.append(question)
+
+            if len(all_questions) >= num_questions:
+                break
 
         # Limit to requested number
         return all_questions[:num_questions]
@@ -103,21 +130,22 @@ class QuestionGenerator:
 
         return selected
 
-    def _generate_batch(self, sections: List[ParsedSection], difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> List[Dict]:
-        """Generate questions for a batch of sections"""
-        questions = []
-
-        for section in sections:
-            # Generate 1 question per section
-            question = self._generate_single_question(section, difficulty, custom_prompt, example_questions)
-            if question:
-                questions.append(question)
-
-        return questions
-
-    def _generate_single_question(self, section: ParsedSection, difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> Optional[Dict]:
+    def _generate_single_question(
+        self,
+        section: ParsedSection,
+        difficulty: str,
+        custom_prompt: Optional[str] = None,
+        example_questions: Optional[List[Dict]] = None,
+        exam_template_config: Optional[Dict] = None
+    ) -> Optional[Dict]:
         """Generate a single multiple-choice question from a section"""
-        prompt = self._build_prompt(section.text, difficulty, custom_prompt, example_questions)
+        prompt = self._build_prompt(
+            section.text,
+            difficulty,
+            custom_prompt,
+            example_questions,
+            exam_template_config
+        )
 
         try:
             if self.provider == "anthropic":
@@ -159,8 +187,28 @@ class QuestionGenerator:
             print(f"Error generating question: {e}")
             return None
 
-    def _build_prompt(self, text: str, difficulty: str, custom_prompt: Optional[str] = None, example_questions: Optional[List[Dict]] = None) -> str:
+    def _build_prompt(
+        self,
+        text: str,
+        difficulty: str,
+        custom_prompt: Optional[str] = None,
+        example_questions: Optional[List[Dict]] = None,
+        exam_template_config: Optional[Dict] = None
+    ) -> str:
         """Build the prompt for question generation"""
+
+        # If exam template config is provided, use structured exam template
+        if exam_template_config:
+            try:
+                return self.exam_template_manager.build_exam_prompt(
+                    source_text=text,
+                    config=exam_template_config
+                )
+            except Exception as e:
+                print(f"Error building exam template prompt: {e}")
+                # Fall back to basic prompt
+
+        # Otherwise, use the standard prompt
         difficulty_instructions = {
             "easy": "Create a straightforward exam-style question testing basic recall and key facts. This should be answerable by a student who has read and understood the material.",
             "medium": "Create an exam-style question requiring comprehension and application of concepts. This should test whether a student can apply knowledge to new situations or identify relationships.",

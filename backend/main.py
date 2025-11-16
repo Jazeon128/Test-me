@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings as config_settings
 from app.db import init_db
-from app.api import documents, questions, tests, progress, decks, settings
+from app.api import documents, questions, tests, progress, decks, settings, exam_templates
 import os
 import logging
 
@@ -75,6 +75,7 @@ app.include_router(tests.router, prefix="/api/tests", tags=["tests"])
 app.include_router(decks.router, prefix="/api/decks", tags=["decks"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(exam_templates.router, prefix="/api/exam-templates", tags=["exam-templates"])
 
 
 if __name__ == "__main__":

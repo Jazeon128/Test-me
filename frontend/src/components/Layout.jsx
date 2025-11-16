@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, FileText, TrendingUp, BookOpen, Layers, Settings } from 'lucide-react'
+import { Home, Upload, FileText, TrendingUp, BookOpen, Layers, Settings, FileDown } from 'lucide-react'
 
 export default function Layout({ children }) {
   const location = useLocation()
@@ -40,6 +40,13 @@ export default function Layout({ children }) {
                 >
                   <Upload size={18} />
                   Upload
+                </Link>
+                <Link
+                  to="/import-questions"
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/import-questions')}`}
+                >
+                  <FileDown size={18} />
+                  Import
                 </Link>
                 <Link
                   to="/decks"

@@ -32,6 +32,7 @@ async def upload_document(
     deck_description: Optional[str] = None,
     regenerate: bool = False,
     custom_prompt: Optional[str] = None,
+    exam_template_config: Optional[str] = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ):
@@ -47,6 +48,7 @@ async def upload_document(
         deck_description: Description for new deck (if creating)
         regenerate: If True, regenerate all questions from all documents in deck
         custom_prompt: Custom instructions for question generation
+        exam_template_config: Optional JSON string with exam template config (GCP ACE, AWS SAA style)
     """
     type_mapping = {
         ".pdf": DocumentType.PDF,
@@ -134,6 +136,15 @@ async def upload_document(
             "file_type": type_mapping[file_ext]
         })
 
+    # Parse exam template config if provided
+    import json
+    exam_config = None
+    if exam_template_config:
+        try:
+            exam_config = json.loads(exam_template_config)
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid exam_template_config JSON: {exam_template_config}")
+
     # Handle regeneration mode
     if regenerate and deck_id and deck_id != 'new':
         # Regenerate all questions from all documents in the deck
@@ -142,7 +153,8 @@ async def upload_document(
             deck.id,
             num_questions,
             difficulty,
-            custom_prompt
+            custom_prompt,
+            exam_config
         )
         message = f"{len(uploaded_documents)} document(s) uploaded. Regenerating all questions in deck using combined material."
     else:
@@ -156,7 +168,8 @@ async def upload_document(
                 num_questions,
                 difficulty,
                 deck.id,
-                custom_prompt
+                custom_prompt,
+                exam_config
             )
         message = f"{len(uploaded_documents)} document(s) uploaded. Questions are being generated."
 
@@ -177,7 +190,8 @@ def process_document(
     num_questions: int,
     difficulty: str,
     deck_id: int = None,
-    custom_prompt: str = None
+    custom_prompt: str = None,
+    exam_template_config: dict = None
 ):
     """Background task to parse document and generate questions"""
     from ..db import SessionLocal
@@ -216,7 +230,8 @@ def process_document(
                 parsed_doc,
                 num_questions=num_questions,
                 difficulty=difficulty,
-                custom_prompt=custom_prompt
+                custom_prompt=custom_prompt,
+                exam_template_config=exam_template_config
             )
         except ValueError as e:
             logger.error(f"❌ {str(e)}")
@@ -328,7 +343,8 @@ def regenerate_deck_questions(
     deck_id: int,
     num_questions_per_doc: int,
     difficulty: str,
-    custom_prompt: str = None
+    custom_prompt: str = None,
+    exam_template_config: dict = None
 ):
     """Regenerate all questions in a deck from all its documents"""
     from ..db import SessionLocal
@@ -406,7 +422,8 @@ def regenerate_deck_questions(
                 num_questions=total_questions,
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
-                example_questions=example_questions
+                example_questions=example_questions,
+                exam_template_config=exam_template_config
             )
 
         except ValueError as e:

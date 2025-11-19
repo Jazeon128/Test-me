@@ -183,7 +183,7 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
         filename = f"{test.name.replace(' ', '_')}.csv"
         return Response(
             content=content.encode('utf-8-sig'),
-            media_type="text/csv; charset=utf-8",
+            media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
 

@@ -161,8 +161,8 @@ export default function Decks() {
                   onClick={() => navigate(`/decks/${deck.id}`)}
                   className="flex-1 bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 transition text-sm flex items-center justify-center gap-2"
                 >
-                  <Play size={16} />
-                  Practice
+                  <BookOpen size={16} />
+                  Open Deck
                 </button>
                 {deck.num_questions > 0 && (
                   <>

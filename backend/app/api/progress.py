@@ -16,12 +16,14 @@ class SubmitAnswerRequest(BaseModel):
     question_id: int
     selected_option: str  # A, B, C, or D
     time_taken_seconds: float
+    manual_quality: Optional[int] = None  # 0-5 scale for manual grading
 
 
 class ReviewSessionRequest(BaseModel):
     num_questions: int = 10
-    include_new: bool = True  # Include questions never seen before
-    include_review: bool = True  # Include questions due for review
+    include_new: bool = True
+    include_review: bool = True
+    deck_id: Optional[int] = None
 
 
 @router.post("/submit")
@@ -90,11 +92,20 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     progress.average_time_seconds = total_time / progress.times_seen
 
     # Determine quality rating for SM-2
-    quality = SM2Algorithm.determine_quality_from_attempt(
-        correct=is_correct,
-        time_taken_seconds=request.time_taken_seconds,
-        time_limit_seconds=30.0
-    )
+    if request.manual_quality is not None:
+        # Use manual quality if provided (0-5)
+        try:
+            quality = ReviewResult(request.manual_quality)
+        except ValueError:
+            # Fallback or error? Let's clamp or default
+            quality = ReviewResult.CORRECT_MEDIUM
+    else:
+        # Auto-calculate based on time/correctness
+        quality = SM2Algorithm.determine_quality_from_attempt(
+            correct=is_correct,
+            time_taken_seconds=request.time_taken_seconds,
+            time_limit_seconds=30.0
+        )
 
     # Calculate next review using SM-2 algorithm
     new_ef, new_interval, new_repetitions, next_review = SM2Algorithm.calculate_next_review(
@@ -205,21 +216,19 @@ async def get_question_progress(question_id: int, db: Session = Depends(get_db))
 async def get_review_session(request: ReviewSessionRequest, db: Session = Depends(get_db)):
     """
     Get questions for a review session based on spaced repetition
-
-    Returns questions that are:
-    1. Due for review (past next_review_date)
-    2. Never seen before (if include_new=True)
-
-    Prioritizes:
-    - Overdue questions (oldest first)
-    - New questions
-    - Questions with lower mastery
     """
+    from ..models.test import Test
+    
     questions_to_review = []
 
     if request.include_review:
         # Get questions due for review
-        due_progress = db.query(UserProgress).filter(
+        query = db.query(UserProgress).join(Question)
+        
+        if request.deck_id:
+            query = query.join(Question.tests).filter(Test.id == request.deck_id)
+            
+        due_progress = query.filter(
             UserProgress.next_review_date <= datetime.utcnow()
         ).order_by(UserProgress.next_review_date.asc()).limit(request.num_questions).all()
 
@@ -230,16 +239,19 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
         seen_question_ids = db.query(UserProgress.question_id).all()
         seen_ids = [qid[0] for qid in seen_question_ids]
 
-        new_questions = db.query(Question).filter(
-            ~Question.id.in_(seen_ids)
-        ).limit(request.num_questions - len(questions_to_review)).all()
+        query = db.query(Question).filter(~Question.id.in_(seen_ids))
+        
+        if request.deck_id:
+            query = query.join(Question.tests).filter(Test.id == request.deck_id)
+            
+        new_questions = query.limit(request.num_questions - len(questions_to_review)).all()
 
         questions_to_review.extend([q.id for q in new_questions])
 
     # Get full question details
     questions = db.query(Question).filter(Question.id.in_(questions_to_review)).all()
 
-    return {
+    response_data = {
         "num_questions": len(questions),
         "questions": [
             {
@@ -253,10 +265,14 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
                     for opt in sorted(q.options, key=lambda x: x.order)
                 ],
                 "difficulty": q.difficulty,
+                "explanation": q.explanation,
+                "correct_option": next((chr(65 + opt.order) for opt in q.options if opt.is_correct), None)
             }
             for q in questions
         ]
     }
+    
+    return response_data
 
 
 @router.get("/stats")

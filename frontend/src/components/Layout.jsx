@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, FileText, TrendingUp, BookOpen, Layers, Settings, FileDown } from 'lucide-react'
+import { Home, Upload, TrendingUp, BookOpen, Layers, Settings } from 'lucide-react'
 
 export default function Layout({ children }) {
   const location = useLocation()
@@ -24,7 +24,7 @@ export default function Layout({ children }) {
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <BookOpen className="h-8 w-8 text-primary-600" />
-                <span className="ml-2 text-2xl font-bold text-gray-900">Test Me</span>
+                <span className="ml-2 text-2xl font-bold text-gray-900">FlashLearn</span>
               </div>
               <div className="ml-10 flex space-x-4 items-center">
                 <Link
@@ -41,13 +41,7 @@ export default function Layout({ children }) {
                   <Upload size={18} />
                   Upload
                 </Link>
-                <Link
-                  to="/import-questions"
-                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/import-questions')}`}
-                >
-                  <FileDown size={18} />
-                  Import
-                </Link>
+
                 <Link
                   to="/decks"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/decks')}`}
@@ -55,13 +49,7 @@ export default function Layout({ children }) {
                   <Layers size={18} />
                   Decks
                 </Link>
-                <Link
-                  to="/documents"
-                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/documents')}`}
-                >
-                  <FileText size={18} />
-                  Documents
-                </Link>
+
                 <Link
                   to="/progress"
                   className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${isActive('/progress')}`}

@@ -7,7 +7,6 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ...config import settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
-from ..exam_templates import ExamTemplateManager
 
 
 def get_setting(db: Session, key: str) -> Optional[str]:
@@ -55,17 +54,14 @@ class QuestionGenerator:
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
 
-        # Initialize exam template manager
-        self.exam_template_manager = ExamTemplateManager()
+
 
     def generate_questions(
         self,
         parsed_doc: ParsedDocument,
         num_questions: int = 10,
         difficulty: str = "mixed",
-        custom_prompt: Optional[str] = None,
-        example_questions: Optional[List[Dict]] = None,
-        exam_template_config: Optional[Dict] = None
+        custom_prompt: Optional[str] = None
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -76,7 +72,6 @@ class QuestionGenerator:
             difficulty: "easy", "medium", "hard", or "mixed"
             custom_prompt: Optional custom instructions for question generation
             example_questions: Optional list of example questions to inspire style
-            exam_template_config: Optional exam template configuration (GCP ACE, AWS SAA style)
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
@@ -91,27 +86,31 @@ class QuestionGenerator:
         all_questions = []
 
         # Calculate how many questions to generate per section
-        questions_per_section = max(1, (num_questions + sections_needed - 1) // sections_needed)  # Ceiling division
+        questions_per_section = max(1, (num_questions + sections_needed - 1) // sections_needed)
 
         # Generate questions from each section
         for section in selected_sections:
-            # Generate multiple questions per section if needed
-            for _ in range(questions_per_section):
-                if len(all_questions) >= num_questions:
-                    break
-
-                question = self._generate_single_question(
-                    section,
-                    difficulty,
-                    custom_prompt,
-                    example_questions,
-                    exam_template_config
-                )
-                if question:
-                    all_questions.append(question)
-
             if len(all_questions) >= num_questions:
                 break
+
+            # Determine how many questions to ask for in this batch
+            # We can ask for up to 5 questions per prompt to ensure quality
+            remaining_needed = num_questions - len(all_questions)
+            batch_size = min(questions_per_section, remaining_needed, 5)
+            
+            if batch_size <= 0:
+                break
+
+            questions = self._generate_batch_questions(
+                section,
+                batch_size,
+                difficulty,
+                custom_prompt,
+                example_questions
+            )
+            
+            if questions:
+                all_questions.extend(questions)
 
         # Limit to requested number
         return all_questions[:num_questions]
@@ -130,28 +129,29 @@ class QuestionGenerator:
 
         return selected
 
-    def _generate_single_question(
+    def _generate_batch_questions(
         self,
         section: ParsedSection,
+        count: int,
         difficulty: str,
         custom_prompt: Optional[str] = None,
-        example_questions: Optional[List[Dict]] = None,
-        exam_template_config: Optional[Dict] = None
-    ) -> Optional[Dict]:
-        """Generate a single multiple-choice question from a section"""
-        prompt = self._build_prompt(
+        example_questions: Optional[List[Dict]] = None
+    ) -> List[Dict]:
+        """Generate a batch of multiple-choice questions from a section"""
+        prompt = self._build_batch_prompt(
             section.text,
+            count,
             difficulty,
             custom_prompt,
-            example_questions,
-            exam_template_config
+            example_questions
         )
 
         try:
+            content = ""
             if self.provider == "anthropic":
                 response = self.client.messages.create(
                     model=self.model,
-                    max_tokens=1024,
+                    max_tokens=4096,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 content = response.content[0].text
@@ -169,58 +169,48 @@ class QuestionGenerator:
                 content = response.text
 
             # Parse the response
-            question_data = self._parse_response(content)
+            questions_data = self._parse_batch_response(content)
 
-            if question_data:
+            valid_questions = []
+            for q_data in questions_data:
                 # Add reference information
-                question_data["reference"] = {
+                q_data["reference"] = {
                     "text": section.text[:200] + "..." if len(section.text) > 200 else section.text,
                     "page": section.page,
                     "section": section.section,
                     "paragraph": section.paragraph,
                 }
-                question_data["difficulty"] = difficulty if difficulty != "mixed" else question_data.get("difficulty", "medium")
+                q_data["difficulty"] = difficulty if difficulty != "mixed" else q_data.get("difficulty", "medium")
+                valid_questions.append(q_data)
 
-                return question_data
+            return valid_questions
 
         except Exception as e:
-            print(f"Error generating question: {e}")
-            return None
+            print(f"Error generating questions batch: {e}")
+            return []
 
-    def _build_prompt(
+    def _build_batch_prompt(
         self,
         text: str,
+        count: int,
         difficulty: str,
         custom_prompt: Optional[str] = None,
-        example_questions: Optional[List[Dict]] = None,
-        exam_template_config: Optional[Dict] = None
+        example_questions: Optional[List[Dict]] = None
     ) -> str:
-        """Build the prompt for question generation"""
+        """Build the prompt for batch question generation"""
 
-        # If exam template config is provided, use structured exam template
-        if exam_template_config:
-            try:
-                return self.exam_template_manager.build_exam_prompt(
-                    source_text=text,
-                    config=exam_template_config
-                )
-            except Exception as e:
-                print(f"Error building exam template prompt: {e}")
-                # Fall back to basic prompt
-
-        # Otherwise, use the standard prompt
         difficulty_instructions = {
-            "easy": "Create a straightforward exam-style question testing basic recall and key facts. This should be answerable by a student who has read and understood the material.",
-            "medium": "Create an exam-style question requiring comprehension and application of concepts. This should test whether a student can apply knowledge to new situations or identify relationships.",
-            "hard": "Create a challenging exam-style question requiring analysis, synthesis, or evaluation. This should test deep understanding, critical thinking, or the ability to compare/contrast concepts.",
-            "mixed": "Create an exam-style question with appropriate difficulty. Write it as if preparing students for a standardized test or final exam."
+            "easy": "Create straightforward exam-style questions testing basic recall and key facts.",
+            "medium": "Create exam-style questions requiring comprehension and application of concepts.",
+            "hard": "Create challenging exam-style questions requiring analysis, synthesis, or evaluation.",
+            "mixed": "Create exam-style questions with varying difficulty levels."
         }
 
         # Build example questions section if provided
         examples_section = ""
         if example_questions and len(example_questions) > 0:
             examples_section = "\n\nEXAMPLE QUESTIONS (use these as inspiration for style and format):\n"
-            for i, ex in enumerate(example_questions[:3], 1):  # Limit to 3 examples
+            for i, ex in enumerate(example_questions[:2], 1):
                 examples_section += f"\nExample {i}:\n"
                 examples_section += f"Question: {ex.get('question', '')}\n"
                 examples_section += f"Difficulty: {ex.get('difficulty', 'medium')}\n"
@@ -230,62 +220,64 @@ class QuestionGenerator:
         if custom_prompt:
             custom_section = f"\n\nADDITIONAL INSTRUCTIONS:\n{custom_prompt}\n"
 
-        prompt = f"""You are creating exam preparation questions. Based on the following text, generate ONE high-quality multiple-choice exam question.
+        prompt = f"""You are creating exam preparation questions. Based on the following text, generate {count} high-quality multiple-choice exam questions.
 
 TEXT:
 {text}
 
 REQUIREMENTS:
 1. {difficulty_instructions.get(difficulty, difficulty_instructions["mixed"])}
-2. Write the question as if it would appear on an actual exam or standardized test
-3. The question must be directly answerable from the text provided
-4. Provide exactly 4 answer options (A, B, C, D)
-5. Only ONE option should be correct
-6. Make incorrect options plausible and tempting to students who haven't fully understood the material
+2. Write questions as if they would appear on an actual exam or standardized test
+3. Questions must be directly answerable from the text provided
+4. Provide exactly 4 answer options (A, B, C, D) for each question
+5. Only ONE option should be correct per question
+6. Make incorrect options plausible and tempting
 7. Use clear, professional exam language
-8. Include a brief explanation of why the correct answer is right (for study purposes)
+8. Include a brief explanation for each question
+9. Generate exactly {count} questions
 
-EXAM QUESTION STYLES TO USE:
-- "Which of the following..."
-- "According to the text..."
-- "What is the primary/main..."
-- "The author suggests that..."
-- "Based on the passage..."{examples_section}{custom_section}
-
-RESPOND ONLY with valid JSON in this exact format:
-{{
-  "question": "Your exam-style question here?",
-  "options": [
-    {{"option": "A", "text": "First plausible option"}},
-    {{"option": "B", "text": "Second plausible option"}},
-    {{"option": "C", "text": "Third plausible option"}},
-    {{"option": "D", "text": "Fourth plausible option"}}
-  ],
-  "correct_answer": "A",
-  "explanation": "Brief explanation of why this answer is correct and why distractors are wrong",
-  "difficulty": "easy|medium|hard"
-}}
+RESPOND ONLY with a valid JSON ARRAY of objects in this exact format:
+[
+  {{
+    "question": "Question text here?",
+    "options": [
+      {{"option": "A", "text": "Option A text"}},
+      {{"option": "B", "text": "Option B text"}},
+      {{"option": "C", "text": "Option C text"}},
+      {{"option": "D", "text": "Option D text"}}
+    ],
+    "correct_answer": "A",
+    "explanation": "Explanation here",
+    "difficulty": "medium"
+  }},
+  ...
+]
 
 JSON Response:"""
 
         return prompt
 
-    def _parse_response(self, response: str) -> Optional[Dict]:
-        """Parse the AI response into structured question data"""
+    def _parse_batch_response(self, response: str) -> List[Dict]:
+        """Parse the AI response into a list of structured question data"""
         try:
-            # Extract JSON from response (handle cases where AI adds extra text)
-            json_match = re.search(r"\{.*\}", response, re.DOTALL)
+            # Extract JSON from response
+            json_match = re.search(r"\[.*\]", response, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
                 data = json.loads(json_str)
 
-                # Validate structure
-                required_fields = ["question", "options", "correct_answer", "explanation"]
-                if all(field in data for field in required_fields):
-                    return data
+                if isinstance(data, list):
+                    valid_items = []
+                    required_fields = ["question", "options", "correct_answer", "explanation"]
+                    
+                    for item in data:
+                        if all(field in item for field in required_fields):
+                            valid_items.append(item)
+                    
+                    return valid_items
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON: {e}")
+            print(f"Failed to parse JSON batch: {e}")
             print(f"Response was: {response}")
 
-        return None
+        return []

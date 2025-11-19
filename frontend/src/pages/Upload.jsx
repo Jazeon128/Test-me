@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI } from '../services/api'
 import { Upload as UploadIcon, FileText, CheckCircle, AlertCircle, Plus } from 'lucide-react'
-import ExamTemplateBuilder from '../components/ExamTemplateBuilder'
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -19,7 +18,6 @@ export default function Upload() {
   const [deckDescription, setDeckDescription] = useState('')
   const [loadingDecks, setLoadingDecks] = useState(true)
   const [regenerate, setRegenerate] = useState(false)
-  const [examTemplateConfig, setExamTemplateConfig] = useState(null)
 
   useEffect(() => {
     loadDecks()
@@ -59,11 +57,8 @@ export default function Upload() {
       formData.append('deck_id', selectedDeck)
     }
 
-    // Add regenerate flag and exam template config
+    // Add regenerate flag
     formData.append('regenerate', regenerate)
-    if (examTemplateConfig) {
-      formData.append('exam_template_config', JSON.stringify(examTemplateConfig))
-    }
 
     setUploading(true)
     setError(null)
@@ -194,45 +189,44 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Exam Template Builder */}
+        {/* Question Configuration */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-4">Exam Question Configuration</h3>
-          <ExamTemplateBuilder
-            onConfigChange={setExamTemplateConfig}
-            disabled={uploading}
-          />
-        </div>
+          <h3 className="text-lg font-semibold mb-4">Question Configuration</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Questions per Document
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={numQuestions}
-              onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              disabled={uploading}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Question Style
-            </label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              disabled={uploading}
-            >
-              <option value="easy">Easy - Basic Recall</option>
-              <option value="medium">Medium - Application</option>
-              <option value="hard">Hard - Analysis & Critical Thinking</option>
-              <option value="mixed">Mixed - Exam Style</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Questions
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={uploading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                How many questions to generate from the uploaded content
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Difficulty Level
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={uploading}
+              >
+                <option value="easy">Easy - Basic Recall</option>
+                <option value="medium">Medium - Application</option>
+                <option value="hard">Hard - Analysis & Critical Thinking</option>
+                <option value="mixed">Mixed - Exam Style</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

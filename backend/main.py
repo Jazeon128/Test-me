@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings as config_settings
 from app.db import init_db
-from app.api import documents, questions, tests, progress, decks, settings, exam_templates
+from app.api import documents, questions, progress, decks, settings
 import os
 import logging
 
@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 os.makedirs(config_settings.UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
-    title="Test Me - Gamified Learning Platform",
-    description="Generate multiple-choice tests from documents with spaced repetition",
-    version="0.1.0",
+    title="FlashLearn - AI-Powered Flashcard Platform",
+    description="Upload documents, generate flashcards, and learn with spaced repetition",
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -52,8 +52,8 @@ async def startup_event():
 @app.get("/")
 async def root():
     return {
-        "message": "Test Me API",
-        "version": "0.1.0",
+        "message": "FlashLearn API",
+        "version": "1.0.0",
         "docs": "/docs",
         "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY or config_settings.GEMINI_API_KEY),
     }
@@ -71,11 +71,10 @@ async def health_check():
 # Include routers
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
-app.include_router(tests.router, prefix="/api/tests", tags=["tests"])
+
 app.include_router(decks.router, prefix="/api/decks", tags=["decks"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
-app.include_router(exam_templates.router, prefix="/api/exam-templates", tags=["exam-templates"])
 
 
 if __name__ == "__main__":

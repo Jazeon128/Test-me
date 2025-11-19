@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { progressAPI } from '../services/api'
 import { TrendingUp, Award, Clock, Target, Flame, Trophy } from 'lucide-react'
 
 export default function Progress() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -118,7 +120,7 @@ export default function Progress() {
 
             {stats?.questions_due > 0 ? (
               <button
-                onClick={() => window.location.href = '/test/review'}
+                onClick={() => navigate('/practice')}
                 className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
               >
                 Start Review Session
@@ -210,11 +212,10 @@ function StatCard({ icon, title, value, subtitle, color }) {
 
 function Achievement({ title, description, achieved }) {
   return (
-    <div className={`p-4 rounded-lg border-2 transition ${
-      achieved
-        ? 'border-yellow-400 bg-yellow-50'
-        : 'border-gray-200 bg-gray-50 opacity-50'
-    }`}>
+    <div className={`p-4 rounded-lg border-2 transition ${achieved
+      ? 'border-yellow-400 bg-yellow-50'
+      : 'border-gray-200 bg-gray-50 opacity-50'
+      }`}>
       <div className="text-center">
         <div className="text-3xl mb-2">
           {achieved ? '🏆' : '🔒'}

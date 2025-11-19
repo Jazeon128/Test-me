@@ -139,10 +139,10 @@ def sample_user_progress(db_session, sample_question):
         times_seen=0,
         times_correct=0,
         times_incorrect=0,
-        average_response_time=0.0,
-        streak_count=0,
-        total_points=0,
-        mastery_level="new"
+        average_time_seconds=0.0,
+        streak=0,
+        best_streak=0,
+        is_mastered=False
     )
     db_session.add(progress)
     db_session.commit()

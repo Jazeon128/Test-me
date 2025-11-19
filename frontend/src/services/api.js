@@ -54,6 +54,14 @@ export const progressAPI = {
   },
 }
 
-
+// Tests API
+export const testsAPI = {
+  list: () => api.get('/tests/'),
+  get: (id) => api.get(`/tests/${id}`),
+  create: (data) => api.post('/tests/', data),
+  delete: (id) => api.delete(`/tests/${id}`),
+  exportAnki: (id) => api.get(`/tests/${id}/export/anki`, { responseType: 'blob' }),
+  exportCSV: (id) => api.get(`/tests/${id}/export/csv`, { responseType: 'blob' }),
+}
 
 export default api

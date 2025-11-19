@@ -64,4 +64,10 @@ export const testsAPI = {
   exportCSV: (id) => api.get(`/tests/${id}/export/csv`, { responseType: 'blob' }),
 }
 
+// Status API
+export const statusAPI = {
+  get: (jobId) => api.get(`/status/${jobId}`),
+  getByDeck: (deckId) => api.get(`/status/deck/${deckId}`),
+}
+
 export default api

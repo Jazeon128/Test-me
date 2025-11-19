@@ -45,12 +45,13 @@ class QuestionGenerator:
             self.model = "claude-3-5-sonnet-20241022"
         elif self.provider == "openai":
             self.client = OpenAI(api_key=api_key)
-            self.model = "gpt-4-turbo-preview"
+            self.model = "gpt-4o"  # Updated to current model
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
-            # Use gemini-1.5-pro without -latest suffix
-            self.client = genai.GenerativeModel("gemini-1.5-pro")
-            self.model = "gemini-1.5-pro"
+            # Use Gemini 2.5 Flash - best price-performance with thinking capabilities
+            # Other options: gemini-2.5-pro (best reasoning), gemini-3-pro (most advanced)
+            self.client = genai.GenerativeModel("gemini-2.5-flash")
+            self.model = "gemini-2.5-flash"
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
 
@@ -146,6 +147,8 @@ class QuestionGenerator:
         example_questions: Optional[List[Dict]] = None
     ) -> List[Dict]:
         """Generate a batch of multiple-choice questions from a section"""
+        import time
+
         prompt = self._build_batch_prompt(
             section.text,
             count,
@@ -156,6 +159,18 @@ class QuestionGenerator:
 
         try:
             content = ""
+            provider_display = {
+                "anthropic": "Anthropic Claude",
+                "openai": "OpenAI GPT-4",
+                "gemini": "Google Gemini"
+            }.get(self.provider, self.provider)
+
+            print(f"[*] Initializing {provider_display} API client...")
+            print(f"[*] Sending request to {provider_display} for {count} questions...")
+            print(f"[*] Waiting for {provider_display} API response...")
+
+            api_start_time = time.time()
+
             if self.provider == "anthropic":
                 response = self.client.messages.create(
                     model=self.model,
@@ -184,6 +199,10 @@ class QuestionGenerator:
                 )
                 content = response.text
 
+            api_elapsed = time.time() - api_start_time
+            print(f"[+] Received response from {provider_display} (took {api_elapsed:.2f} seconds)")
+            print(f"[*] Parsing and validating questions...")
+
             # Parse the response
             questions_data = self._parse_batch_response(content)
 
@@ -199,10 +218,13 @@ class QuestionGenerator:
                 q_data["difficulty"] = difficulty if difficulty != "mixed" else q_data.get("difficulty", "medium")
                 valid_questions.append(q_data)
 
+            print(f"[+] Successfully validated {len(valid_questions)} questions")
             return valid_questions
 
         except Exception as e:
-            print(f"Error generating questions batch: {e}")
+            print(f"[-] Error generating questions batch: {e}")
+            import traceback
+            print(traceback.format_exc())
             return []
 
     def _build_batch_prompt(

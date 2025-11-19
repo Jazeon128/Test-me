@@ -4,6 +4,7 @@ from .question import Question, QuestionOption
 from .test import Test
 from .user_progress import UserProgress
 from .settings import Settings
+from .generation_status import GenerationStatus
 
 __all__ = [
     "Base",
@@ -13,4 +14,5 @@ __all__ = [
     "Test",
     "UserProgress",
     "Settings",
+    "GenerationStatus",
 ]

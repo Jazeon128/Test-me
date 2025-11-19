@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings as config_settings
 from app.db import init_db
-from app.api import documents, questions, progress, decks, settings
+from app.api import documents, questions, progress, decks, settings, status
 import os
 import logging
 
@@ -71,7 +71,7 @@ async def health_check():
 # Include routers
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
-
+app.include_router(status.router, prefix="/api/status", tags=["status"])
 app.include_router(decks.router, prefix="/api/decks", tags=["decks"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])

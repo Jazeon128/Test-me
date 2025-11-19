@@ -86,6 +86,7 @@ npm run lint
    - `decks.py` - Deck management and regeneration
    - `progress.py` - Answer submission, review sessions, statistics
    - `settings.py` - Settings management
+   - `status.py` - Real-time question generation status tracking
 
 2. **Models Layer** (`app/models/`):
    - SQLAlchemy ORM models
@@ -94,6 +95,7 @@ npm run lint
    - `test.py` - Test/deck groupings
    - `user_progress.py` - SM-2 algorithm state per question
    - `settings.py` - User settings
+   - `generation_status.py` - Job status tracking for question generation
 
 3. **Services Layer** (`app/services/`):
    - **AI Services** (`ai/`):
@@ -210,8 +212,8 @@ npm run lint
 - Falls back to environment variables
 - Current models and limits:
   - **Anthropic**: `claude-3-5-sonnet-20241022` (8192 tokens)
-  - **OpenAI**: `gpt-4-turbo-preview` (8192 tokens)
-  - **Google Gemini**: `gemini-1.5-pro` (8192 tokens)
+  - **OpenAI**: `gpt-4o` (8192 tokens) - Latest GPT-4 model
+  - **Google Gemini**: `gemini-2.5-flash` (8192 tokens) - Best price-performance with thinking capabilities
 
 **System Message Structure:**
 The prompt includes comprehensive guidelines:
@@ -487,6 +489,19 @@ python scripts/backup_db.py --restore backups/test_me_backup_20251114_193734.db
 ## Recent Features
 
 ### Latest (November 2025)
+- **Real-Time Progress Tracking**: Complete question generation monitoring system with live progress updates
+  - New `GenerationStatus` model tracks job progress in database
+  - Status API endpoints (`/api/status/{job_id}`, `/api/status/deck/{deck_id}`)
+  - Frontend displays real-time progress bar, logs, and generation statistics
+  - Shows current step, documents processed, questions requested/generated
+  - Captures AI provider API call timing and detailed logs
+  - Auto-redirects to deck page on completion
+  - Proper error handling and failure reporting
+  - Location: `backend/app/api/status.py`, `backend/app/models/generation_status.py`, `frontend/src/pages/Upload.jsx`
+- **Updated AI Models**: Migrated to latest provider models for better performance
+  - OpenAI: `gpt-4-turbo-preview` → `gpt-4o` (latest GPT-4 model)
+  - Google Gemini: `gemini-1.5-pro` → `gemini-2.5-flash` (best price-performance with thinking capabilities)
+  - Location: `backend/app/services/ai/question_generator.py:48, 53`
 - **Enhanced Question Quality**: Completely redesigned AI prompt with Bloom's Taxonomy alignment, better distractors, and educational best practices
 - **Increased Question Generation**: Fixed batch size and token limits to reliably generate 20+ questions (was capped at ~10)
 - **Manual Question Creation**: Made document_id nullable to allow creating questions without documents

@@ -245,7 +245,13 @@ def process_document(
 
             # Add to deck if specified
             if deck:
-                deck.questions.append(question)
+                from ..models.test import TestQuestion
+                test_question = TestQuestion(
+                    test_id=deck.id,
+                    question_id=question.id,
+                    order=len(deck.test_questions)
+                )
+                deck.test_questions.append(test_question)
 
             # Add options
             for i, opt_data in enumerate(q_data["options"]):
@@ -430,7 +436,13 @@ def regenerate_deck_questions(
             db.flush()
 
             # Add to deck
-            deck.questions.append(question)
+            from ..models.test import TestQuestion
+            test_question = TestQuestion(
+                test_id=deck.id,
+                question_id=question.id,
+                order=len(deck.test_questions)
+            )
+            deck.test_questions.append(test_question)
 
             # Add options
             for i, opt_data in enumerate(q_data["options"]):

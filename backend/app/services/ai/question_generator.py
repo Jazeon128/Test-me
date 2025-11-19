@@ -61,7 +61,8 @@ class QuestionGenerator:
         parsed_doc: ParsedDocument,
         num_questions: int = 10,
         difficulty: str = "mixed",
-        custom_prompt: Optional[str] = None
+        custom_prompt: Optional[str] = None,
+        example_questions: Optional[List[Dict]] = None
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document

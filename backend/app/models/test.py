@@ -48,7 +48,7 @@ class TestQuestion(Base):
     test_id = Column(Integer, ForeignKey('tests.id'), primary_key=True)
     question_id = Column(Integer, ForeignKey('questions.id'), primary_key=True)
     order = Column(Integer, nullable=False)
-    
+
     # Relationships
     test = relationship("Test", back_populates="test_questions")
     question = relationship("Question", backref="test_questions")

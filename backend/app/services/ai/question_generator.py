@@ -104,7 +104,7 @@ class QuestionGenerator:
             if batch_size <= 0:
                 break
 
-            print(f"📝 Processing section {i}/{len(selected_sections)}: requesting {batch_size} questions (have {len(all_questions)}/{num_questions})")
+            print(f"[*] Processing section {i}/{len(selected_sections)}: requesting {batch_size} questions (have {len(all_questions)}/{num_questions})")
 
             questions = self._generate_batch_questions(
                 section,
@@ -116,9 +116,9 @@ class QuestionGenerator:
 
             if questions:
                 all_questions.extend(questions)
-                print(f"✅ Got {len(questions)} questions from section {i}")
+                print(f"[+] Got {len(questions)} questions from section {i}")
             else:
-                print(f"❌ Failed to get questions from section {i}")
+                print(f"[-] Failed to get questions from section {i}")
 
         # Limit to requested number
         return all_questions[:num_questions]

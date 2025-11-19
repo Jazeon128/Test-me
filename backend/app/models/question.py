@@ -9,7 +9,7 @@ class Question(Base, TimestampMixin):
     __tablename__ = "questions"
 
     id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
 
     # Question content
     question_text = Column(Text, nullable=False)

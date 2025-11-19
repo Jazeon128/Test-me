@@ -90,17 +90,21 @@ class QuestionGenerator:
         questions_per_section = max(1, (num_questions + sections_needed - 1) // sections_needed)
 
         # Generate questions from each section
-        for section in selected_sections:
+        # Dynamically adjust max batch size based on total request
+        max_batch_size = 10 if num_questions >= 20 else 5
+
+        for i, section in enumerate(selected_sections, 1):
             if len(all_questions) >= num_questions:
                 break
 
             # Determine how many questions to ask for in this batch
-            # We can ask for up to 5 questions per prompt to ensure quality
             remaining_needed = num_questions - len(all_questions)
-            batch_size = min(questions_per_section, remaining_needed, 5)
-            
+            batch_size = min(questions_per_section, remaining_needed, max_batch_size)
+
             if batch_size <= 0:
                 break
+
+            print(f"📝 Processing section {i}/{len(selected_sections)}: requesting {batch_size} questions (have {len(all_questions)}/{num_questions})")
 
             questions = self._generate_batch_questions(
                 section,
@@ -109,9 +113,12 @@ class QuestionGenerator:
                 custom_prompt,
                 example_questions
             )
-            
+
             if questions:
                 all_questions.extend(questions)
+                print(f"✅ Got {len(questions)} questions from section {i}")
+            else:
+                print(f"❌ Failed to get questions from section {i}")
 
         # Limit to requested number
         return all_questions[:num_questions]
@@ -152,7 +159,7 @@ class QuestionGenerator:
             if self.provider == "anthropic":
                 response = self.client.messages.create(
                     model=self.model,
-                    max_tokens=4096,
+                    max_tokens=8192,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 content = response.content[0].text
@@ -162,11 +169,19 @@ class QuestionGenerator:
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7,
+                    max_tokens=8192,
                 )
                 content = response.choices[0].message.content
 
             elif self.provider == "gemini":
-                response = self.client.generate_content(prompt)
+                generation_config = genai.types.GenerationConfig(
+                    max_output_tokens=8192,
+                    temperature=0.7,
+                )
+                response = self.client.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
                 content = response.text
 
             # Parse the response
@@ -221,21 +236,53 @@ class QuestionGenerator:
         if custom_prompt:
             custom_section = f"\n\nADDITIONAL INSTRUCTIONS:\n{custom_prompt}\n"
 
-        prompt = f"""You are creating exam preparation questions. Based on the following text, generate {count} high-quality multiple-choice exam questions.
+        prompt = f"""You are an expert educational assessment designer creating {count} high-quality multiple-choice exam questions from the provided text.
 
-TEXT:
+TEXT TO ANALYZE:
 {text}
 
-REQUIREMENTS:
-1. {difficulty_instructions.get(difficulty, difficulty_instructions["mixed"])}
-2. Write questions as if they would appear on an actual exam or standardized test
-3. Questions must be directly answerable from the text provided
-4. Provide exactly 4 answer options (A, B, C, D) for each question
-5. Only ONE option should be correct per question
-6. Make incorrect options plausible and tempting
-7. Use clear, professional exam language
-8. Include a brief explanation for each question
-9. Generate exactly {count} questions
+DIFFICULTY LEVEL: {difficulty}
+{difficulty_instructions.get(difficulty, difficulty_instructions["mixed"])}
+
+CRITICAL QUALITY REQUIREMENTS:
+
+**Question Stem Guidelines:**
+- Write COMPLETE questions that make sense without seeing the options
+- Each stem should test ONE specific concept from the text
+- Avoid negative wording unless absolutely necessary (no "Which is NOT...")
+- Keep stems clear, concise, and unambiguous
+- Focus on testing understanding and application, not just memorization
+
+**Answer Options (A, B, C, D):**
+- Make all 4 options similar in length and grammatical structure
+- Base INCORRECT options on common misconceptions or logical errors a learner might make
+- Ensure all distractors are plausible to someone who hasn't mastered the material
+- Avoid obviously wrong answers, joke options, or "none of the above"
+- The correct answer should be definitively correct based on the text
+
+**Cognitive Level Alignment:**
+- For "easy": Test remembering key facts and basic comprehension (Bloom's levels 1-2)
+- For "medium": Test application of concepts and analysis (Bloom's levels 3-4)
+- For "hard": Test evaluation, synthesis, and complex reasoning (Bloom's levels 5-6)
+- For "mixed": Vary cognitive levels across questions
+
+**Quality Checklist - Each question must:**
+✓ Test specific, important knowledge from the text
+✓ Have ONE clearly correct answer supported by the text
+✓ Have 3 plausible but definitely incorrect distractors
+✓ Use professional, exam-appropriate language
+✓ Be directly answerable from the provided text
+✓ Test understanding, not trivia or trick knowledge
+✓ Work as a standalone assessment item
+
+**Avoid These Common Mistakes:**
+✗ Don't write vague or ambiguous questions
+✗ Don't use "all of the above" or "none of the above"
+✗ Don't make questions depend on memorizing exact wording
+✗ Don't create options that are partially correct
+✗ Don't use double negatives or confusing phrasing
+
+Generate EXACTLY {count} questions following these guidelines.
 
 RESPOND ONLY with a valid JSON ARRAY of objects in this exact format:
 [

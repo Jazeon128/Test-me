@@ -24,7 +24,7 @@ export default function Dashboard() {
   }
 
   const startReviewSession = async () => {
-    navigate('/test/review')
+    navigate('/practice')
   }
 
   if (loading) {
@@ -39,7 +39,7 @@ export default function Dashboard() {
     <div className="px-4 sm:px-0">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Welcome to Test Me</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Welcome to FlashLearn</h1>
         <p className="mt-2 text-gray-600">
           Your gamified learning platform with spaced repetition
         </p>

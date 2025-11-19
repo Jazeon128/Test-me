@@ -31,37 +31,29 @@ export const decksAPI = {
 
 // Questions API
 export const questionsAPI = {
+  create: (data) => api.post('/questions/', data),
   get: (id) => api.get(`/questions/${id}`),
   getByDocument: (documentId) => api.get(`/questions/document/${documentId}`),
   delete: (id) => api.delete(`/questions/${id}`),
 }
 
-// Tests API
-export const testsAPI = {
-  create: (data) => api.post('/tests/', data),
-  list: () => api.get('/tests/'),
-  get: (id) => api.get(`/tests/${id}`),
-  delete: (id) => api.delete(`/tests/${id}`),
-  start: (id, timeLimit = 30) => api.post(`/tests/${id}/start`, null, {
-    params: { time_limit_seconds: timeLimit }
-  }),
-  exportAnki: (id) => api.get(`/tests/${id}/export/anki`, {
-    responseType: 'blob'
-  }),
-}
+
 
 // Progress API
 export const progressAPI = {
   submit: (data) => api.post('/progress/submit', data),
   getQuestion: (questionId) => api.get(`/progress/question/${questionId}`),
   getStats: () => api.get('/progress/stats'),
-  getReviewSession: (numQuestions = 10, includeNew = true, includeReview = true) => {
+  getReviewSession: (numQuestions = 10, includeNew = true, includeReview = true, deckId = null) => {
     return api.post('/progress/review-session', {
       num_questions: numQuestions,
       include_new: includeNew,
       include_review: includeReview,
+      deck_id: deckId,
     })
   },
 }
+
+
 
 export default api

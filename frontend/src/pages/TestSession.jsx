@@ -5,7 +5,7 @@ import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, ArrowRight } from '
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function TestSession() {
-  const { testId } = useParams()
+  const { deckId } = useParams()
   const navigate = useNavigate()
 
   const [questions, setQuestions] = useState([])
@@ -44,7 +44,7 @@ export default function TestSession() {
 
   const loadQuestions = async () => {
     try {
-      const response = await progressAPI.getReviewSession(10, true, true)
+      const response = await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
       setQuestions(response.data.questions)
     } catch (error) {
       console.error('Failed to load questions:', error)
@@ -71,32 +71,52 @@ export default function TestSession() {
     }, 1000)
   }
 
-  const handleSubmit = async (option) => {
+  const handleSubmit = (option) => {
     if (timerRef.current) clearInterval(timerRef.current)
 
+    const currentQuestion = questions[currentIndex]
+    const selected = option || 'TIMEOUT' // Handle timeout
+    const isCorrect = selected === currentQuestion.correct_option
+
+    // Create local result for immediate feedback
+    const localResult = {
+      correct: isCorrect,
+      correct_answer: currentQuestion.correct_option,
+      explanation: currentQuestion.explanation,
+      gamification: {
+        points_earned: 0, // Will be updated after grading
+        streak_bonus: 0,
+      }
+    }
+
+    setResult(localResult)
+    setShowResult(true)
+  }
+
+  const handleGrading = async (quality) => {
     const timeTaken = (Date.now() - startTime) / 1000
     const currentQuestion = questions[currentIndex]
 
     try {
       const response = await progressAPI.submit({
         question_id: currentQuestion.id,
-        selected_option: option || 'A', // Default if time ran out
+        selected_option: selectedOption || 'A', // Default if time ran out
         time_taken_seconds: timeTaken,
+        manual_quality: quality
       })
 
-      setResult(response.data)
-      setShowResult(true)
-
-      // Update session stats
+      // Update session stats with actual server response
       setSessionStats((prev) => ({
         correct: prev.correct + (response.data.correct ? 1 : 0),
         incorrect: prev.incorrect + (response.data.correct ? 0 : 1),
         totalPoints: prev.totalPoints + response.data.gamification.points_earned + response.data.gamification.streak_bonus,
         streak: response.data.correct ? prev.streak + 1 : 0,
       }))
+
+      handleNext()
     } catch (error) {
-      console.error('Failed to submit answer:', error)
-      alert('Failed to submit answer')
+      console.error('Failed to submit grade:', error)
+      alert('Failed to submit grade')
     }
   }
 
@@ -194,9 +214,8 @@ export default function TestSession() {
             <span className="text-sm font-medium text-gray-600">
               Question {currentIndex + 1} of {questions.length}
             </span>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              timeLeft <= 5 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-700'
-            }`}>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-700'
+              }`}>
               <Clock size={18} />
               <span className="font-bold">{timeLeft}s</span>
             </div>
@@ -229,9 +248,8 @@ export default function TestSession() {
                   key={idx}
                   onClick={() => !showResult && setSelectedOption(option.option)}
                   disabled={showResult}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition ${optionClass} ${
-                    showResult ? 'cursor-default' : 'cursor-pointer'
-                  }`}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition ${optionClass} ${showResult ? 'cursor-default' : 'cursor-pointer'
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-lg text-gray-700">
@@ -251,9 +269,8 @@ export default function TestSession() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mb-6 p-4 rounded-lg ${
-                result.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-              }`}
+              className={`mb-6 p-4 rounded-lg ${result.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                }`}
             >
               <div className="flex items-start gap-3">
                 {result.correct ? (
@@ -279,32 +296,47 @@ export default function TestSession() {
             </motion.div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {!showResult ? (
+          {/* Grading Buttons */}
+          {showResult ? (
+            <div className="grid grid-cols-4 gap-3">
               <button
-                onClick={() => handleSubmit(selectedOption)}
-                disabled={!selectedOption}
-                className="flex-1 bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                onClick={() => handleGrading(1)}
+                className="bg-red-100 text-red-700 border-2 border-red-200 px-4 py-3 rounded-lg font-bold hover:bg-red-200 transition flex flex-col items-center"
               >
-                Submit Answer
+                <span>Again</span>
+                <span className="text-xs font-normal opacity-75">&lt; 1m</span>
               </button>
-            ) : (
               <button
-                onClick={handleNext}
-                className="flex-1 bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                onClick={() => handleGrading(3)}
+                className="bg-orange-100 text-orange-700 border-2 border-orange-200 px-4 py-3 rounded-lg font-bold hover:bg-orange-200 transition flex flex-col items-center"
               >
-                {currentIndex < questions.length - 1 ? (
-                  <>
-                    Next Question
-                    <ArrowRight size={20} />
-                  </>
-                ) : (
-                  'Finish Session'
-                )}
+                <span>Hard</span>
+                <span className="text-xs font-normal opacity-75">2d</span>
               </button>
-            )}
-          </div>
+              <button
+                onClick={() => handleGrading(4)}
+                className="bg-green-100 text-green-700 border-2 border-green-200 px-4 py-3 rounded-lg font-bold hover:bg-green-200 transition flex flex-col items-center"
+              >
+                <span>Good</span>
+                <span className="text-xs font-normal opacity-75">4d</span>
+              </button>
+              <button
+                onClick={() => handleGrading(5)}
+                className="bg-blue-100 text-blue-700 border-2 border-blue-200 px-4 py-3 rounded-lg font-bold hover:bg-blue-200 transition flex flex-col items-center"
+              >
+                <span>Easy</span>
+                <span className="text-xs font-normal opacity-75">7d</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => handleSubmit(selectedOption)}
+              disabled={!selectedOption}
+              className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+            >
+              Show Answer
+            </button>
+          )}
         </motion.div>
       </AnimatePresence>
 

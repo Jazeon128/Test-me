@@ -18,7 +18,6 @@ export default function Upload() {
   const [deckDescription, setDeckDescription] = useState('')
   const [loadingDecks, setLoadingDecks] = useState(true)
   const [regenerate, setRegenerate] = useState(false)
-  const [customPrompt, setCustomPrompt] = useState('')
 
   useEffect(() => {
     loadDecks()
@@ -38,12 +37,6 @@ export default function Upload() {
   const onDrop = async (acceptedFiles) => {
     if (acceptedFiles.length === 0) return
 
-    // Validate deck selection
-    if (selectedDeck === 'new' && !newDeckName.trim()) {
-      setError('Please enter a deck name')
-      return
-    }
-
     const formData = new FormData()
     acceptedFiles.forEach(file => {
       formData.append('files', file)
@@ -53,17 +46,19 @@ export default function Upload() {
 
     // Handle deck creation or selection
     if (selectedDeck === 'new') {
-      formData.append('deck_name', newDeckName)
-      formData.append('deck_description', deckDescription)
+      // Deck name is optional - backend will use filename if not provided
+      if (newDeckName.trim()) {
+        formData.append('deck_name', newDeckName)
+      }
+      if (deckDescription.trim()) {
+        formData.append('deck_description', deckDescription)
+      }
     } else {
       formData.append('deck_id', selectedDeck)
     }
 
-    // Add regenerate flag and custom prompt
+    // Add regenerate flag
     formData.append('regenerate', regenerate)
-    if (customPrompt.trim()) {
-      formData.append('custom_prompt', customPrompt)
-    }
 
     setUploading(true)
     setError(null)
@@ -119,32 +114,41 @@ export default function Upload() {
           <select
             value={selectedDeck}
             onChange={(e) => setSelectedDeck(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-2"
             disabled={uploading || loadingDecks}
           >
-            <option value="new">Create New Deck</option>
+            <option value="new">➕ Create New Deck</option>
+            {decks.length > 0 && <option disabled>───────────────────</option>}
             {decks.map((deck) => (
               <option key={deck.id} value={deck.id}>
-                {deck.name} ({deck.num_questions} questions)
+                📚 {deck.name} ({deck.num_questions} questions)
               </option>
             ))}
           </select>
+          <p className="text-xs text-gray-500 mt-1">
+            {selectedDeck === 'new'
+              ? '✨ A new deck will be created for these questions'
+              : '📥 Questions will be added to the selected deck'}
+          </p>
 
           {/* New Deck Name Input */}
           {selectedDeck === 'new' && (
             <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deck Name *
+                  Deck Name (optional)
                 </label>
                 <input
                   type="text"
                   value={newDeckName}
                   onChange={(e) => setNewDeckName(e.target.value)}
-                  placeholder="e.g., Biology Final Exam"
+                  placeholder="Leave blank to use filename"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   disabled={uploading}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  If not provided, the deck will be named after your uploaded file(s)
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -185,54 +189,44 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Custom Prompt */}
+        {/* Question Configuration */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Custom Instructions (Optional)
-          </label>
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="e.g., Focus on definitions and key terms, Use AP Biology exam style, Include calculations and formulas, etc."
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            disabled={uploading}
-          />
-          <p className="text-sm text-gray-500 mt-1">
-            Provide additional instructions to guide question generation style and content
-          </p>
-        </div>
+          <h3 className="text-lg font-semibold mb-4">Question Configuration</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Questions per Document
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={numQuestions}
-              onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              disabled={uploading}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Question Style
-            </label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              disabled={uploading}
-            >
-              <option value="easy">Easy - Basic Recall</option>
-              <option value="medium">Medium - Application</option>
-              <option value="hard">Hard - Analysis & Critical Thinking</option>
-              <option value="mixed">Mixed - Exam Style</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Questions
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={uploading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                How many questions to generate from the uploaded content
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Difficulty Level
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={uploading}
+              >
+                <option value="easy">Easy - Basic Recall</option>
+                <option value="medium">Medium - Application</option>
+                <option value="hard">Hard - Analysis & Critical Thinking</option>
+                <option value="mixed">Mixed - Exam Style</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

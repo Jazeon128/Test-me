@@ -9,6 +9,7 @@ from ..db import get_db
 from ..models.test import Test
 from ..models.question import Question
 from ..services.anki_export import AnkiExporter
+from ..services.csv_export import CSVExporter
 
 router = APIRouter()
 
@@ -141,6 +142,48 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content,
             media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.get("/{test_id}/export/csv")
+async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
+    """Export test to CSV format compatible with Anki import"""
+    test = db.query(Test).filter(Test.id == test_id).first()
+
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    if not test.questions:
+        raise HTTPException(status_code=400, detail="Test has no questions")
+
+    # Create temporary file for export
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+        output_path = tmp_file.name
+
+    try:
+        # Export to CSV
+        exporter = CSVExporter()
+        exporter.export_test(db, test, output_path)
+
+        # Read file content
+        with open(output_path, 'r', encoding='utf-8-sig') as f:
+            content = f.read()
+
+        # Clean up temp file
+        os.unlink(output_path)
+
+        # Return file
+        filename = f"{test.name.replace(' ', '_')}.csv"
+        return Response(
+            content=content.encode('utf-8-sig'),
+            media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
 

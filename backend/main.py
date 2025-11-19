@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+from app.config import settings as config_settings
 from app.db import init_db
-from app.api import documents, questions, tests, progress, decks
+from app.api import documents, questions, progress, decks, settings
 import os
 import logging
 
@@ -14,18 +14,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create upload directory if it doesn't exist
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+os.makedirs(config_settings.UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
-    title="Test Me - Gamified Learning Platform",
-    description="Generate multiple-choice tests from documents with spaced repetition",
-    version="0.1.0",
+    title="FlashLearn - AI-Powered Flashcard Platform",
+    description="Upload documents, generate flashcards, and learn with spaced repetition",
+    version="1.0.0",
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=config_settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,21 +39,23 @@ async def startup_event():
     logger.info("✅ Database initialized")
 
     # Check API keys
-    if settings.ANTHROPIC_API_KEY:
+    if config_settings.ANTHROPIC_API_KEY:
         logger.info("✅ Anthropic API key configured")
-    if settings.OPENAI_API_KEY:
+    if config_settings.OPENAI_API_KEY:
         logger.info("✅ OpenAI API key configured")
-    if not settings.ANTHROPIC_API_KEY and not settings.OPENAI_API_KEY:
-        logger.warning("⚠️  No AI API keys configured! Please set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env")
+    if config_settings.GEMINI_API_KEY:
+        logger.info("✅ Gemini API key configured")
+    if not config_settings.ANTHROPIC_API_KEY and not config_settings.OPENAI_API_KEY and not config_settings.GEMINI_API_KEY:
+        logger.warning("⚠️  No AI API keys configured! Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY in .env")
 
 
 @app.get("/")
 async def root():
     return {
-        "message": "Test Me API",
-        "version": "0.1.0",
+        "message": "FlashLearn API",
+        "version": "1.0.0",
         "docs": "/docs",
-        "ai_configured": bool(settings.ANTHROPIC_API_KEY or settings.OPENAI_API_KEY),
+        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY or config_settings.GEMINI_API_KEY),
     }
 
 
@@ -61,17 +63,18 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "ai_provider": settings.AI_PROVIDER,
-        "ai_configured": bool(settings.ANTHROPIC_API_KEY or settings.OPENAI_API_KEY),
+        "ai_provider": config_settings.AI_PROVIDER,
+        "ai_configured": bool(config_settings.ANTHROPIC_API_KEY or config_settings.OPENAI_API_KEY or config_settings.GEMINI_API_KEY),
     }
 
 
 # Include routers
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
-app.include_router(tests.router, prefix="/api/tests", tags=["tests"])
+
 app.include_router(decks.router, prefix="/api/decks", tags=["decks"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 
 if __name__ == "__main__":

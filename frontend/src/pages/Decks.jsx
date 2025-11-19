@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decksAPI, testsAPI } from '../services/api'
-import { BookOpen, Trash2, Download, Play, Edit2, Plus } from 'lucide-react'
+import { BookOpen, Trash2, Download, Play, Edit2, Plus, FileText } from 'lucide-react'
 
 export default function Decks() {
   const navigate = useNavigate()
@@ -74,6 +74,24 @@ export default function Decks() {
     }
   }
 
+  const handleExportCSV = async (deckId, deckName) => {
+    try {
+      const response = await testsAPI.exportCSV(deckId)
+
+      // Download the file
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${deckName.replace(/[^a-z0-9]/gi, '_')}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      alert('Failed to export to CSV')
+      console.error(error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -87,7 +105,7 @@ export default function Decks() {
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Question Decks</h1>
-          <p className="mt-2 text-gray-600">Manage your question collections and export to Anki</p>
+          <p className="mt-2 text-gray-600">Manage your question collections and export to Anki or CSV</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -143,17 +161,26 @@ export default function Decks() {
                   onClick={() => navigate(`/decks/${deck.id}`)}
                   className="flex-1 bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 transition text-sm flex items-center justify-center gap-2"
                 >
-                  <Play size={16} />
-                  Practice
+                  <BookOpen size={16} />
+                  Open Deck
                 </button>
                 {deck.num_questions > 0 && (
-                  <button
-                    onClick={() => handleExportAnki(deck.id, deck.name)}
-                    className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-                    title="Export to Anki"
-                  >
-                    <Download size={16} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleExportAnki(deck.id, deck.name)}
+                      className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                      title="Export as .apkg (Anki)"
+                    >
+                      <Download size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleExportCSV(deck.id, deck.name)}
+                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                      title="Export as CSV"
+                    >
+                      <FileText size={16} />
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => handleDelete(deck.id)}

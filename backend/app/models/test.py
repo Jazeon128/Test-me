@@ -27,13 +27,3 @@ class Test(Base, TimestampMixin):
 
     def __repr__(self):
         return f"<Test {self.id}: {self.name}>"
-
-
-class TestQuestion(Base):
-    """Through model for test-question relationship with ordering"""
-
-    __tablename__ = "test_questions"
-
-    test_id = Column(Integer, ForeignKey('tests.id'), primary_key=True)
-    question_id = Column(Integer, ForeignKey('questions.id'), primary_key=True)
-    order = Column(Integer, nullable=False)

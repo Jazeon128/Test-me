@@ -224,9 +224,10 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
     if request.include_review:
         # Get questions due for review
         query = db.query(UserProgress).join(Question)
-        
+
         if request.deck_id:
-            query = query.join(Question.tests).filter(Test.id == request.deck_id)
+            from ..models.test import TestQuestion
+            query = query.join(Question.test_questions).join(TestQuestion.test).filter(Test.id == request.deck_id)
             
         due_progress = query.filter(
             UserProgress.next_review_date <= datetime.utcnow()
@@ -240,9 +241,10 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
         seen_ids = [qid[0] for qid in seen_question_ids]
 
         query = db.query(Question).filter(~Question.id.in_(seen_ids))
-        
+
         if request.deck_id:
-            query = query.join(Question.tests).filter(Test.id == request.deck_id)
+            from ..models.test import TestQuestion
+            query = query.join(Question.test_questions).join(TestQuestion.test).filter(Test.id == request.deck_id)
             
         new_questions = query.limit(request.num_questions - len(questions_to_review)).all()
 

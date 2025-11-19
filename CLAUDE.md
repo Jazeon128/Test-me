@@ -190,20 +190,36 @@ npm run lint
 ### AI Question Generation
 
 **Prompt Strategy:**
-- Provides document section with context
-- Requests difficulty level (easy/medium/hard/mixed)
-- Expects JSON response with specific structure
-- Includes source reference from original document
-- Generates 4 options with 1 correct answer
-- Includes explanation for learning
+- Expert educational assessment designer approach
+- Bloom's Taxonomy cognitive level alignment (remember, understand, apply, analyze, evaluate, create)
+- Complete standalone question stems (no negatives like "Which is NOT...")
+- Plausible distractors based on common student misconceptions
+- Professional exam language with format consistency
+- Quality checklist to avoid vague or ambiguous questions
+- Tests understanding and application, not just memorization
+- Generates exactly the requested number of questions
 
-**Provider Switching:**
+**Generation Parameters:**
+- **Batch Size**: Dynamically adjusted (5 for <20 questions, 10 for ≥20 questions)
+- **Token Limits**: 8192 max_tokens for all providers (prevents truncation)
+- **Section Coverage**: Evenly distributed across document sections
+- **Progress Logging**: Real-time status updates during generation
+
+**Provider Configuration:**
 - Settings stored in database (`settings` table)
 - Falls back to environment variables
-- Current models:
-  - Anthropic: `claude-3-5-sonnet-20241022`
-  - OpenAI: `gpt-4-turbo-preview`
-  - Google Gemini: `gemini-1.5-pro`
+- Current models and limits:
+  - **Anthropic**: `claude-3-5-sonnet-20241022` (8192 tokens)
+  - **OpenAI**: `gpt-4-turbo-preview` (8192 tokens)
+  - **Google Gemini**: `gemini-1.5-pro` (8192 tokens)
+
+**System Message Structure:**
+The prompt includes comprehensive guidelines:
+- Question stem quality requirements
+- Answer option formatting (similar length, grammar)
+- Cognitive level alignment for difficulty
+- Quality checklist (7 criteria)
+- Common mistakes to avoid (5 rules)
 
 ### Deck Management Pattern
 
@@ -470,6 +486,15 @@ python scripts/backup_db.py --restore backups/test_me_backup_20251114_193734.db
 
 ## Recent Features
 
+### Latest (November 2025)
+- **Enhanced Question Quality**: Completely redesigned AI prompt with Bloom's Taxonomy alignment, better distractors, and educational best practices
+- **Increased Question Generation**: Fixed batch size and token limits to reliably generate 20+ questions (was capped at ~10)
+- **Manual Question Creation**: Made document_id nullable to allow creating questions without documents
+- **Token Limit Optimization**: Increased to 8192 tokens across all AI providers (Anthropic, OpenAI, Gemini)
+- **Progress Logging**: Real-time generation status with section-by-section updates
+- **Windows Compatibility**: Fixed emoji encoding issues in console output
+
+### Previous Features
 - **CSV Export**: Added CSV export option alongside Anki .apkg export for maximum flexibility
 - **Google Gemini Support**: Added Gemini 1.5 Pro as third AI provider option
 - **Smart Deck Naming**: Decks automatically named after uploaded files instead of timestamps
@@ -484,6 +509,29 @@ python scripts/backup_db.py --restore backups/test_me_backup_20251114_193734.db
 ## Troubleshooting
 
 ### Common Issues
+
+**Getting fewer questions than requested (e.g., 10 instead of 20):**
+- **Fixed (Nov 2025)**: Increased batch size to 10 for large requests and added max_tokens=8192 to all AI providers
+- Location: `backend/app/services/ai/question_generator.py:94, 162-185`
+- Cause: Conservative batch size limit and missing token parameters caused output truncation
+- **Solution**: Backend now generates exactly the number requested with progress logging
+
+**Poor quality or unhelpful questions:**
+- **Fixed (Nov 2025)**: Enhanced AI prompt with educational best practices
+- Location: `backend/app/services/ai/question_generator.py:224-272`
+- Improvements: Bloom's Taxonomy alignment, plausible distractors, complete question stems, quality checklist
+- Questions now test understanding vs memorization
+
+**"500 Internal Server Error" when creating manual questions:**
+- **Fixed (Nov 2025)**: Made document_id nullable in Question model
+- Location: `backend/app/models/question.py:12`
+- Cause: Manual questions don't have associated documents
+- **Solution**: Can now create questions without document_id
+
+**Emoji encoding errors on Windows console:**
+- **Fixed (Nov 2025)**: Replaced emoji characters with ASCII in progress logging
+- Symptoms: `'charmap' codec can't encode character` errors
+- **Solution**: Uses `[*]`, `[+]`, `[-]` instead of emojis
 
 **"Failed to submit answer" error:**
 - **Fixed**: UserProgress fields now properly initialized with default values

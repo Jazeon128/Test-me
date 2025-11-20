@@ -50,9 +50,14 @@ Test Me is a powerful study application that uses AI to generate multiple-choice
 
 ### Integrations
 - ✅ Export to Anki (.apkg files)
+- ✅ **NEW:** Export to Anki All-In-One CSV (supports "Multiple Choice for Anki" add-on)
 - ✅ Beautiful card formatting
 - ✅ Source references included
 - ✅ Difficulty tags
+
+### Security & Design
+- 🔒 **Enhanced Security:** Content-based file validation and secure secret management
+- 🎨 **Premium UI:** Modern glassmorphism design with Inter font and smooth animations
 
 ## 🚀 Quick Start
 
@@ -191,7 +196,8 @@ Key endpoints:
 - `POST /api/progress/submit` - Submit answer and update progress
 - `POST /api/progress/review-session` - Get questions for review
 - `GET /api/progress/stats` - Get learning statistics
-- `GET /api/tests/{id}/export/anki` - Export to Anki
+- `GET /api/tests/{id}/export/anki` - Export to Anki (.apkg)
+- `GET /api/tests/{id}/export/anki-csv` - Export to Anki All-In-One CSV
 
 ## 🧪 Spaced Repetition System
 
@@ -257,6 +263,25 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 📧 Contact
 
 For questions or suggestions, please open an issue on GitHub.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Getting fewer questions than requested:**
+- **Solution**: The system now automatically adjusts batch sizes. If issues persist, check your API key limits.
+
+**"Failed to generate questions":**
+- Check your API key in `.env`
+- Ensure the backend is running
+- Check backend logs for errors
+
+**"Upload failed":**
+- Check file size (max 10MB by default)
+- Ensure file format is supported (PDF, HTML, MD, DOCX)
+
+**Emoji encoding errors on Windows:**
+- **Fixed**: The system now uses ASCII characters for progress logging on Windows to prevent encoding errors.
 
 ---
 

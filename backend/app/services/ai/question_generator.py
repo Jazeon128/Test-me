@@ -303,6 +303,12 @@ CRITICAL QUALITY REQUIREMENTS:
 ✗ Don't make questions depend on memorizing exact wording
 ✗ Don't create options that are partially correct
 ✗ Don't use double negatives or confusing phrasing
+✗ Don't ask about the document itself (e.g., "What does this document say?", "Who owns the copyright?", "What are the reuse conditions?")
+✗ Don't ask about metadata, authors, dates, or legal disclaimers
+✗ Don't ask about the structure of the text (e.g., "What is in the first paragraph?")
+
+**CRITICAL INSTRUCTION:**
+Focus ONLY on the educational subject matter and concepts taught in the text. Ignore all headers, footers, page numbers, copyright notices, and legal text. If the text contains a cheat sheet or summary, ask about the *concepts* in it, not about the cheat sheet itself.
 
 Generate EXACTLY {count} questions following these guidelines.
 

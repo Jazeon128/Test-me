@@ -62,6 +62,7 @@ export const testsAPI = {
   delete: (id) => api.delete(`/tests/${id}`),
   exportAnki: (id) => api.get(`/tests/${id}/export/anki`, { responseType: 'blob' }),
   exportCSV: (id) => api.get(`/tests/${id}/export/csv`, { responseType: 'blob' }),
+  exportAnkiCSV: (id) => api.get(`/tests/${id}/export/anki-csv`, { responseType: 'blob' }),
 }
 
 // Status API

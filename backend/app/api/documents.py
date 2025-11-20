@@ -64,9 +64,13 @@ async def upload_document(
     deck = None
     if deck_id and deck_id != 'new':
         # Use existing deck
-        deck = db.query(Test).filter(Test.id == int(deck_id)).first()
-        if not deck:
-            raise HTTPException(status_code=404, detail="Deck not found")
+        try:
+            deck_id_int = int(deck_id)
+            deck = db.query(Test).filter(Test.id == deck_id_int).first()
+            if not deck:
+                raise HTTPException(status_code=404, detail="Deck not found")
+        except ValueError:
+             raise HTTPException(status_code=400, detail="Invalid deck_id format")
     else:
         # Create new deck with meaningful name based on uploaded files
         if not deck_name:
@@ -98,6 +102,25 @@ async def upload_document(
         # Read file content
         content = await file.read()
         file_size = len(content)
+
+        # Validate content (Magic Bytes)
+        is_valid_content = True
+        if file_ext == '.pdf':
+            if not content.startswith(b'%PDF'):
+                is_valid_content = False
+        elif file_ext == '.docx':
+            if not content.startswith(b'PK'):
+                is_valid_content = False
+        elif file_ext in ['.html', '.htm', '.md']:
+            try:
+                # Try to decode first 1KB as UTF-8 to ensure it's text
+                content[:1024].decode('utf-8')
+            except UnicodeDecodeError:
+                is_valid_content = False
+        
+        if not is_valid_content:
+            logger.warning(f"Skipping file with invalid content for extension {file_ext}: {file.filename}")
+            continue
 
         # Check file size
         if file_size > settings.MAX_UPLOAD_SIZE:

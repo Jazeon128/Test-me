@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # Application
     DEBUG: bool = True
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     CORS_ORIGINS_STR: str = "http://localhost:5173,http://localhost:3000"
 
     # File Upload

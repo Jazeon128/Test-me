@@ -71,4 +71,13 @@ export const statusAPI = {
   getByDeck: (deckId) => api.get(`/status/deck/${deckId}`),
 }
 
+// Tags API
+export const tagsAPI = {
+  list: () => api.get('/tags/'),
+  create: (data) => api.post('/tags/', data),
+  delete: (tagId) => api.delete(`/tags/${tagId}`),
+  addToQuestion: (questionId, tagId) => api.post(`/tags/questions/${questionId}/tags/${tagId}`),
+  removeFromQuestion: (questionId, tagId) => api.delete(`/tags/questions/${questionId}/tags/${tagId}`),
+}
+
 export default api

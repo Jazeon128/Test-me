@@ -22,6 +22,7 @@ class Question(Base, TimestampMixin):
     # Relationships
     document = relationship("Document", backref="questions")
     options = relationship("QuestionOption", back_populates="question", cascade="all, delete-orphan")
+    tags = relationship("Tag", secondary="question_tags", back_populates="questions")
 
     def __repr__(self):
         return f"<Question {self.id}: {self.question_text[:50]}>"

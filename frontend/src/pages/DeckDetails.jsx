@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { decksAPI, questionsAPI } from '../services/api'
-import { ArrowLeft, Plus, Play, Trash2, Save, X } from 'lucide-react'
+import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
+import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter } from 'lucide-react'
+import TagManager, { TagBadge } from '../components/TagManager'
 
 export default function DeckDetails() {
     const { deckId } = useParams()
@@ -9,6 +10,10 @@ export default function DeckDetails() {
     const [deck, setDeck] = useState(null)
     const [loading, setLoading] = useState(true)
     const [showAddModal, setShowAddModal] = useState(false)
+
+    // Tag filtering
+    const [filterTags, setFilterTags] = useState([])
+    const [showFilters, setShowFilters] = useState(false)
 
     // New Question State
     const [newQuestion, setNewQuestion] = useState({
@@ -20,7 +25,8 @@ export default function DeckDetails() {
             { text: '', is_correct: false }
         ],
         explanation: '',
-        difficulty: 'medium'
+        difficulty: 'medium',
+        tags: []
     })
 
     useEffect(() => {
@@ -52,10 +58,20 @@ export default function DeckDetails() {
         }
 
         try {
-            await questionsAPI.create({
+            const response = await questionsAPI.create({
                 ...newQuestion,
                 deck_id: parseInt(deckId)
             })
+
+            // Add tags to the newly created question
+            const questionId = response.data.id
+            for (const tag of newQuestion.tags) {
+                try {
+                    await tagsAPI.addToQuestion(questionId, tag.id)
+                } catch (err) {
+                    console.error('Failed to add tag:', err)
+                }
+            }
 
             setShowAddModal(false)
             setNewQuestion({
@@ -67,7 +83,8 @@ export default function DeckDetails() {
                     { text: '', is_correct: false }
                 ],
                 explanation: '',
-                difficulty: 'medium'
+                difficulty: 'medium',
+                tags: []
             })
             loadDeck()
         } catch (error) {
@@ -100,6 +117,20 @@ export default function DeckDetails() {
         }
 
         setNewQuestion({ ...newQuestion, options: newOptions })
+    }
+
+    // Filter questions by selected tags
+    const getFilteredQuestions = () => {
+        if (!deck || !deck.questions) return []
+        if (filterTags.length === 0) return deck.questions
+
+        return deck.questions.filter(q => {
+            if (!q.tags || q.tags.length === 0) return false
+            // Question must have at least one of the selected filter tags
+            return filterTags.some(filterTag =>
+                q.tags.some(qTag => qTag.id === filterTag.id)
+            )
+        })
     }
 
     if (loading) {
@@ -152,12 +183,40 @@ export default function DeckDetails() {
             {/* Questions List */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h2 className="font-semibold text-gray-700">Cards / Questions</h2>
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold text-gray-700">Cards / Questions</h2>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition ${filterTags.length > 0 || showFilters
+                                ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                                : 'text-gray-600 hover:bg-gray-100'
+                                }`}
+                        >
+                            <Filter size={16} />
+                            Filter by Tags
+                            {filterTags.length > 0 && (
+                                <span className="bg-primary-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                                    {filterTags.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Tag Filter Panel */}
+                    {showFilters && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <TagManager
+                                selectedTags={filterTags}
+                                onTagsChange={setFilterTags}
+                                mode="select"
+                            />
+                        </div>
+                    )}
                 </div>
 
-                {deck.questions && deck.questions.length > 0 ? (
+                {getFilteredQuestions().length > 0 ? (
                     <div className="divide-y divide-gray-200">
-                        {deck.questions.map((question, index) => (
+                        {getFilteredQuestions().map((question, index) => (
                             <div key={question.id} className="p-6 hover:bg-gray-50 transition group">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
@@ -166,13 +225,35 @@ export default function DeckDetails() {
                                                 #{index + 1}
                                             </span>
                                             <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                                    question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-                                                        'bg-yellow-100 text-yellow-700'
+                                                question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {question.difficulty}
                                             </span>
                                         </div>
-                                        <p className="text-gray-900 font-medium">{question.question_text}</p>
+                                        <p className="text-gray-900 font-medium mb-2">{question.question_text}</p>
+
+                                        {/* Tag Badges */}
+                                        {question.tags && question.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {question.tags.map(tag => (
+                                                    <TagBadge
+                                                        key={tag.id}
+                                                        tag={tag}
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            // Toggle tag filter when clicked
+                                                            const isFiltered = filterTags.some(t => t.id === tag.id)
+                                                            if (isFiltered) {
+                                                                setFilterTags(filterTags.filter(t => t.id !== tag.id))
+                                                            } else {
+                                                                setFilterTags([...filterTags, tag])
+                                                            }
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => handleDeleteQuestion(question.id)}
@@ -267,6 +348,16 @@ export default function DeckDetails() {
                                     <option value="medium">Medium</option>
                                     <option value="hard">Hard</option>
                                 </select>
+                            </div>
+
+                            {/* Tags */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                                <TagManager
+                                    selectedTags={newQuestion.tags}
+                                    onTagsChange={(tags) => setNewQuestion({ ...newQuestion, tags })}
+                                    mode="select"
+                                />
                             </div>
                         </div>
 

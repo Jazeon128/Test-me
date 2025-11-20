@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, TrendingUp, BookOpen, Layers, Settings } from 'lucide-react'
+import { Home, Upload, TrendingUp, BookOpen, Layers, Settings, Sun, Moon } from 'lucide-react'
+import { useTheme } from './ThemeContext'
 
 export default function Layout({ children }) {
   const location = useLocation()
+  const { theme, toggleTheme } = useTheme()
 
   const isActive = (path) => {
     if (path === '/') {
@@ -63,10 +65,17 @@ export default function Layout({ children }) {
                 </Link>
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
               <Link
                 to="/settings"
-                className={`p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'bg-gray-100 text-gray-900' : ''}`}
+                className={`p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}`}
                 title="Settings"
               >
                 <Settings size={20} />

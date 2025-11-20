@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     AI_PROVIDER: str = "anthropic"  # "anthropic", "openai", or "gemini"
+    AI_MODEL: str = ""  # Optional: specific model to use
 
     # Application
     DEBUG: bool = True

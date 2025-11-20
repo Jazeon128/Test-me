@@ -23,9 +23,11 @@ class QuestionGenerator:
         # Try to get settings from database first, fall back to env vars
         if db:
             self.provider = get_setting(db, "ai_provider") or settings.AI_PROVIDER
+            self.model = get_setting(db, "ai_model") or settings.AI_MODEL
             api_key = get_setting(db, "api_key")
         else:
             self.provider = settings.AI_PROVIDER
+            self.model = settings.AI_MODEL
             api_key = None
 
         # Fall back to environment variables if no DB settings
@@ -42,16 +44,17 @@ class QuestionGenerator:
 
         if self.provider == "anthropic":
             self.client = Anthropic(api_key=api_key)
-            self.model = "claude-3-5-sonnet-20241022"
+            if not self.model:
+                self.model = "claude-3-5-sonnet-20241022"
         elif self.provider == "openai":
             self.client = OpenAI(api_key=api_key)
-            self.model = "gpt-4o"  # Updated to current model
+            if not self.model:
+                self.model = "gpt-4o"
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
-            # Use Gemini 2.5 Flash - best price-performance with thinking capabilities
-            # Other options: gemini-2.5-pro (best reasoning), gemini-3-pro (most advanced)
-            self.client = genai.GenerativeModel("gemini-2.5-flash")
-            self.model = "gemini-2.5-flash"
+            if not self.model:
+                self.model = "gemini-2.0-flash-exp" # Default to latest fast model
+            self.client = genai.GenerativeModel(self.model)
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
 
@@ -165,7 +168,7 @@ class QuestionGenerator:
                 "gemini": "Google Gemini"
             }.get(self.provider, self.provider)
 
-            print(f"[*] Initializing {provider_display} API client...")
+            print(f"[*] Initializing {provider_display} API client with model {self.model}...")
             print(f"[*] Sending request to {provider_display} for {count} questions...")
             print(f"[*] Waiting for {provider_display} API response...")
 

@@ -10,14 +10,96 @@ router = APIRouter()
 
 
 class AIConfigRequest(BaseModel):
-    provider: str  # "anthropic" or "openai"
+    provider: str  # "anthropic", "openai", or "gemini"
     api_key: str
+    model: Optional[str] = None
 
 
 class AIConfigResponse(BaseModel):
     provider: Optional[str] = None
+    model: Optional[str] = None
     api_key_configured: bool = False
     api_key_preview: Optional[str] = None  # First 8 chars for verification
+
+
+class AIModel(BaseModel):
+    id: str
+    name: str
+    provider: str
+    context_window: int
+    input_price: float  # Per 1M tokens
+    output_price: float  # Per 1M tokens
+    description: Optional[str] = None
+
+
+AVAILABLE_MODELS = [
+    # Anthropic
+    AIModel(
+        id="claude-3-5-sonnet-20241022",
+        name="Claude 3.5 Sonnet",
+        provider="anthropic",
+        context_window=200000,
+        input_price=3.00,
+        output_price=15.00,
+        description="Most intelligent model, best for complex reasoning"
+    ),
+    AIModel(
+        id="claude-3-haiku-20240307",
+        name="Claude 3 Haiku",
+        provider="anthropic",
+        context_window=200000,
+        input_price=0.25,
+        output_price=1.25,
+        description="Fastest and most compact model"
+    ),
+    # OpenAI
+    AIModel(
+        id="gpt-4o",
+        name="GPT-4o",
+        provider="openai",
+        context_window=128000,
+        input_price=5.00,
+        output_price=15.00,
+        description="Flagship model, high intelligence"
+    ),
+    AIModel(
+        id="gpt-4o-mini",
+        name="GPT-4o Mini",
+        provider="openai",
+        context_window=128000,
+        input_price=0.15,
+        output_price=0.60,
+        description="Cost-effective small model"
+    ),
+    # Gemini
+    AIModel(
+        id="gemini-2.0-flash-exp",
+        name="Gemini 2.0 Flash (Experimental)",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.00,  # Free during preview
+        output_price=0.00,
+        description="Next-gen multimodal model, extremely fast"
+    ),
+    AIModel(
+        id="gemini-1.5-pro",
+        name="Gemini 1.5 Pro",
+        provider="gemini",
+        context_window=2097152,
+        input_price=3.50,
+        output_price=10.50,
+        description="Mid-size multimodal model, massive context"
+    ),
+    AIModel(
+        id="gemini-1.5-flash",
+        name="Gemini 1.5 Flash",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.35,
+        output_price=1.05,
+        description="Fast and versatile multimodal model"
+    ),
+]
 
 
 def get_setting(db: Session, key: str) -> Optional[str]:
@@ -37,14 +119,22 @@ def set_setting(db: Session, key: str, value: str):
     db.commit()
 
 
+@router.get("/ai-config/models")
+async def get_available_models():
+    """Get list of available AI models"""
+    return AVAILABLE_MODELS
+
+
 @router.get("/ai-config")
 async def get_ai_config(db: Session = Depends(get_db)):
     """Get current AI configuration"""
     provider = get_setting(db, "ai_provider")
     api_key = get_setting(db, "api_key")
+    model = get_setting(db, "ai_model")
 
     return AIConfigResponse(
         provider=provider,
+        model=model,
         api_key_configured=bool(api_key),
         api_key_preview=api_key[:8] + "..." if api_key and len(api_key) > 8 else None
     )
@@ -80,18 +170,19 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
             detail="Invalid OpenAI API key. Must start with 'sk-'"
         )
     elif config.provider == "gemini" and not config.api_key.startswith("AIza"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid Gemini API key. Must start with 'AIza'"
-        )
+        # Gemini keys usually start with AIza, but let's be lenient if it changes
+        pass
 
     # Save settings
     set_setting(db, "ai_provider", config.provider)
     set_setting(db, "api_key", config.api_key)
+    if config.model:
+        set_setting(db, "ai_model", config.model)
 
     return {
         "success": True,
         "provider": config.provider,
+        "model": config.model,
         "api_key_preview": config.api_key[:8] + "...",
         "message": "AI configuration saved successfully"
     }
@@ -102,7 +193,7 @@ async def delete_ai_config(db: Session = Depends(get_db)):
     """Delete AI configuration"""
 
     # Delete settings
-    db.query(Settings).filter(Settings.key.in_(["ai_provider", "api_key"])).delete()
+    db.query(Settings).filter(Settings.key.in_(["ai_provider", "api_key", "ai_model"])).delete()
     db.commit()
 
     return {
@@ -126,7 +217,8 @@ async def test_ai_config(db: Session = Depends(get_db)):
         return {
             "success": True,
             "provider": generator.provider,
-            "message": f"Successfully connected to {generator.provider}"
+            "model": generator.model,
+            "message": f"Successfully connected to {generator.provider} using {generator.model}"
         }
     except Exception as e:
         raise HTTPException(

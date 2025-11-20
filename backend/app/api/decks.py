@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -132,3 +132,77 @@ async def delete_deck(deck_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Deck deleted successfully"}
+
+
+@router.post("/import/csv")
+async def import_csv(
+    file: UploadFile = File(...),
+    deck_name: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Import a deck from a CSV file (Front, Back format)"""
+    import csv
+    import io
+    from ..models.question import Question, QuestionOption
+    from ..models.test import TestQuestion
+
+    # Read file content
+    content = await file.read()
+    text_content = content.decode("utf-8")
+    
+    # Parse CSV
+    csv_reader = csv.reader(io.StringIO(text_content))
+    
+    # Create Deck
+    name = deck_name or file.filename.replace(".csv", "").replace("_", " ").title()
+    deck = Test(name=name, description="Imported from CSV")
+    db.add(deck)
+    db.flush() # Get ID
+    
+    count = 0
+    for row in csv_reader:
+        if len(row) < 2:
+            continue
+            
+        front = row[0].strip()
+        back = row[1].strip()
+        
+        if not front or not back:
+            continue
+            
+        # Create Question
+        question = Question(
+            question_text=front,
+            explanation=back,
+            difficulty="medium"
+        )
+        db.add(question)
+        db.flush()
+        
+        # Create a default option (since our model requires options for MCQs)
+        # For flashcard mode, this might be ignored or used as the "reveal"
+        option = QuestionOption(
+            question_id=question.id,
+            option_text="Flip to see answer",
+            is_correct=True,
+            order=0
+        )
+        db.add(option)
+        
+        # Link to Deck
+        test_question = TestQuestion(
+            test_id=deck.id,
+            question_id=question.id,
+            order=count
+        )
+        db.add(test_question)
+        count += 1
+        
+    db.commit()
+    
+    return {
+        "id": deck.id,
+        "name": deck.name,
+        "num_questions": count,
+        "message": f"Successfully imported {count} cards"
+    }

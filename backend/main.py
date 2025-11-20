@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings as config_settings
 from app.db import init_db
-from app.api import documents, questions, progress, decks, settings, status, tags
+from app.api import documents, questions, progress, decks, settings, status, tags, search
 import os
 import logging
 
@@ -76,6 +76,7 @@ app.include_router(decks.router, prefix="/api/decks", tags=["decks"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
 
 
 if __name__ == "__main__":

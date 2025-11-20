@@ -27,6 +27,9 @@ export const decksAPI = {
   get: (id) => api.get(`/decks/${id}`),
   update: (id, data) => api.put(`/decks/${id}`, data),
   delete: (id) => api.delete(`/decks/${id}`),
+  importCSV: (formData) => api.post('/decks/import/csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 }
 
 // Questions API

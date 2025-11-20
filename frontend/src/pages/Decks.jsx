@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decksAPI, testsAPI } from '../services/api'
-import { BookOpen, Trash2, Download, Play, Edit2, Plus, FileText, X } from 'lucide-react'
+import { BookOpen, Trash2, Download, Play, Edit2, Plus, FileText, X, Upload } from 'lucide-react'
 
 export default function Decks() {
   const navigate = useNavigate()
   const [decks, setDecks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')
   const [newDeckDescription, setNewDeckDescription] = useState('')
+  const [importFile, setImportFile] = useState(null)
 
   useEffect(() => {
     loadDecks()
@@ -40,6 +42,26 @@ export default function Decks() {
       loadDecks()
     } catch (error) {
       alert('Failed to create deck')
+    }
+  }
+
+  const handleImportDeck = async () => {
+    if (!importFile) return
+
+    const formData = new FormData()
+    formData.append('file', importFile)
+
+    setLoading(true)
+    try {
+      await decksAPI.importCSV(formData)
+      setImportFile(null)
+      setShowImportModal(false)
+      loadDecks()
+    } catch (error) {
+      alert('Failed to import deck')
+      console.error(error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -130,6 +152,13 @@ export default function Decks() {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Upload size={20} />
+            Import
+          </button>
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-secondary flex items-center gap-2"
@@ -236,67 +265,126 @@ export default function Decks() {
       }
 
       {/* Create Deck Modal */}
-      {
-        showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Create New Deck</h2>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <X size={24} />
-                </button>
-              </div>
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New Deck</h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Deck Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newDeckName}
-                    onChange={(e) => setNewDeckName(e.target.value)}
-                    className="input-field"
-                    placeholder="e.g., Biology Chapter 5"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    value={newDeckDescription}
-                    onChange={(e) => setNewDeckDescription(e.target.value)}
-                    className="input-field resize-none"
-                    rows="3"
-                    placeholder="What's in this deck?"
-                  />
-                </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Deck Name
+                </label>
+                <input
+                  type="text"
+                  value={newDeckName}
+                  onChange={(e) => setNewDeckName(e.target.value)}
+                  className="input-field dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                  placeholder="e.g., Biology Chapter 5"
+                  autoFocus
+                />
               </div>
-
-              <div className="p-6 bg-gray-50 flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-gray-600 font-medium hover:text-gray-900 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateDeck}
-                  className="btn-primary px-6 py-2"
-                  disabled={!newDeckName.trim()}
-                >
-                  Create Deck
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={newDeckDescription}
+                  onChange={(e) => setNewDeckDescription(e.target.value)}
+                  className="input-field resize-none dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                  rows="3"
+                  placeholder="What's in this deck?"
+                />
               </div>
             </div>
+
+            <div className="p-6 bg-gray-50 dark:bg-gray-900/50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-900 dark:hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateDeck}
+                className="btn-primary px-6 py-2"
+                disabled={!newDeckName.trim()}
+              >
+                Create Deck
+              </button>
+            </div>
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+
+      {/* Import Deck Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Import Deck</h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
+                <p className="font-bold mb-1">CSV Format:</p>
+                <p>Row 1: Front of card</p>
+                <p>Row 2: Back of card</p>
+                <p className="mt-2 text-xs opacity-80">No header row required.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Select CSV File
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setImportFile(e.target.files[0])}
+                  className="block w-full text-sm text-gray-500 dark:text-gray-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary-50 file:text-primary-700
+                    hover:file:bg-primary-100
+                    dark:file:bg-primary-900/20 dark:file:text-primary-300
+                  "
+                />
+              </div>
+            </div>
+
+            <div className="p-6 bg-gray-50 dark:bg-gray-900/50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-900 dark:hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportDeck}
+                className="btn-primary px-6 py-2"
+                disabled={!importFile || loading}
+              >
+                {loading ? 'Importing...' : 'Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

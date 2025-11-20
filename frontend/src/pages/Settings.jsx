@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Info, Server, Cpu, DollarSign, Zap } from 'lucide-react'
+import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Info, Server, Cpu, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
 import axios from 'axios'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('api')
@@ -13,6 +14,7 @@ export default function Settings() {
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState(null)
   const [currentConfig, setCurrentConfig] = useState(null)
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     loadConfig()
@@ -172,8 +174,8 @@ export default function Settings() {
         <button
           onClick={() => setActiveTab('api')}
           className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'api'
-              ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
         >
           API Configuration
@@ -181,8 +183,8 @@ export default function Settings() {
         <button
           onClick={() => setActiveTab('general')}
           className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'general'
-              ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
         >
           General
@@ -333,8 +335,8 @@ export default function Settings() {
           {/* Message Display */}
           {message && (
             <div className={`rounded-lg p-4 border ${message.type === 'success'
-                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+              ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+              : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
               }`}>
               <div className="flex items-start gap-3">
                 {message.type === 'success' ? (
@@ -348,14 +350,50 @@ export default function Settings() {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <SettingsIcon className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-primary-500" />
+                Appearance
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'light'
+                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
+                    }`}
+                >
+                  <Sun className="h-8 w-8" />
+                  <span className="font-medium">Light Mode</span>
+                </button>
+
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'dark'
+                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
+                    }`}
+                >
+                  <Moon className="h-8 w-8" />
+                  <span className="font-medium">Dark Mode</span>
+                </button>
+
+                <button
+                  onClick={() => setTheme('system')}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'system'
+                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
+                    }`}
+                >
+                  <Monitor className="h-8 w-8" />
+                  <span className="font-medium">System Default</span>
+                </button>
+              </div>
+            </div>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">General Settings</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            More application settings coming soon.
-          </p>
         </div>
       )}
     </div>

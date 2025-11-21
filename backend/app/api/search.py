@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.db.database import get_db
 from app.models.question import Question
-from app.models.deck import Deck
+from app.models.test import Test as Deck
 from app.api.tags import Tag
 
 router = APIRouter()

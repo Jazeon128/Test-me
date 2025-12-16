@@ -8,6 +8,8 @@ class DocumentType(enum.Enum):
     HTML = "html"
     MARKDOWN = "markdown"
     DOCX = "docx"
+    PPTX = "pptx"
+    YOUTUBE = "youtube"
 
 
 class Document(Base, TimestampMixin):
@@ -18,7 +20,7 @@ class Document(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String(255), nullable=False)
     original_filename = Column(String(255), nullable=False)
-    file_type = Column(Enum(DocumentType), nullable=False)
+    file_type: Column = Column(Enum(DocumentType), nullable=False)
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=False)  # in bytes
 

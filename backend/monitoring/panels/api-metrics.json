@@ -1,0 +1,65 @@
+[
+  {
+    "datasource": "Prometheus",
+    "fieldConfig": {
+      "defaults": {
+        "color": {"mode": "palette-classic"},
+        "custom": {
+          "axisLabel": "Requests/sec",
+          "drawStyle": "line",
+          "fillOpacity": 10,
+          "lineWidth": 1,
+          "pointSize": 5,
+          "showPoints": "never"
+        },
+        "unit": "reqps"
+      }
+    },
+    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+    "id": 1,
+    "targets": [
+      {
+        "expr": "rate(api_requests_total[5m])",
+        "legendFormat": "{{method}} {{endpoint}}"
+      }
+    ],
+    "title": "API Request Rate",
+    "type": "timeseries"
+  },
+  {
+    "datasource": "Prometheus",
+    "fieldConfig": {
+      "defaults": {
+        "color": {"mode": "thresholds"},
+        "custom": {
+          "axisLabel": "Latency (ms)",
+          "drawStyle": "line",
+          "fillOpacity": 10
+        },
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 500},
+            {"color": "red", "value": 2000}
+          ]
+        },
+        "unit": "ms"
+      }
+    },
+    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+    "id": 2,
+    "targets": [
+      {
+        "expr": "histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p95 {{endpoint}}"
+      },
+      {
+        "expr": "histogram_quantile(0.50, rate(api_request_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p50 {{endpoint}}"
+      }
+    ],
+    "title": "API Response Time (p50, p95)",
+    "type": "timeseries"
+  }
+]

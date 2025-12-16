@@ -19,7 +19,7 @@ class MarkdownParser(BaseParser):
             lines = content.split("\n")
             current_section = None
             char_offset = 0
-            paragraph_buffer = []
+            paragraph_buffer: List[str] = []
 
             for line in lines:
                 line = line.strip()

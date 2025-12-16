@@ -60,10 +60,10 @@ def search(
         
         # Find which deck this question belongs to (if any)
         # This is a bit expensive, but for 10 results it's fine.
-        # Ideally we'd join with TestQuestion and Test.
+        # Ideally we'd join with DeckQuestion and Deck.
         deck_id = None
-        if question.test_questions:
-            deck_id = question.test_questions[0].test_id
+        if question.deck_questions:
+            deck_id = question.deck_questions[0].deck_id
 
         url = f"/decks/{deck_id}?question={question.id}" if deck_id else f"/questions/{question.id}"
 

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 from ..db import get_db
 from ..models.settings import Settings
@@ -20,6 +21,7 @@ class AIConfigResponse(BaseModel):
     model: Optional[str] = None
     api_key_configured: bool = False
     api_key_preview: Optional[str] = None  # First 8 chars for verification
+    is_custom_model: bool = False  # True if model is not in AVAILABLE_MODELS
 
 
 class AIModel(BaseModel):
@@ -32,8 +34,10 @@ class AIModel(BaseModel):
     description: Optional[str] = None
 
 
+# Last updated: 2025-12-05
+# To update: Call POST /api/settings/ai-config/models/refresh or manually update this list
 AVAILABLE_MODELS = [
-    # Anthropic
+    # Anthropic - https://www.anthropic.com/api
     AIModel(
         id="claude-3-5-sonnet-20241022",
         name="Claude 3.5 Sonnet",
@@ -44,22 +48,31 @@ AVAILABLE_MODELS = [
         description="Most intelligent model, best for complex reasoning"
     ),
     AIModel(
+        id="claude-3-5-haiku-20241022",
+        name="Claude 3.5 Haiku",
+        provider="anthropic",
+        context_window=200000,
+        input_price=0.80,
+        output_price=4.00,
+        description="Fastest model with improved intelligence"
+    ),
+    AIModel(
         id="claude-3-haiku-20240307",
         name="Claude 3 Haiku",
         provider="anthropic",
         context_window=200000,
         input_price=0.25,
         output_price=1.25,
-        description="Fastest and most compact model"
+        description="Legacy fast model"
     ),
-    # OpenAI
+    # OpenAI - https://openai.com/api/pricing/
     AIModel(
         id="gpt-4o",
         name="GPT-4o",
         provider="openai",
         context_window=128000,
-        input_price=5.00,
-        output_price=15.00,
+        input_price=2.50,
+        output_price=10.00,
         description="Flagship model, high intelligence"
     ),
     AIModel(
@@ -71,33 +84,51 @@ AVAILABLE_MODELS = [
         output_price=0.60,
         description="Cost-effective small model"
     ),
-    # Gemini
     AIModel(
-        id="gemini-2.0-flash-exp",
-        name="Gemini 2.0 Flash (Experimental)",
+        id="gpt-4-turbo",
+        name="GPT-4 Turbo",
+        provider="openai",
+        context_window=128000,
+        input_price=10.00,
+        output_price=30.00,
+        description="Previous generation flagship"
+    ),
+    # Google Gemini - https://ai.google.dev/pricing
+    AIModel(
+        id="gemini-3-pro-preview",
+        name="Gemini 3 Pro Preview",
         provider="gemini",
         context_window=1048576,
-        input_price=0.00,  # Free during preview
+        input_price=0.00,  # Preview pricing TBD
         output_price=0.00,
-        description="Next-gen multimodal model, extremely fast"
+        description="Most intelligent model with multimodal understanding and agentic capabilities"
     ),
     AIModel(
-        id="gemini-1.5-pro",
-        name="Gemini 1.5 Pro",
-        provider="gemini",
-        context_window=2097152,
-        input_price=3.50,
-        output_price=10.50,
-        description="Mid-size multimodal model, massive context"
-    ),
-    AIModel(
-        id="gemini-1.5-flash",
-        name="Gemini 1.5 Flash",
+        id="gemini-2.5-flash",
+        name="Gemini 2.5 Flash",
         provider="gemini",
         context_window=1048576,
-        input_price=0.35,
-        output_price=1.05,
-        description="Fast and versatile multimodal model"
+        input_price=0.00,  # Pricing TBD
+        output_price=0.00,
+        description="Fast and intelligent, best for price-performance with thinking capabilities"
+    ),
+    AIModel(
+        id="gemini-2.5-flash-lite",
+        name="Gemini 2.5 Flash-Lite",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.00,  # Pricing TBD
+        output_price=0.00,
+        description="Fastest flash model optimized for cost-efficiency and high throughput"
+    ),
+    AIModel(
+        id="gemini-2.5-pro",
+        name="Gemini 2.5 Pro",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.00,  # Pricing TBD
+        output_price=0.00,
+        description="Advanced thinking model for complex reasoning in code, math, and STEM"
     ),
 ]
 
@@ -131,12 +162,18 @@ async def get_ai_config(db: Session = Depends(get_db)):
     provider = get_setting(db, "ai_provider")
     api_key = get_setting(db, "api_key")
     model = get_setting(db, "ai_model")
+    
+    # Check if model is custom (not in predefined list)
+    is_custom = False
+    if model:
+        is_custom = model not in [m.id for m in AVAILABLE_MODELS]
 
     return AIConfigResponse(
         provider=provider,
         model=model,
         api_key_configured=bool(api_key),
-        api_key_preview=api_key[:8] + "..." if api_key and len(api_key) > 8 else None
+        api_key_preview=api_key[:8] + "..." if api_key and len(api_key) > 8 else None,
+        is_custom_model=is_custom
     )
 
 
@@ -173,16 +210,25 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
         # Gemini keys usually start with AIza, but let's be lenient if it changes
         pass
 
+    # Validate model name (accept any non-empty string)
+    if config.model:
+        model_trimmed = config.model.strip()
+        if not model_trimmed:
+            raise HTTPException(
+                status_code=400,
+                detail="Model name cannot be empty or whitespace only"
+            )
+        # Store the trimmed model name exactly as provided
+        set_setting(db, "ai_model", model_trimmed)
+    
     # Save settings
     set_setting(db, "ai_provider", config.provider)
     set_setting(db, "api_key", config.api_key)
-    if config.model:
-        set_setting(db, "ai_model", config.model)
 
     return {
         "success": True,
         "provider": config.provider,
-        "model": config.model,
+        "model": config.model.strip() if config.model else None,
         "api_key_preview": config.api_key[:8] + "...",
         "message": "AI configuration saved successfully"
     }
@@ -225,3 +271,64 @@ async def test_ai_config(db: Session = Depends(get_db)):
             status_code=400,
             detail=f"Failed to connect to AI provider: {str(e)}"
         )
+
+
+@router.post("/ai-config/models/refresh")
+async def refresh_models():
+    """
+    Manually refresh the AI models list.
+    
+    This endpoint allows administrators to trigger a manual update of the available
+    AI models. Currently, this returns instructions for updating the models, as
+    providers don't offer public APIs for model discovery.
+    
+    To update models:
+    1. Check provider documentation:
+       - Anthropic: https://www.anthropic.com/api
+       - OpenAI: https://openai.com/api/pricing/
+       - Google Gemini: https://ai.google.dev/pricing
+    2. Update the AVAILABLE_MODELS list in backend/app/api/settings.py
+    3. Update the last_updated date in the comment above AVAILABLE_MODELS
+    4. Restart the backend server
+    """
+    return {
+        "success": True,
+        "message": "Model list refresh instructions provided",
+        "current_models_count": len(AVAILABLE_MODELS),
+        "last_updated": "2025-12-05",
+        "models_by_provider": {
+            "anthropic": len([m for m in AVAILABLE_MODELS if m.provider == "anthropic"]),
+            "openai": len([m for m in AVAILABLE_MODELS if m.provider == "openai"]),
+            "gemini": len([m for m in AVAILABLE_MODELS if m.provider == "gemini"]),
+        },
+        "instructions": {
+            "step_1": "Check provider documentation for latest models",
+            "step_2": "Update AVAILABLE_MODELS in backend/app/api/settings.py",
+            "step_3": "Update last_updated comment",
+            "step_4": "Restart backend server",
+            "documentation_links": {
+                "anthropic": "https://www.anthropic.com/api",
+                "openai": "https://openai.com/api/pricing/",
+                "gemini": "https://ai.google.dev/pricing"
+            }
+        }
+    }
+
+
+@router.get("/ai-config/models/info")
+async def get_models_info():
+    """Get metadata about the current models list"""
+    return {
+        "last_updated": "2025-12-05",
+        "total_models": len(AVAILABLE_MODELS),
+        "models_by_provider": {
+            "anthropic": [m.dict() for m in AVAILABLE_MODELS if m.provider == "anthropic"],
+            "openai": [m.dict() for m in AVAILABLE_MODELS if m.provider == "openai"],
+            "gemini": [m.dict() for m in AVAILABLE_MODELS if m.provider == "gemini"],
+        },
+        "provider_counts": {
+            "anthropic": len([m for m in AVAILABLE_MODELS if m.provider == "anthropic"]),
+            "openai": len([m for m in AVAILABLE_MODELS if m.provider == "openai"]),
+            "gemini": len([m for m in AVAILABLE_MODELS if m.provider == "gemini"]),
+        }
+    }

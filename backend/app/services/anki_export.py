@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 class AnkiExporter:
     """Export questions to Anki .apkg format"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Create a custom model for our multiple-choice questions
         self.model = genanki.Model(
             random.randrange(1 << 30, 1 << 31),  # Random model ID

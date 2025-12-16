@@ -13,6 +13,8 @@ python-docx==1.1.0
 beautifulsoup4==4.12.2
 markdown==3.5.1
 lxml>=6.0.0
+youtube-transcript-api>=0.6.1
+python-pptx>=0.6.23
 
 # AI/LLM
 anthropic>=0.20.0
@@ -27,7 +29,24 @@ pydantic-settings==2.1.0
 # Anki Export
 genanki==0.13.1
 
+# Logging
+structlog==24.1.0
+
+# Metrics
+prometheus-client==0.19.0
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
+pytest-cov==4.1.0
 httpx==0.25.2
+hypothesis==6.92.1
+pytest-benchmark==4.0.0
+requests==2.31.0
+
+# Code Quality
+black==23.12.1
+flake8==7.0.0
+isort==5.13.2
+mypy==1.8.0
+pre-commit==3.6.0

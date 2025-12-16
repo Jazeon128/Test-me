@@ -21,13 +21,17 @@ class GenerationStatus(Base):
     total_documents = Column(Integer, default=0)
     total_questions_requested = Column(Integer, default=0)
     total_questions_generated = Column(Integer, default=0)
+    
+    # Progress tracking fields
+    current_question = Column(Integer, default=0)
+    total_questions = Column(Integer, default=0)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    def add_log(self, message: str, level: str = "info"):
+    def add_log(self, message: str, level: str = "info") -> None:
         """Add a log message with timestamp"""
         import datetime
         if self.logs is None:
@@ -40,7 +44,7 @@ class GenerationStatus(Base):
         }
         self.logs.append(log_entry)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:  # type: ignore[type-arg]  # noqa
         """Convert to dictionary for API response"""
         return {
             "job_id": self.job_id,
@@ -53,6 +57,8 @@ class GenerationStatus(Base):
             "total_documents": self.total_documents,
             "total_questions_requested": self.total_questions_requested,
             "total_questions_generated": self.total_questions_generated,
+            "current_question": self.current_question,
+            "total_questions": self.total_questions,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,

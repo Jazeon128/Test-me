@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import List, Optional
+import os
 
 from ..db import get_db
 from ..models.test import Test
@@ -40,7 +41,10 @@ async def create_deck(request: CreateDeckRequest, db: Session = Depends(get_db))
 @router.get("/")
 async def list_decks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all decks"""
-    decks = db.query(Test).offset(skip).limit(limit).all()
+    # Eagerly load deck_questions to avoid N+1 when counting
+    decks = db.query(Test).options(
+        joinedload(Test.deck_questions)
+    ).offset(skip).limit(limit).all()
 
     return [
         {
@@ -57,25 +61,31 @@ async def list_decks(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 @router.get("/{deck_id}")
 async def get_deck(deck_id: int, db: Session = Depends(get_db)):
     """Get deck details with all questions"""
-    deck = db.query(Test).filter(Test.id == deck_id).first()
+    # Eagerly load deck_questions and their questions/documents to avoid N+1
+    from ..models.deck import DeckQuestion
+    from ..models.question import Question
+    
+    deck = db.query(Test).options(
+        joinedload(Test.deck_questions).joinedload(DeckQuestion.question).joinedload(Question.document)
+    ).filter(Test.id == deck_id).first()
 
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
     # Get unique documents that contributed to this deck
     document_ids = set()
+    documents_dict = {}
     for question in deck.questions:
-        document_ids.add(question.document_id)
+        if question.document_id and question.document_id not in document_ids:
+            document_ids.add(question.document_id)
+            if question.document:
+                documents_dict[question.document_id] = {
+                    "id": question.document.id,
+                    "filename": question.document.original_filename,
+                    "title": question.document.title,
+                }
 
-    documents = []
-    for doc_id in document_ids:
-        doc = db.query(Document).filter(Document.id == doc_id).first()
-        if doc:
-            documents.append({
-                "id": doc.id,
-                "filename": doc.original_filename,
-                "title": doc.title,
-            })
+    documents = list(documents_dict.values())
 
     return {
         "id": deck.id,
@@ -206,3 +216,142 @@ async def import_csv(
         "num_questions": count,
         "message": f"Successfully imported {count} cards"
     }
+
+
+
+@router.get("/{deck_id}/export/anki")
+async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
+    """Export deck to Anki .apkg format"""
+    from ..services.anki_export import AnkiExporter
+    from ..models.test import Test
+    import tempfile
+    
+    deck = db.query(Test).filter(Test.id == deck_id).first()
+
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+
+    if not deck.questions:
+        raise HTTPException(status_code=400, detail="Deck has no questions")
+
+    # Create temporary file for export
+    with tempfile.NamedTemporaryFile(mode='wb', suffix='.apkg', delete=False) as tmp_file:
+        output_path = tmp_file.name
+
+    try:
+        # Export to Anki
+        exporter = AnkiExporter()
+        exporter.export_test(db, deck, output_path)
+
+        # Read file content
+        with open(output_path, 'rb') as f:
+            content = f.read()
+
+        # Clean up temp file
+        os.unlink(output_path)
+
+        # Return file
+        filename = f"{deck.name.replace(' ', '_')}.apkg"
+        return Response(
+            content=content,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.get("/{deck_id}/export/csv")
+async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
+    """Export deck to CSV format compatible with Anki import"""
+    from ..services.csv_export import CSVExporter
+    from ..models.test import Test
+    import tempfile
+    
+    deck = db.query(Test).filter(Test.id == deck_id).first()
+
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+
+    if not deck.questions:
+        raise HTTPException(status_code=400, detail="Deck has no questions")
+
+    # Create temporary file for export
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+        output_path = tmp_file.name
+
+    try:
+        # Export to CSV
+        exporter = CSVExporter()
+        exporter.export_test(db, deck, output_path)
+
+        # Read file content
+        with open(output_path, 'r', encoding='utf-8-sig') as f:
+            content = f.read()
+
+        # Clean up temp file
+        os.unlink(output_path)
+
+        # Return file
+        filename = f"{deck.name.replace(' ', '_')}.csv"
+        return Response(
+            content=content.encode('utf-8-sig'),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.get("/{deck_id}/export/anki-csv")
+async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
+    """Export deck to Anki All-In-One CSV format"""
+    from ..services.anki_all_in_one_export import AnkiAllInOneExporter
+    from ..models.test import Test
+    import tempfile
+    
+    deck = db.query(Test).filter(Test.id == deck_id).first()
+
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+
+    if not deck.questions:
+        raise HTTPException(status_code=400, detail="Deck has no questions")
+
+    # Create temporary file for export
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+        output_path = tmp_file.name
+
+    try:
+        # Export to CSV
+        exporter = AnkiAllInOneExporter()
+        exporter.export_test(db, deck, output_path)
+
+        # Read file content
+        with open(output_path, 'r', encoding='utf-8-sig') as f:
+            content = f.read()
+
+        # Clean up temp file
+        os.unlink(output_path)
+
+        # Return file
+        filename = f"{deck.name.replace(' ', '_')}_AllInOne.csv"
+        return Response(
+            content=content.encode('utf-8-sig'),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")

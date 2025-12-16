@@ -5,7 +5,6 @@ import os
 import hashlib
 from datetime import datetime
 import traceback
-import logging
 import uuid
 
 from ..db import get_db
@@ -13,13 +12,15 @@ from ..models.document import Document, DocumentType
 from ..models.question import Question, QuestionOption
 from ..models.test import Test
 from ..models.generation_status import GenerationStatus
-from ..services.parsers import PDFParser, HTMLParser, MarkdownParser, DOCXParser
+from ..services.parsers import PDFParser, HTMLParser, MarkdownParser, DOCXParser, YouTubeParser, PowerPointParser
 from ..services.ai import QuestionGenerator
 from ..config import settings
+from ..utils.logging import get_logger
+from ..utils.file_validation import validate_upload_file
+from ..utils.progress import calculate_generation_progress
+from ..exceptions import FileUploadError, ResourceNotFoundError, AIServiceError, QuestionGenerationError
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -56,6 +57,8 @@ async def upload_document(
         ".htm": DocumentType.HTML,
         ".md": DocumentType.MARKDOWN,
         ".docx": DocumentType.DOCX,
+        ".pptx": DocumentType.PPTX,
+        ".youtube": DocumentType.YOUTUBE,
     }
 
     uploaded_documents = []
@@ -92,40 +95,22 @@ async def upload_document(
         db.refresh(deck)
 
     for file in files:
-        # Validate file type
-        file_ext = os.path.splitext(file.filename)[1].lower()
-
-        if file_ext not in type_mapping:
-            logger.warning(f"Skipping unsupported file type: {file.filename}")
-            continue
-
-        # Read file content
-        content = await file.read()
-        file_size = len(content)
-
-        # Validate content (Magic Bytes)
-        is_valid_content = True
-        if file_ext == '.pdf':
-            if not content.startswith(b'%PDF'):
-                is_valid_content = False
-        elif file_ext == '.docx':
-            if not content.startswith(b'PK'):
-                is_valid_content = False
-        elif file_ext in ['.html', '.htm', '.md']:
-            try:
-                # Try to decode first 1KB as UTF-8 to ensure it's text
-                content[:1024].decode('utf-8')
-            except UnicodeDecodeError:
-                is_valid_content = False
-        
-        if not is_valid_content:
-            logger.warning(f"Skipping file with invalid content for extension {file_ext}: {file.filename}")
-            continue
-
-        # Check file size
-        if file_size > settings.MAX_UPLOAD_SIZE:
-            logger.warning(f"Skipping oversized file: {file.filename}")
-            continue
+        try:
+            # Validate file (type, size, content)
+            content = await validate_upload_file(file)
+            file_size = len(content)
+            file_ext = os.path.splitext(file.filename)[1].lower()
+        except FileUploadError as e:
+            # Log validation failure and skip this file
+            logger.warning(
+                "file_validation_failed",
+                filename=file.filename,
+                error_code=e.code,
+                error_message=e.message,
+                details=e.details
+            )
+            # Re-raise to return error to client
+            raise
 
         # Save file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -243,9 +228,38 @@ def process_document(
             gen_status.current_step = "Parsing document"
             gen_status.add_log(f"Started processing document {document_id}")
             db.commit()
+    
+    # Define progress callback function for question generation
+    def progress_callback(current: int, total: int):
+        """Update generation status with current question progress"""
+        if gen_status:
+            try:
+                gen_status.current_question = current
+                gen_status.total_questions = total
+                # Calculate progress using utility function
+                progress_pct = calculate_generation_progress(current, total)
+                gen_status.progress = progress_pct
+                gen_status.current_step = f"Generating question {current} of {total}"
+                db.commit()
+            except Exception as e:
+                # Log error but don't fail generation
+                logger.error(
+                    "progress_callback_error",
+                    error_message=str(e),
+                    current_question=current,
+                    total_questions=total
+                )
 
     try:
-        logger.info(f"[*] Processing document {document_id}: {file_path}")
+        logger.info(
+            "document_processing_started",
+            document_id=document_id,
+            file_path=file_path,
+            file_type=file_type.value,
+            num_questions=num_questions,
+            difficulty=difficulty,
+            job_id=job_id
+        )
         if gen_status:
             gen_status.add_log(f"Processing document: {os.path.basename(file_path)}")
             db.commit()
@@ -256,12 +270,20 @@ def process_document(
             DocumentType.HTML: HTMLParser(),
             DocumentType.MARKDOWN: MarkdownParser(),
             DocumentType.DOCX: DOCXParser(),
+            DocumentType.PPTX: PowerPointParser(),
+            DocumentType.YOUTUBE: YouTubeParser(),
         }
 
         parser = parser_map[file_type]
         parsed_doc = parser.parse(file_path)
 
-        logger.info(f"[+] Parsed document {document_id}, extracted {len(parsed_doc.full_text)} characters")
+        logger.info(
+            "document_parsed",
+            document_id=document_id,
+            text_length=len(parsed_doc.full_text),
+            num_sections=len(parsed_doc.sections),
+            title=parsed_doc.title
+        )
         if gen_status:
             gen_status.progress = 20
             gen_status.current_step = "Document parsed successfully"
@@ -277,11 +299,17 @@ def process_document(
             db.commit()
 
         # Generate questions
-        logger.info(f"[*] Generating {num_questions} questions for document {document_id}...")
+        logger.info(
+            "question_generation_starting",
+            document_id=document_id,
+            num_questions=num_questions,
+            difficulty=difficulty
+        )
         if gen_status:
-            gen_status.progress = 30
+            gen_status.progress = 20
             gen_status.current_step = f"Generating {num_questions} questions using AI"
             gen_status.add_log(f"Starting AI question generation ({num_questions} questions)")
+            gen_status.total_questions = num_questions
             db.commit()
 
         # Capture print output from question generator
@@ -294,7 +322,8 @@ def process_document(
                 parsed_doc,
                 num_questions=num_questions,
                 difficulty=difficulty,
-                custom_prompt=custom_prompt
+                custom_prompt=custom_prompt,
+                progress_callback=progress_callback
             )
 
             # Capture the logs
@@ -308,22 +337,33 @@ def process_document(
                         gen_status.add_log(log_line.strip())
                 db.commit()
 
-        except ValueError as e:
+        except (ValueError, AIServiceError, QuestionGenerationError) as e:
             sys.stdout = old_stdout
-            logger.error(f"[-] {str(e)}")
+            logger.error(
+                "question_generation_failed",
+                document_id=document_id,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                exc_info=True
+            )
             if gen_status:
                 gen_status.status = "failed"
                 gen_status.error_message = str(e)
                 gen_status.add_log(f"Error: {str(e)}", level="error")
-                gen_status.add_log("Please configure your AI API key in Settings page or .env file", level="error")
+                if isinstance(e, AIServiceError):
+                    gen_status.add_log("Please configure your AI API key in Settings page or .env file", level="error")
                 db.commit()
             return
         finally:
             sys.stdout = old_stdout
 
-        logger.info(f"[+] Generated {len(questions_data)} questions for document {document_id}")
+        logger.info(
+            "questions_generated",
+            document_id=document_id,
+            num_questions=len(questions_data)
+        )
         if gen_status:
-            gen_status.progress = 70
+            gen_status.progress = 90
             gen_status.current_step = "Saving questions to database"
             gen_status.add_log(f"Successfully generated {len(questions_data)} questions")
             gen_status.total_questions_generated = len(questions_data)
@@ -348,13 +388,13 @@ def process_document(
 
             # Add to deck if specified
             if deck:
-                from ..models.test import TestQuestion
-                test_question = TestQuestion(
-                    test_id=deck.id,
+                from ..models.deck import DeckQuestion
+                deck_question = DeckQuestion(
+                    deck_id=deck.id,
                     question_id=question.id,
-                    order=len(deck.test_questions)
+                    order=len(deck.deck_questions)
                 )
-                deck.test_questions.append(test_question)
+                deck.deck_questions.append(deck_question)
 
             # Add options
             for i, opt_data in enumerate(q_data["options"]):
@@ -367,7 +407,12 @@ def process_document(
                 db.add(option)
 
         db.commit()
-        logger.info(f"[+] Saved {len(questions_data)} questions for document {document_id}")
+        logger.info(
+            "questions_saved",
+            document_id=document_id,
+            num_questions=len(questions_data),
+            deck_id=deck_id
+        )
 
         if gen_status:
             gen_status.status = "completed"
@@ -379,8 +424,14 @@ def process_document(
             db.commit()
 
     except Exception as e:
-        logger.error(f"[-] Error processing document {document_id}: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(
+            "document_processing_error",
+            document_id=document_id,
+            error_type=type(e).__name__,
+            error_message=str(e),
+            stack_trace=traceback.format_exc(),
+            exc_info=True
+        )
         if gen_status:
             gen_status.status = "failed"
             gen_status.error_message = str(e)
@@ -398,7 +449,7 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
     document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise ResourceNotFoundError("Document", document_id)
 
     return {
         "id": document.id,
@@ -436,7 +487,7 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     document = db.query(Document).filter(Document.id == document_id).first()
 
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise ResourceNotFoundError("Document", document_id)
 
     # Delete file
     if os.path.exists(document.file_path):
@@ -493,6 +544,8 @@ def regenerate_deck_questions(
             DocumentType.HTML: HTMLParser(),
             DocumentType.MARKDOWN: MarkdownParser(),
             DocumentType.DOCX: DOCXParser(),
+            DocumentType.PPTX: PowerPointParser(),
+            DocumentType.YOUTUBE: YouTubeParser(),
         }
 
         for doc in documents:
@@ -555,13 +608,13 @@ def regenerate_deck_questions(
             db.flush()
 
             # Add to deck
-            from ..models.test import TestQuestion
-            test_question = TestQuestion(
-                test_id=deck.id,
+            from ..models.deck import DeckQuestion
+            deck_question = DeckQuestion(
+                deck_id=deck.id,
                 question_id=question.id,
-                order=len(deck.test_questions)
+                order=len(deck.deck_questions)
             )
-            deck.test_questions.append(test_question)
+            deck.deck_questions.append(deck_question)
 
             # Add options
             for i, opt_data in enumerate(q_data["options"]):

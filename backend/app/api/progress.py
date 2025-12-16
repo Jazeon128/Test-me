@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
@@ -8,6 +8,7 @@ from ..db import get_db
 from ..models.user_progress import UserProgress
 from ..models.question import Question
 from ..services.spaced_repetition import SM2Algorithm, ReviewResult
+from ..utils.cache import stats_cache
 
 router = APIRouter()
 
@@ -38,8 +39,10 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         - Updated spaced repetition data
         - Gamification stats
     """
-    # Get question
-    question = db.query(Question).filter(Question.id == request.question_id).first()
+    # Get question with options eagerly loaded to avoid N+1
+    question = db.query(Question).options(
+        joinedload(Question.options)
+    ).filter(Question.id == request.question_id).first()
 
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -109,9 +112,9 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
 
     # Calculate next review using SM-2 algorithm
     new_ef, new_interval, new_repetitions, next_review = SM2Algorithm.calculate_next_review(
-        easiness_factor=progress.easiness_factor,
-        interval=progress.interval,
-        repetitions=progress.repetitions,
+        easiness_factor=float(progress.easiness_factor),
+        interval=int(progress.interval),
+        repetitions=int(progress.repetitions),
         quality=quality,
         time_taken_seconds=request.time_taken_seconds,
     )
@@ -140,15 +143,18 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
 
     # Check if mastered
     is_mastered, mastery_percentage = SM2Algorithm.calculate_mastery_level(
-        repetitions=progress.repetitions,
-        easiness_factor=progress.easiness_factor,
-        times_correct=progress.times_correct,
-        times_incorrect=progress.times_incorrect,
+        repetitions=int(progress.repetitions),
+        easiness_factor=float(progress.easiness_factor),
+        times_correct=int(progress.times_correct),
+        times_incorrect=int(progress.times_incorrect),
     )
     progress.is_mastered = is_mastered
 
     db.commit()
     db.refresh(progress)
+    
+    # Invalidate stats cache when progress is updated
+    stats_cache.invalidate_all()
 
     return {
         "correct": is_correct,
@@ -190,10 +196,10 @@ async def get_question_progress(question_id: int, db: Session = Depends(get_db))
         }
 
     is_mastered, mastery_percentage = SM2Algorithm.calculate_mastery_level(
-        repetitions=progress.repetitions,
-        easiness_factor=progress.easiness_factor,
-        times_correct=progress.times_correct,
-        times_incorrect=progress.times_incorrect,
+        repetitions=int(progress.repetitions),
+        easiness_factor=float(progress.easiness_factor),
+        times_correct=int(progress.times_correct),
+        times_incorrect=int(progress.times_incorrect),
     )
 
     return {
@@ -226,8 +232,8 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
         query = db.query(UserProgress).join(Question)
 
         if request.deck_id:
-            from ..models.test import TestQuestion
-            query = query.join(Question.test_questions).join(TestQuestion.test).filter(Test.id == request.deck_id)
+            from ..models.deck import DeckQuestion, Deck
+            query = query.join(Question.deck_questions).join(DeckQuestion.deck).filter(Deck.id == request.deck_id)
             
         due_progress = query.filter(
             UserProgress.next_review_date <= datetime.utcnow()
@@ -243,15 +249,17 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
         query = db.query(Question).filter(~Question.id.in_(seen_ids))
 
         if request.deck_id:
-            from ..models.test import TestQuestion
-            query = query.join(Question.test_questions).join(TestQuestion.test).filter(Test.id == request.deck_id)
+            from ..models.deck import DeckQuestion, Deck
+            query = query.join(Question.deck_questions).join(DeckQuestion.deck).filter(Deck.id == request.deck_id)
             
         new_questions = query.limit(request.num_questions - len(questions_to_review)).all()
 
         questions_to_review.extend([q.id for q in new_questions])
 
-    # Get full question details
-    questions = db.query(Question).filter(Question.id.in_(questions_to_review)).all()
+    # Get full question details with options eagerly loaded to avoid N+1
+    questions = db.query(Question).options(
+        joinedload(Question.options)
+    ).filter(Question.id.in_(questions_to_review)).all()
 
     response_data = {
         "num_questions": len(questions),
@@ -279,11 +287,18 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
 
 @router.get("/stats")
 async def get_overall_stats(db: Session = Depends(get_db)):
-    """Get overall learning statistics"""
+    """Get overall learning statistics (cached for 5 minutes)"""
+    # Check cache first
+    cache_key = "overall_stats"
+    cached_result = stats_cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
+    # Query database if not cached
     all_progress = db.query(UserProgress).all()
 
     if not all_progress:
-        return {
+        result = {
             "total_questions_seen": 0,
             "total_attempts": 0,
             "overall_success_rate": 0,
@@ -292,6 +307,8 @@ async def get_overall_stats(db: Session = Depends(get_db)):
             "best_streak": 0,
             "questions_due": 0,
         }
+        stats_cache.set(cache_key, result)
+        return result
 
     total_correct = sum(p.times_correct for p in all_progress)
     total_attempts = sum(p.times_seen for p in all_progress)
@@ -308,7 +325,7 @@ async def get_overall_stats(db: Session = Depends(get_db)):
     # Get best streak
     best_streak = max((p.best_streak for p in all_progress), default=0)
 
-    return {
+    result = {
         "total_questions_seen": len(all_progress),
         "total_attempts": total_attempts,
         "overall_success_rate": total_correct / total_attempts if total_attempts > 0 else 0,
@@ -319,3 +336,7 @@ async def get_overall_stats(db: Session = Depends(get_db)):
         "questions_due": questions_due,
         "average_easiness_factor": sum(p.easiness_factor for p in all_progress) / len(all_progress),
     }
+    
+    # Cache the result
+    stats_cache.set(cache_key, result)
+    return result

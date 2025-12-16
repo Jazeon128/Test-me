@@ -1,3 +1,10 @@
+"""
+DEPRECATED: This module is deprecated. Use decks.py instead.
+
+This module provides backward compatibility by redirecting to the decks API.
+All new code should use /api/decks endpoints instead of /api/tests.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -28,7 +35,11 @@ class StartTestSessionRequest(BaseModel):
 
 @router.post("/")
 async def create_test(request: CreateTestRequest, db: Session = Depends(get_db)):
-    """Create a new test from selected questions"""
+    """
+    DEPRECATED: Use POST /api/decks/ instead
+    
+    Create a new test from selected questions
+    """
     # Validate questions exist
     questions = db.query(Question).filter(Question.id.in_(request.question_ids)).all()
 
@@ -57,7 +68,11 @@ async def create_test(request: CreateTestRequest, db: Session = Depends(get_db))
 
 @router.get("/{test_id}")
 async def get_test(test_id: int, db: Session = Depends(get_db)):
-    """Get test details"""
+    """
+    DEPRECATED: Use GET /api/decks/{deck_id} instead
+    
+    Get test details
+    """
     test = db.query(Test).filter(Test.id == test_id).first()
 
     if not test:
@@ -82,7 +97,11 @@ async def get_test(test_id: int, db: Session = Depends(get_db)):
 
 @router.get("/")
 async def list_tests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all tests"""
+    """
+    DEPRECATED: Use GET /api/decks/ instead
+    
+    List all tests
+    """
     tests = db.query(Test).offset(skip).limit(limit).all()
 
     return [
@@ -99,7 +118,11 @@ async def list_tests(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 
 @router.delete("/{test_id}")
 async def delete_test(test_id: int, db: Session = Depends(get_db)):
-    """Delete a test"""
+    """
+    DEPRECATED: Use DELETE /api/decks/{deck_id} instead
+    
+    Delete a test
+    """
     test = db.query(Test).filter(Test.id == test_id).first()
 
     if not test:
@@ -113,7 +136,11 @@ async def delete_test(test_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{test_id}/export/anki")
 async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
-    """Export test to Anki .apkg format"""
+    """
+    DEPRECATED: Use GET /api/decks/{deck_id}/export/anki instead
+    
+    Export test to Anki .apkg format
+    """
     test = db.query(Test).filter(Test.id == test_id).first()
 
     if not test:
@@ -155,7 +182,11 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{test_id}/export/csv")
 async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
-    """Export test to CSV format compatible with Anki import"""
+    """
+    DEPRECATED: Use GET /api/decks/{deck_id}/export/csv instead
+    
+    Export test to CSV format compatible with Anki import
+    """
     test = db.query(Test).filter(Test.id == test_id).first()
 
     if not test:
@@ -197,7 +228,11 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{test_id}/export/anki-csv")
 async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
-    """Export test to Anki All-In-One CSV format"""
+    """
+    DEPRECATED: Use GET /api/decks/{deck_id}/export/anki-csv instead
+    
+    Export test to Anki All-In-One CSV format
+    """
     test = db.query(Test).filter(Test.id == test_id).first()
 
     if not test:
@@ -244,6 +279,8 @@ async def start_test_session(
     db: Session = Depends(get_db)
 ):
     """
+    DEPRECATED: This endpoint is deprecated
+    
     Start a test session - returns questions in order without answers
 
     Args:

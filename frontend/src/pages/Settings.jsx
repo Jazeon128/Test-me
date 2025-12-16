@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Info, Server, Cpu, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
+import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Server, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
 import axios from 'axios'
 import { useTheme } from '../context/ThemeContext'
+import ModelSelector from '../components/ModelSelector'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('api')
@@ -14,6 +15,8 @@ export default function Settings() {
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState(null)
   const [currentConfig, setCurrentConfig] = useState(null)
+  const [isCustomModel, setIsCustomModel] = useState(false)
+  const [isModelValid, setIsModelValid] = useState(true)
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -26,10 +29,23 @@ export default function Settings() {
     if (availableModels.length > 0) {
       const providerModels = availableModels.filter(m => m.provider === provider)
       if (providerModels.length > 0 && !providerModels.find(m => m.id === model)) {
-        setModel(providerModels[0].id)
+        // Only auto-select if not in custom mode
+        if (!isCustomModel) {
+          setModel(providerModels[0].id)
+        }
       }
     }
-  }, [provider, availableModels])
+  }, [provider, availableModels, model, isCustomModel])
+
+  // Detect if loaded model is custom (Requirement 1.5)
+  useEffect(() => {
+    if (model && availableModels.length > 0) {
+      const isCustom = !availableModels.some(m => m.id === model)
+      setIsCustomModel(isCustom)
+      // Custom models are valid if non-empty, predefined are always valid
+      setIsModelValid(model.trim() !== '')
+    }
+  }, [model, availableModels])
 
   const loadModels = async () => {
     try {
@@ -50,6 +66,7 @@ export default function Settings() {
       if (response.data.model) {
         setModel(response.data.model)
       }
+      // Custom model detection will be handled by useEffect
     } catch (error) {
       console.error('Failed to load config:', error)
     } finally {
@@ -58,6 +75,12 @@ export default function Settings() {
   }
 
   const handleSave = async () => {
+    // Validate model before saving
+    if (!isModelValid) {
+      setMessage({ type: 'error', text: 'Please enter a valid model name' })
+      return
+    }
+
     if (!apiKey.trim() && !currentConfig?.api_key_configured) {
       setMessage({ type: 'error', text: 'Please enter an API key' })
       return
@@ -67,12 +90,6 @@ export default function Settings() {
     setMessage(null)
 
     try {
-      const payload = {
-        provider,
-        api_key: apiKey || currentConfig?.api_key_preview, // Use existing key if not changed (this logic needs backend support or re-entry)
-        model
-      }
-
       // If user hasn't entered a new key, we need to handle that. 
       // For now, require key if not configured, or if changing providers.
       // Ideally backend should handle "keep existing key" logic.
@@ -98,7 +115,13 @@ export default function Settings() {
         model
       })
 
-      setMessage({ type: 'success', text: response.data.message })
+      // Check if saved model is custom - Requirement 3.4
+      const isModelCustom = !availableModels.some(m => m.id === model)
+      const successMessage = isModelCustom 
+        ? `Configuration saved successfully! Custom model "${model}" will be used for question generation.`
+        : response.data.message
+      
+      setMessage({ type: 'success', text: successMessage, isCustomModel: isModelCustom })
       setApiKey('') // Clear the input for security
       loadConfig() // Reload to show preview
     } catch (error) {
@@ -147,6 +170,26 @@ export default function Settings() {
 
   const getSelectedModelDetails = () => {
     return availableModels.find(m => m.id === model)
+  }
+
+  // Handle model change from ModelSelector
+  const handleModelChange = (newModel) => {
+    setModel(newModel)
+  }
+
+  // Handle toggle between custom and predefined modes
+  const handleToggleCustom = () => {
+    setIsCustomModel(!isCustomModel)
+  }
+
+  // Handle validation state change from ModelSelector
+  const handleValidationChange = (isValid) => {
+    setIsModelValid(isValid)
+  }
+
+  // Get filtered models for current provider
+  const getProviderModels = () => {
+    return availableModels.filter(m => m.provider === provider)
   }
 
   if (loading) {
@@ -203,10 +246,11 @@ export default function Settings() {
 
               {/* Provider Selection */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="provider-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   API Provider
                 </label>
                 <select
+                  id="provider-select"
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
                   className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
@@ -239,28 +283,21 @@ export default function Settings() {
                 </p>
               </div>
 
-              {/* Model Selection */}
+              {/* Model Selection - Integrated ModelSelector Component */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Model
-                </label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                >
-                  {availableModels
-                    .filter(m => m.provider === provider)
-                    .map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                </select>
+                <ModelSelector
+                  provider={provider}
+                  selectedModel={model}
+                  availableModels={getProviderModels()}
+                  onModelChange={handleModelChange}
+                  isCustom={isCustomModel}
+                  onToggleCustom={handleToggleCustom}
+                  onValidationChange={handleValidationChange}
+                />
               </div>
 
-              {/* Model Details */}
-              {selectedModel && (
+              {/* Model Details - Only show for predefined models */}
+              {selectedModel && !isCustomModel && (
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700 mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-start gap-3">
@@ -332,19 +369,31 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Message Display */}
+          {/* Message Display - Requirement 3.4: Confirmation message */}
           {message && (
-            <div className={`rounded-lg p-4 border ${message.type === 'success'
-              ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-              : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
-              }`}>
+            <div 
+              className={`rounded-lg p-4 border ${message.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+              }`}
+              role="alert"
+              aria-live="polite"
+            >
               <div className="flex items-start gap-3">
                 {message.type === 'success' ? (
                   <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                 ) : (
                   <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                 )}
-                <p className="text-sm font-medium">{message.text}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{message.text}</p>
+                  {message.isCustomModel && message.type === 'success' && (
+                    <p className="mt-2 text-xs text-green-700 dark:text-green-400">
+                      Note: Custom models are sent directly to the provider without validation. 
+                      If you encounter errors, please verify the model name is correct.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}

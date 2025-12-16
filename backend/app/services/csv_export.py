@@ -118,7 +118,7 @@ class CSVExporter:
                 break
 
         # Format source reference from JSON
-        source = self._format_source_reference(question.source_reference)
+        source = self._format_source_reference(question.source_reference or {})  # type: ignore[arg-type]
 
         # Build row
         row = [

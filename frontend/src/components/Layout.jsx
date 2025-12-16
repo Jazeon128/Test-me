@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, TrendingUp, BookOpen, Layers, Settings, Sun, Moon, Search } from 'lucide-react'
+import { Home, Upload, TrendingUp, BookOpen, Layers, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import SearchModal from './SearchModal'
 
@@ -8,6 +8,7 @@ export default function Layout({ children }) {
   const location = useLocation()
   const { theme, setTheme } = useTheme()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -50,7 +51,7 @@ export default function Layout({ children }) {
                   <BookOpen className="h-6 w-6 text-white" />
                 </div>
                 <span className="ml-3 text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-400 dark:to-primary-200 tracking-tight">
-                  FlashLearn
+                  Test Me
                 </span>
               </Link>
               <div className="hidden md:ml-10 md:flex md:space-x-2 items-center">
@@ -107,14 +108,70 @@ export default function Layout({ children }) {
 
               <Link
                 to="/settings"
-                className={`p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}`}
+                className={`hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}`}
                 title="Settings"
               >
                 <Settings size={20} />
               </Link>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 animate-slide-down">
+            <div className="px-4 pt-2 pb-6 space-y-1">
+              <Link
+                to="/"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/')}`}
+              >
+                <Home size={20} />
+                Dashboard
+              </Link>
+              <Link
+                to="/upload"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/upload')}`}
+              >
+                <Upload size={20} />
+                Upload
+              </Link>
+              <Link
+                to="/decks"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/decks')}`}
+              >
+                <Layers size={20} />
+                Decks
+              </Link>
+              <Link
+                to="/progress"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/progress')}`}
+              >
+                <TrendingUp size={20} />
+                Progress
+              </Link>
+              <Link
+                to="/settings"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/settings')}`}
+              >
+                <Settings size={20} />
+                Settings
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Main content */}

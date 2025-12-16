@@ -1,0 +1,66 @@
+[
+  {
+    "datasource": "Prometheus",
+    "fieldConfig": {
+      "defaults": {
+        "color": {"mode": "palette-classic"},
+        "custom": {
+          "axisLabel": "Duration (ms)",
+          "drawStyle": "line",
+          "fillOpacity": 10
+        },
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 50},
+            {"color": "red", "value": 100}
+          ]
+        },
+        "unit": "ms"
+      }
+    },
+    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+    "id": 9,
+    "targets": [
+      {
+        "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p95 {{operation}}"
+      },
+      {
+        "expr": "histogram_quantile(0.50, rate(db_query_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p50 {{operation}}"
+      }
+    ],
+    "title": "Database Query Duration",
+    "type": "timeseries"
+  },
+  {
+    "datasource": "Prometheus",
+    "fieldConfig": {
+      "defaults": {
+        "color": {"mode": "palette-classic"},
+        "custom": {
+          "axisLabel": "Duration (seconds)",
+          "drawStyle": "line",
+          "fillOpacity": 10
+        },
+        "unit": "s"
+      }
+    },
+    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+    "id": 10,
+    "targets": [
+      {
+        "expr": "histogram_quantile(0.95, rate(document_parsing_duration_seconds_bucket[5m]))",
+        "legendFormat": "p95 {{file_type}}"
+      },
+      {
+        "expr": "histogram_quantile(0.50, rate(document_parsing_duration_seconds_bucket[5m]))",
+        "legendFormat": "p50 {{file_type}}"
+      }
+    ],
+    "title": "Document Parsing Duration",
+    "type": "timeseries"
+  }
+]

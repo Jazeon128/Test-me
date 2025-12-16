@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
-import { Upload as UploadIcon, FileText, CheckCircle, AlertCircle, Plus, Loader2, Book, FileType } from 'lucide-react'
+import { Upload as UploadIcon, FileText, CheckCircle, AlertCircle, Plus, Loader2, Book, FileType, Youtube } from 'lucide-react'
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -18,6 +18,8 @@ export default function Upload() {
   const [deckDescription, setDeckDescription] = useState('')
   const [loadingDecks, setLoadingDecks] = useState(true)
   const [regenerate, setRegenerate] = useState(false)
+  const [activeTab, setActiveTab] = useState('file')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
 
   // Generation status tracking
   const [generating, setGenerating] = useState(false)
@@ -83,12 +85,23 @@ export default function Upload() {
   }
 
   const onDrop = async (acceptedFiles) => {
-    if (acceptedFiles.length === 0) return
-
     const formData = new FormData()
-    acceptedFiles.forEach(file => {
-      formData.append('files', file)
-    })
+
+    if (activeTab === 'youtube') {
+      if (!youtubeUrl) {
+        setError('Please enter a YouTube URL')
+        return
+      }
+      // Create a dummy file object for the YouTube URL
+      const blob = new Blob([youtubeUrl], { type: 'text/plain' })
+      formData.append('files', blob, 'video.youtube')
+    } else {
+      if (acceptedFiles.length === 0) return
+      acceptedFiles.forEach(file => {
+        formData.append('files', file)
+      })
+    }
+
     formData.append('num_questions', numQuestions || 10)
     formData.append('difficulty', difficulty)
 
@@ -128,10 +141,10 @@ export default function Upload() {
       setGenerationLogs([])
       setGenerationStatus(null)
 
-      // Start polling for status
+      // Start polling for status (500ms for smooth progress updates)
       const interval = setInterval(() => {
         checkStatus(newJobId)
-      }, 2000)
+      }, 500)
       setStatusCheckInterval(interval)
 
       // Check immediately
@@ -149,6 +162,7 @@ export default function Upload() {
       'text/html': ['.html', '.htm'],
       'text/markdown': ['.md'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
     },
     multiple: true,
     disabled: uploading,
@@ -162,7 +176,7 @@ export default function Upload() {
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Transform your study materials into interactive flashcards instantly.
-          We support PDF, HTML, Markdown, and DOCX files.
+          We support PDF, HTML, Markdown, DOCX, PPTX, and YouTube.
         </p>
       </div>
 
@@ -307,52 +321,114 @@ export default function Upload() {
 
         {/* Upload Area */}
         <div className="lg:col-span-8">
-          <div
-            {...getRootProps()}
-            className={`
-              relative overflow-hidden rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300
-              ${isDragActive
-                ? 'border-primary-500 bg-primary-50/50 scale-[1.02]'
-                : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50/50 bg-white'
-              }
-              ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
-            `}
-          >
-            <input {...getInputProps()} />
-            <div className="flex flex-col items-center relative z-10">
-              {uploading ? (
-                <div className="py-8">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary-600 mb-6"></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-600">
-                      {uploadProgress}%
-                    </div>
-                  </div>
-                  <p className="text-xl font-medium text-gray-900">Uploading Documents</p>
-                  <p className="text-gray-500 mt-2">AI is preparing to analyze your content...</p>
-                </div>
-              ) : (
-                <>
-                  <div className={`p-6 rounded-full bg-primary-50 mb-6 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
-                    <UploadIcon className="h-12 w-12 text-primary-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                    {isDragActive ? 'Drop files now' : 'Click or drag files here'}
-                  </h3>
-                  <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                    Support for PDF, HTML, Markdown, and DOCX. Upload multiple files to create a comprehensive deck.
-                  </p>
-                  <div className="flex gap-3 flex-wrap justify-center">
-                    {['PDF', 'HTML', 'Markdown', 'DOCX'].map((type) => (
-                      <span key={type} className="px-4 py-1.5 bg-gray-100 rounded-full text-sm font-medium text-gray-600 border border-gray-200">
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                </>
+          {/* Upload Method Tabs */}
+          <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab('file')}
+              className={`pb-3 px-1 flex items-center gap-2 font-medium transition-colors relative ${activeTab === 'file'
+                  ? 'text-primary-600 dark:text-primary-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+            >
+              <UploadIcon size={20} />
+              File Upload
+              {activeTab === 'file' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
               )}
-            </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('youtube')}
+              className={`pb-3 px-1 flex items-center gap-2 font-medium transition-colors relative ${activeTab === 'youtube'
+                  ? 'text-primary-600 dark:text-primary-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+            >
+              <Youtube size={20} />
+              YouTube
+              {activeTab === 'youtube' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+              )}
+            </button>
           </div>
+
+          {activeTab === 'file' ? (
+            <div
+              {...getRootProps()}
+              className={`
+                relative overflow-hidden rounded-2xl border-2 border-dashed p-6 md:p-12 text-center cursor-pointer transition-all duration-300
+                ${isDragActive
+                  ? 'border-primary-500 bg-primary-50/50 scale-[1.02]'
+                  : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50/50 bg-white'
+                }
+                ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
+              `}
+            >
+              <input {...getInputProps()} />
+              <div className="flex flex-col items-center relative z-10">
+                {uploading ? (
+                  <div className="py-8">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary-600 mb-6"></div>
+                      <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-600">
+                        {uploadProgress}%
+                      </div>
+                    </div>
+                    <p className="text-xl font-medium text-gray-900">Uploading Documents</p>
+                    <p className="text-gray-500 mt-2">AI is preparing to analyze your content...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className={`p-6 rounded-full bg-primary-50 mb-6 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
+                      <UploadIcon className="h-12 w-12 text-primary-600" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      {isDragActive ? 'Drop files now' : 'Click or drag files here'}
+                    </h3>
+                    <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                      Support for PDF, HTML, Markdown, DOCX, and PPTX. Upload multiple files to create a comprehensive deck.
+                    </p>
+                    <div className="flex gap-3 flex-wrap justify-center">
+                      {['PDF', 'HTML', 'MD', 'DOCX', 'PPTX'].map((type) => (
+                        <span key={type} className="px-4 py-1.5 bg-gray-100 rounded-full text-sm font-medium text-gray-600 border border-gray-200">
+                          {type}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-12">
+              <div className="max-w-xl mx-auto text-center">
+                <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                  <Youtube className="w-6 h-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Import from YouTube
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                  Paste a YouTube video URL to generate questions from its transcript.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                  />
+                  <button
+                    onClick={() => onDrop([])}
+                    disabled={uploading || !youtubeUrl}
+                    className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                  >
+                    Generate
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Status Cards */}
           <div className="mt-8 space-y-6">
@@ -382,6 +458,12 @@ export default function Upload() {
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-900 text-lg">Generating Questions</h3>
                     <p className="text-primary-600 font-medium">{generationStatus.current_step}</p>
+                    {/* Question Counter */}
+                    {generationStatus.current_question > 0 && generationStatus.total_questions > 0 && (
+                      <p className="text-gray-600 text-sm mt-1">
+                        Generating question {generationStatus.current_question} of {generationStatus.total_questions}
+                      </p>
+                    )}
                   </div>
                   <span className="text-2xl font-bold text-primary-600">{generationStatus.progress}%</span>
                 </div>
@@ -417,14 +499,10 @@ export default function Upload() {
                       {generationLogs.map((log, index) => (
                         <div
                           key={index}
-                          className={`${log.level === 'error'
-                            ? 'text-red-400'
-                            : log.level === 'warning'
-                              ? 'text-yellow-400'
-                              : 'text-gray-400'
+                          className={`font-mono ${log.level === 'error' ? 'text-red-400' : 'text-gray-300'
                             }`}
                         >
-                          <span className="text-gray-600 select-none">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
+                          <span className="text-gray-500">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
                           {log.message}
                         </div>
                       ))}
@@ -436,14 +514,14 @@ export default function Upload() {
 
             {/* Error Message */}
             {error && (
-              <div className="card bg-danger-50 border-danger-200 animate-fade-in">
+              <div className="card bg-red-50 border-red-200 animate-shake">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-danger-100 rounded-full">
-                    <AlertCircle className="h-6 w-6 text-danger-600" />
+                  <div className="p-2 bg-red-100 rounded-full">
+                    <AlertCircle className="h-6 w-6 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-danger-900 text-lg">Upload Failed</h3>
-                    <p className="text-danger-800 mt-1">{error}</p>
+                    <h3 className="font-bold text-red-900 text-lg">Upload Failed</h3>
+                    <p className="text-red-800 mt-1">{error}</p>
                   </div>
                 </div>
               </div>

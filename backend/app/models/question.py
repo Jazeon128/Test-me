@@ -24,7 +24,7 @@ class Question(Base, TimestampMixin):
     options = relationship("QuestionOption", back_populates="question", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary="question_tags", back_populates="questions")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Question {self.id}: {self.question_text[:50]}>"
 
 
@@ -43,5 +43,5 @@ class QuestionOption(Base, TimestampMixin):
     # Relationships
     question = relationship("Question", back_populates="options")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<QuestionOption {self.id}: {self.option_text[:30]} ({'✓' if self.is_correct else '✗'})>"

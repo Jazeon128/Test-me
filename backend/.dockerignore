@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.cover
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+test_me.db
+
+# Uploads
+uploads/
+backups/
+
+# Environment
+.env
+.env.local
+
+# Documentation
+docs/
+
+# Git
+.git/
+.gitignore

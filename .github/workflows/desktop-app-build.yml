@@ -1,0 +1,477 @@
+name: Desktop App Build & Package
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  # Run tests before building
+  test-electron:
+    name: Test Electron Components
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./electron
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run unit tests
+        run: npm test -- --testPathIgnorePatterns=property
+      
+      - name: Run property-based tests
+        run: npm test -- --testPathPattern=property
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test -- --run
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run unit tests
+        run: pytest tests/unit/ -v
+      
+      - name: Run property-based tests
+        run: pytest tests/property/ -v --hypothesis-profile=ci
+
+  # Build backend executable
+  build-backend:
+    name: Build Backend - ${{ matrix.os }}
+    needs: [test-electron, test-frontend, test-backend]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact-name: backend-windows
+            executable: backend.exe
+          - os: macos-latest
+            artifact-name: backend-macos
+            executable: backend
+          - os: ubuntu-latest
+            artifact-name: backend-linux
+            executable: backend
+    
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build backend with PyInstaller
+        run: pyinstaller backend.spec --clean
+      
+      - name: Verify build
+        shell: bash
+        run: |
+          if [ ! -f "dist/backend/${{ matrix.executable }}" ]; then
+            echo "Error: Backend executable not found"
+            exit 1
+          fi
+          echo "✓ Backend executable built successfully"
+          ls -lh dist/backend/${{ matrix.executable }}
+      
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: backend/dist/backend/
+          retention-days: 7
+
+  # Build frontend
+  build-frontend:
+    name: Build Frontend
+    needs: [test-electron, test-frontend, test-backend]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build frontend
+        run: npm run build
+      
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 7
+
+  # Package Electron app for each platform
+  package-windows:
+    name: Package Windows
+    needs: [build-backend, build-frontend]
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+      
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-windows
+          path: electron/backend/
+      
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: electron/renderer/
+      
+      - name: Install Electron dependencies
+        working-directory: ./electron
+        run: npm ci
+      
+      - name: Build Windows packages
+        working-directory: ./electron
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: List build outputs
+        working-directory: ./electron
+        run: dir dist
+      
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: electron/dist/*.exe
+          retention-days: 30
+      
+      - name: Upload Windows portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: electron/dist/*-portable.exe
+          retention-days: 30
+          if-no-files-found: ignore
+
+  package-macos:
+    name: Package macOS
+    needs: [build-backend, build-frontend]
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+      
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-macos
+          path: electron/backend/
+      
+      - name: Make backend executable
+        run: chmod +x electron/backend/backend
+      
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: electron/renderer/
+      
+      - name: Install Electron dependencies
+        working-directory: ./electron
+        run: npm ci
+      
+      - name: Build macOS packages
+        working-directory: ./electron
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: List build outputs
+        working-directory: ./electron
+        run: ls -lh dist/
+      
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: electron/dist/*.dmg
+          retention-days: 30
+
+  package-linux:
+    name: Package Linux
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+      
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-linux
+          path: electron/backend/
+      
+      - name: Make backend executable
+        run: chmod +x electron/backend/backend
+      
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: electron/renderer/
+      
+      - name: Install Electron dependencies
+        working-directory: ./electron
+        run: npm ci
+      
+      - name: Build Linux packages
+        working-directory: ./electron
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: List build outputs
+        working-directory: ./electron
+        run: ls -lh dist/
+      
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: electron/dist/*.AppImage
+          retention-days: 30
+      
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: electron/dist/*.deb
+          retention-days: 30
+      
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: electron/dist/*.rpm
+          retention-days: 30
+
+  # Create GitHub release on tags
+  release:
+    name: Create Release
+    needs: [package-windows, package-macos, package-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      
+      - name: Display structure of downloaded files
+        run: ls -R artifacts/
+      
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## FlashLearn Desktop v${{ steps.version.outputs.VERSION }}
+          
+          ### Downloads
+          
+          #### Windows
+          - **Installer**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64.exe`
+          - **Portable**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64-portable.exe`
+          
+          #### macOS
+          - **DMG**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64.dmg` (Intel)
+          - **DMG**: `FlashLearn-${{ steps.version.outputs.VERSION }}-arm64.dmg` (Apple Silicon)
+          
+          #### Linux
+          - **AppImage**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64.AppImage`
+          - **Debian**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64.deb`
+          - **RPM**: `FlashLearn-${{ steps.version.outputs.VERSION }}-x64.rpm`
+          
+          ### Installation
+          
+          **Windows**: Run the installer or use the portable version
+          **macOS**: Open the DMG and drag FlashLearn to Applications
+          **Linux**: Make the AppImage executable or install the deb/rpm package
+          
+          ### What's New
+          
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          
+          ### Requirements
+          
+          - Windows 10 or later
+          - macOS 12 (Monterey) or later
+          - Ubuntu 20.04 or equivalent Linux distribution
+          
+          ### First-Time Setup
+          
+          1. Launch FlashLearn
+          2. Configure your AI API keys in Settings
+          3. Start creating flashcards!
+          
+          EOF
+          cat release_notes.md
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: FlashLearn Desktop v${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          files: |
+            artifacts/windows-installer/*.exe
+            artifacts/windows-portable/*.exe
+            artifacts/macos-dmg/*.dmg
+            artifacts/linux-appimage/*.AppImage
+            artifacts/linux-deb/*.deb
+            artifacts/linux-rpm/*.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Notify release created
+        run: |
+          echo "✅ Release v${{ steps.version.outputs.VERSION }} created successfully!"
+          echo "View at: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.VERSION }}"
+
+  # Summary job
+  build-summary:
+    name: Build Summary
+    needs: [package-windows, package-macos, package-linux]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check build status
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows  | ${{ needs.package-windows.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS    | ${{ needs.package-macos.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux    | ${{ needs.package-linux.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.package-windows.result }}" != "success" ]] || \
+             [[ "${{ needs.package-macos.result }}" != "success" ]] || \
+             [[ "${{ needs.package-linux.result }}" != "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some builds failed. Check the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All platform builds completed successfully!" >> $GITHUB_STEP_SUMMARY

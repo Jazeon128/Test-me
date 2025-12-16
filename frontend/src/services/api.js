@@ -1,11 +1,160 @@
 import axios from 'axios'
 
+/**
+ * Initialize API client with dynamic backend URL
+ * In Electron, we get the backend port from the main process
+ * In web mode, we use the default /api path
+ */
+let baseURL = '/api'
+
+// Check if running in Electron and get backend port
+if (window.electronAPI) {
+  try {
+    const response = await window.electronAPI.getBackendPort()
+    if (response.success && response.data.baseURL) {
+      baseURL = response.data.baseURL
+    }
+  } catch (error) {
+    console.warn('Failed to get backend port from Electron, using default:', error)
+  }
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+/**
+ * API Error Handler
+ * Intercepts API errors and provides user-friendly error messages
+ * Implements Requirements 6.3: API error handling with suggested actions
+ */
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Extract error information
+    const status = error.response?.status
+    const message = error.response?.data?.detail || error.response?.data?.message || error.message
+    const url = error.config?.url
+
+    // Create user-friendly error object
+    const userError = {
+      originalError: error,
+      status,
+      message,
+      url,
+      userMessage: '',
+      suggestedActions: [],
+    }
+
+    // Provide user-friendly messages and suggested actions based on error type
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+      userError.userMessage = 'Unable to connect to the backend server. The server may not be running.'
+      userError.suggestedActions = [
+        'Check if the application is fully started',
+        'Try restarting the application',
+        'Check the application logs for backend errors',
+      ]
+    } else if (status === 400) {
+      userError.userMessage = 'Invalid request. Please check your input and try again.'
+      userError.suggestedActions = [
+        'Verify that all required fields are filled correctly',
+        'Check that file formats are supported',
+        'Ensure data is in the correct format',
+      ]
+    } else if (status === 401) {
+      userError.userMessage = 'Authentication failed. Please check your API key configuration.'
+      userError.suggestedActions = [
+        'Verify your API key is correct',
+        'Check that your API key has not expired',
+        'Try reconfiguring your API key in settings',
+      ]
+    } else if (status === 403) {
+      userError.userMessage = 'Access denied. You do not have permission to perform this action.'
+      userError.suggestedActions = [
+        'Check your API key permissions',
+        'Verify your account has the necessary access',
+        'Contact support if you believe this is an error',
+      ]
+    } else if (status === 404) {
+      userError.userMessage = 'The requested resource was not found.'
+      userError.suggestedActions = [
+        'Verify the resource exists',
+        'Try refreshing the page',
+        'Check if the resource was deleted',
+      ]
+    } else if (status === 429) {
+      userError.userMessage = 'Too many requests. Please slow down and try again later.'
+      userError.suggestedActions = [
+        'Wait a few minutes before trying again',
+        'Check your API rate limits',
+        'Consider upgrading your API plan if needed',
+      ]
+    } else if (status === 500) {
+      userError.userMessage = 'An internal server error occurred. This is not your fault.'
+      userError.suggestedActions = [
+        'Try again in a few moments',
+        'Check the application logs for details',
+        'Report this issue if it persists',
+      ]
+    } else if (status === 503) {
+      userError.userMessage = 'The service is temporarily unavailable. Please try again later.'
+      userError.suggestedActions = [
+        'Wait a few minutes and try again',
+        'Check if the AI service is experiencing issues',
+        'Try using a different AI provider',
+      ]
+    } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      userError.userMessage = 'The request timed out. The operation took too long to complete.'
+      userError.suggestedActions = [
+        'Try again with a smaller file or fewer questions',
+        'Check your internet connection',
+        'Increase the timeout in settings if available',
+      ]
+    } else {
+      userError.userMessage = message || 'An unexpected error occurred. Please try again.'
+      userError.suggestedActions = [
+        'Try the operation again',
+        'Check the application logs for more details',
+        'Report this issue if it continues to occur',
+      ]
+    }
+
+    // Log error for debugging
+    console.error('API Error:', {
+      status,
+      message,
+      url,
+      userMessage: userError.userMessage,
+    })
+
+    // Reject with enhanced error
+    return Promise.reject(userError)
+  }
+)
+
+/**
+ * Update the API base URL dynamically
+ * This is useful when the backend port changes
+ */
+export const updateBaseURL = async () => {
+  if (window.electronAPI) {
+    try {
+      const response = await window.electronAPI.getBackendPort()
+      if (response.success && response.data.baseURL) {
+        api.defaults.baseURL = response.data.baseURL
+        return response.data.baseURL
+      }
+    } catch (error) {
+      console.error('Failed to update backend URL:', error)
+    }
+  }
+  return api.defaults.baseURL
+}
 
 // Documents API
 export const documentsAPI = {

@@ -155,13 +155,13 @@ export default function DeckDetails() {
                     Back to Decks
                 </button>
 
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">{deck.name}</h1>
                         <p className="mt-2 text-gray-600">{deck.description}</p>
                         <p className="mt-1 text-sm text-gray-500">{deck.num_questions} questions</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 w-full md:w-auto">
                         <button
                             onClick={() => navigate(`/decks/${deckId}/practice`)}
                             className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center gap-2"

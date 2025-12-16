@@ -1,0 +1,79 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+
+  # Python: Black formatter
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.9
+        files: ^backend/
+        exclude: ^backend/(venv|\.venv|migrations)/
+
+  # Python: isort import sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^backend/
+        exclude: ^backend/(venv|\.venv|migrations)/
+        args: ["--profile", "black"]
+
+  # Python: Flake8 linting
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        files: ^backend/
+        exclude: ^backend/(venv|\.venv|migrations)/
+        args: ["--config=backend/.flake8"]
+
+  # Python: mypy type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        files: ^backend/
+        exclude: ^backend/(venv|\.venv|tests|migrations)/
+        additional_dependencies:
+          - pydantic>=2.5.0
+          - sqlalchemy>=2.0.0
+          - types-requests
+        args: ["--config-file=backend/pyproject.toml"]
+
+  # JavaScript/React: ESLint
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: ^frontend/src/.*\.(js|jsx)$
+        types: [file]
+        args: ["--config=frontend/.eslintrc.cjs", "--fix"]
+        additional_dependencies:
+          - eslint@8.55.0
+          - eslint-plugin-react@7.33.2
+          - eslint-plugin-react-hooks@4.6.0
+          - eslint-plugin-react-refresh@0.4.5
+
+  # JavaScript/React: Prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: ^frontend/.*\.(js|jsx|json|css|md)$
+        args: ["--config=frontend/.prettierrc"]

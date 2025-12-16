@@ -1,0 +1,88 @@
+# Docker Compose configuration for monitoring stack
+# This file adds Prometheus and Grafana to the Test Me platform
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f backend/monitoring/docker-compose.monitoring.yml up -d
+#
+# Or merge this into your main docker-compose.yml file
+
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: testme-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./backend/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./backend/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - testme-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: testme-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./backend/monitoring/grafana-provisioning:/etc/grafana/provisioning:ro
+    environment:
+      # Security
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:-changeme}
+      
+      # Users
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_DEFAULT_THEME=dark
+      
+      # Anonymous access (disable in production)
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      
+      # Server
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SERVER_DOMAIN=localhost
+      
+      # Logging
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=info
+    networks:
+      - testme-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  testme-network:
+    external: true
+    # If the network doesn't exist, create it with:
+    # docker network create testme-network

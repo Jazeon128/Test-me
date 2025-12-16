@@ -1,0 +1,57 @@
+# Prometheus Configuration for Test Me Platform
+# This file configures Prometheus to scrape metrics from the FastAPI backend
+
+global:
+  scrape_interval: 15s      # How frequently to scrape targets
+  evaluation_interval: 15s  # How frequently to evaluate rules
+  
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    monitor: 'testme-monitor'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - 'alertmanager:9093'
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Test Me Backend API
+  - job_name: 'testme-backend'
+    
+    # Override the global default and scrape targets from this job every 5 seconds.
+    scrape_interval: 5s
+    scrape_timeout: 5s
+    
+    # Metrics path defaults to '/metrics'
+    metrics_path: '/metrics'
+    
+    # Scheme defaults to 'http'.
+    scheme: http
+    
+    static_configs:
+      - targets: ['backend:8000']
+        labels:
+          service: 'testme-api'
+          component: 'backend'
+    
+    # Optional: Add basic auth if metrics endpoint is protected
+    # basic_auth:
+    #   username: 'prometheus'
+    #   password: 'your-secure-password'
+  
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'

@@ -346,7 +346,7 @@ class TestHTMLParser:
     <script>alert('test');</script>
 </head>
 <body>
-    <p>Actual content here</p>
+    <p>Actual content here that is long enough to be parsed by the HTML parser.</p>
 </body>
 </html>"""
         file_path = tmp_path / "with_scripts.html"
@@ -357,7 +357,8 @@ class TestHTMLParser:
 
         # Should have content but not scripts/styles
         assert "Actual content" in result.full_text
-        # Depending on parser implementation, scripts might be filtered
+        assert "alert" not in result.full_text
+        assert "color: red" not in result.full_text
 
 
 @pytest.mark.unit

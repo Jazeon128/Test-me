@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
-import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter } from 'lucide-react'
+import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network } from 'lucide-react'
 import TagManager, { TagBadge } from '../components/TagManager'
 
 export default function DeckDetails() {
@@ -178,6 +178,26 @@ export default function DeckDetails() {
                         </button>
                     </div>
                 </div>
+
+                {deck.documents?.length > 0 && (
+                    <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Explain a source on a canvas
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {deck.documents.map((document) => (
+                                <button
+                                    key={document.id}
+                                    onClick={() => navigate(`/canvas?document=${document.id}`)}
+                                    className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:text-gray-300"
+                                >
+                                    <Network size={16} />
+                                    {document.title || document.filename}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Questions List */}

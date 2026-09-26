@@ -32,6 +32,7 @@ export default function TemplatePicker({ reason, candidates, onPick, busy }) {
               type="button"
               disabled={busy}
               onClick={() => onPick(candidate.id)}
+              aria-label={`Draw this as a ${candidate.title.toLowerCase()}`}
               className="flex flex-col gap-2 rounded-lg border p-4 text-left transition disabled:opacity-50"
               style={{
                 background: 'var(--chrome)',

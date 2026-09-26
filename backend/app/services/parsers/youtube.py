@@ -3,6 +3,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from typing import Optional
 from .base_parser import BaseParser, ParsedDocument, ParsedSection
 
+
 class YouTubeParser(BaseParser):
     @staticmethod
     def extract_video_id(url: str) -> Optional[str]:
@@ -28,7 +29,7 @@ class YouTubeParser(BaseParser):
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)  # type: ignore[attr-defined]
             # Combine all text parts into one string
-            full_text = " ".join([item['text'] for item in transcript_list])
+            full_text = " ".join([item["text"] for item in transcript_list])
             return full_text
         except Exception as e:
             raise Exception(f"Failed to fetch transcript: {str(e)}")
@@ -40,15 +41,11 @@ class YouTubeParser(BaseParser):
         video_id = self.extract_video_id(url)
         if not video_id:
             raise ValueError("Invalid YouTube URL")
-        
+
         content = self.get_transcript(video_id)
-        
+
         return ParsedDocument(
             full_text=content,
             sections=[ParsedSection(text=content)],
-            metadata={
-                'source': url,
-                'video_id': video_id,
-                'type': 'youtube'
-            }
+            metadata={"source": url, "video_id": video_id, "type": "youtube"},
         )

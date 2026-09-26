@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decksAPI, testsAPI } from '../services/api'
-import { BookOpen, Trash2, Download, Play, Edit2, Plus, FileText, X, Upload } from 'lucide-react'
+import { BookOpen, Trash2, Download, Plus, FileText, X, Upload } from 'lucide-react'
 
 export default function Decks() {
   const navigate = useNavigate()

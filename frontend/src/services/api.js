@@ -5,25 +5,31 @@ import axios from 'axios'
  * In Electron, we get the backend port from the main process
  * In web mode, we use the default /api path
  */
-let baseURL = '/api'
-
-// Check if running in Electron and get backend port
-if (window.electronAPI) {
-  try {
-    const response = await window.electronAPI.getBackendPort()
-    if (response.success && response.data.baseURL) {
-      baseURL = response.data.baseURL
-    }
-  } catch (error) {
-    console.warn('Failed to get backend port from Electron, using default:', error)
-  }
-}
+const DEFAULT_BASE_URL = '/api'
 
 const api = axios.create({
-  baseURL,
+  baseURL: DEFAULT_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+/**
+ * Resolve the Electron backend URL once, on the first request.
+ * Resolving at module scope would need a top-level await, which esbuild cannot
+ * transpile for the browser targets this app builds against.
+ */
+let baseURLReady = null
+
+const ensureBaseURL = () => {
+  if (!window.electronAPI) return Promise.resolve(api.defaults.baseURL)
+  if (!baseURLReady) baseURLReady = updateBaseURL()
+  return baseURLReady
+}
+
+api.interceptors.request.use(async (config) => {
+  await ensureBaseURL()
+  return config
 })
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Server, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
 import axios from 'axios'
 import { useTheme } from '../context/ThemeContext'
@@ -37,14 +37,23 @@ export default function Settings() {
     }
   }, [provider, availableModels, model, isCustomModel])
 
-  // Detect if loaded model is custom (Requirement 1.5)
+  // Detect a custom model once, when the saved config and the model list have
+  // both arrived (Requirement 1.5).
+  //
+  // This must not re-run on every model change. Doing so fought the user: the
+  // moment they clicked "Use Custom" while a predefined model was selected, the
+  // detection saw a known model id and switched custom mode straight back off,
+  // so the toggle never held.
+  const customModeInitialized = useRef(false)
+
   useEffect(() => {
-    if (model && availableModels.length > 0) {
-      const isCustom = !availableModels.some(m => m.id === model)
-      setIsCustomModel(isCustom)
-      // Custom models are valid if non-empty, predefined are always valid
-      setIsModelValid(model.trim() !== '')
-    }
+    if (customModeInitialized.current) return
+    if (!model || availableModels.length === 0) return
+
+    customModeInitialized.current = true
+    setIsCustomModel(!availableModels.some((m) => m.id === model))
+    // Custom models are valid if non-empty, predefined are always valid
+    setIsModelValid(model.trim() !== '')
   }, [model, availableModels])
 
   const loadModels = async () => {
@@ -179,6 +188,10 @@ export default function Settings() {
 
   // Handle toggle between custom and predefined modes
   const handleToggleCustom = () => {
+    // An explicit choice ends detection. The model list can still be in flight
+    // when the user toggles, and without this the detection effect would fire
+    // afterwards and overwrite what they just picked.
+    customModeInitialized.current = true
     setIsCustomModel(!isCustomModel)
   }
 

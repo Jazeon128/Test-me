@@ -12,13 +12,25 @@ from ..models.document import Document, DocumentType
 from ..models.question import Question, QuestionOption
 from ..models.test import Test
 from ..models.generation_status import GenerationStatus
-from ..services.parsers import PDFParser, HTMLParser, MarkdownParser, DOCXParser, YouTubeParser, PowerPointParser
+from ..services.parsers import (
+    PDFParser,
+    HTMLParser,
+    MarkdownParser,
+    DOCXParser,
+    YouTubeParser,
+    PowerPointParser,
+)
 from ..services.ai import QuestionGenerator
 from ..config import settings
 from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
 from ..utils.progress import calculate_generation_progress
-from ..exceptions import FileUploadError, ResourceNotFoundError, AIServiceError, QuestionGenerationError
+from ..exceptions import (
+    FileUploadError,
+    ResourceNotFoundError,
+    AIServiceError,
+    QuestionGenerationError,
+)
 
 logger = get_logger(__name__)
 
@@ -36,7 +48,7 @@ async def upload_document(
     regenerate: bool = Form(False),
     custom_prompt: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Upload one or more documents and generate questions
@@ -65,7 +77,7 @@ async def upload_document(
 
     # Get or create deck
     deck = None
-    if deck_id and deck_id != 'new':
+    if deck_id and deck_id != "new":
         # Use existing deck
         try:
             deck_id_int = int(deck_id)
@@ -73,7 +85,7 @@ async def upload_document(
             if not deck:
                 raise HTTPException(status_code=404, detail="Deck not found")
         except ValueError:
-             raise HTTPException(status_code=400, detail="Invalid deck_id format")
+            raise HTTPException(status_code=400, detail="Invalid deck_id format")
     else:
         # Create new deck with meaningful name based on uploaded files
         if not deck_name:
@@ -107,7 +119,7 @@ async def upload_document(
                 filename=file.filename,
                 error_code=e.code,
                 error_message=e.message,
-                details=e.details
+                details=e.details,
             )
             # Re-raise to return error to client
             raise
@@ -137,13 +149,14 @@ async def upload_document(
         db.commit()
         db.refresh(document)
 
-        uploaded_documents.append({
-            "id": document.id,
-            "filename": file.filename,
-            "file_path": file_path,
-            "file_type": type_mapping[file_ext]
-        })
-
+        uploaded_documents.append(
+            {
+                "id": document.id,
+                "filename": file.filename,
+                "file_path": file_path,
+                "file_type": type_mapping[file_ext],
+            }
+        )
 
     # Create generation status record
     job_id = str(uuid.uuid4())
@@ -153,7 +166,7 @@ async def upload_document(
         status="pending",
         total_documents=len(uploaded_documents),
         total_questions_requested=num_questions * len(uploaded_documents),
-        logs=[]
+        logs=[],
     )
     gen_status.add_log("Generation job created")
     gen_status.add_log(f"Uploaded {len(uploaded_documents)} document(s)")
@@ -162,15 +175,10 @@ async def upload_document(
     db.refresh(gen_status)
 
     # Handle regeneration mode
-    if regenerate and deck_id and deck_id != 'new':
+    if regenerate and deck_id and deck_id != "new":
         # Regenerate all questions from all documents in the deck
         background_tasks.add_task(
-            regenerate_deck_questions,
-            deck.id,
-            num_questions,
-            difficulty,
-            custom_prompt,
-            job_id
+            regenerate_deck_questions, deck.id, num_questions, difficulty, custom_prompt, job_id
         )
         message = f"{len(uploaded_documents)} document(s) uploaded. Regenerating all questions in deck using combined material."
     else:
@@ -185,7 +193,7 @@ async def upload_document(
                 difficulty,
                 deck.id,
                 custom_prompt,
-                job_id
+                job_id,
             )
         message = f"{len(uploaded_documents)} document(s) uploaded. Questions are being generated."
 
@@ -196,7 +204,7 @@ async def upload_document(
         "documents": [{"id": d["id"], "filename": d["filename"]} for d in uploaded_documents],
         "status": "processing",
         "regenerate": regenerate,
-        "message": message
+        "message": message,
     }
 
 
@@ -208,7 +216,7 @@ def process_document(
     difficulty: str,
     deck_id: int = None,
     custom_prompt: str = None,
-    job_id: str = None
+    job_id: str = None,
 ):
     """Background task to parse document and generate questions"""
     from ..db import SessionLocal
@@ -228,7 +236,7 @@ def process_document(
             gen_status.current_step = "Parsing document"
             gen_status.add_log(f"Started processing document {document_id}")
             db.commit()
-    
+
     # Define progress callback function for question generation
     def progress_callback(current: int, total: int):
         """Update generation status with current question progress"""
@@ -247,7 +255,7 @@ def process_document(
                     "progress_callback_error",
                     error_message=str(e),
                     current_question=current,
-                    total_questions=total
+                    total_questions=total,
                 )
 
     try:
@@ -258,7 +266,7 @@ def process_document(
             file_type=file_type.value,
             num_questions=num_questions,
             difficulty=difficulty,
-            job_id=job_id
+            job_id=job_id,
         )
         if gen_status:
             gen_status.add_log(f"Processing document: {os.path.basename(file_path)}")
@@ -282,7 +290,7 @@ def process_document(
             document_id=document_id,
             text_length=len(parsed_doc.full_text),
             num_sections=len(parsed_doc.sections),
-            title=parsed_doc.title
+            title=parsed_doc.title,
         )
         if gen_status:
             gen_status.progress = 20
@@ -303,7 +311,7 @@ def process_document(
             "question_generation_starting",
             document_id=document_id,
             num_questions=num_questions,
-            difficulty=difficulty
+            difficulty=difficulty,
         )
         if gen_status:
             gen_status.progress = 20
@@ -323,7 +331,7 @@ def process_document(
                 num_questions=num_questions,
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
             )
 
             # Capture the logs
@@ -332,7 +340,7 @@ def process_document(
 
             # Add captured logs to status
             if gen_status and captured_logs:
-                for log_line in captured_logs.strip().split('\n'):
+                for log_line in captured_logs.strip().split("\n"):
                     if log_line.strip():
                         gen_status.add_log(log_line.strip())
                 db.commit()
@@ -344,23 +352,24 @@ def process_document(
                 document_id=document_id,
                 error_type=type(e).__name__,
                 error_message=str(e),
-                exc_info=True
+                exc_info=True,
             )
             if gen_status:
                 gen_status.status = "failed"
                 gen_status.error_message = str(e)
                 gen_status.add_log(f"Error: {str(e)}", level="error")
                 if isinstance(e, AIServiceError):
-                    gen_status.add_log("Please configure your AI API key in Settings page or .env file", level="error")
+                    gen_status.add_log(
+                        "Please configure your AI API key in Settings page or .env file",
+                        level="error",
+                    )
                 db.commit()
             return
         finally:
             sys.stdout = old_stdout
 
         logger.info(
-            "questions_generated",
-            document_id=document_id,
-            num_questions=len(questions_data)
+            "questions_generated", document_id=document_id, num_questions=len(questions_data)
         )
         if gen_status:
             gen_status.progress = 90
@@ -389,10 +398,9 @@ def process_document(
             # Add to deck if specified
             if deck:
                 from ..models.deck import DeckQuestion
+
                 deck_question = DeckQuestion(
-                    deck_id=deck.id,
-                    question_id=question.id,
-                    order=len(deck.deck_questions)
+                    deck_id=deck.id, question_id=question.id, order=len(deck.deck_questions)
                 )
                 deck.deck_questions.append(deck_question)
 
@@ -411,7 +419,7 @@ def process_document(
             "questions_saved",
             document_id=document_id,
             num_questions=len(questions_data),
-            deck_id=deck_id
+            deck_id=deck_id,
         )
 
         if gen_status:
@@ -430,7 +438,7 @@ def process_document(
             error_type=type(e).__name__,
             error_message=str(e),
             stack_trace=traceback.format_exc(),
-            exc_info=True
+            exc_info=True,
         )
         if gen_status:
             gen_status.status = "failed"
@@ -505,7 +513,7 @@ def regenerate_deck_questions(
     num_questions_per_doc: int,
     difficulty: str,
     custom_prompt: str = None,
-    job_id: str = None
+    job_id: str = None,
 ):
     """Regenerate all questions in a deck from all its documents"""
     from ..db import SessionLocal
@@ -552,9 +560,13 @@ def regenerate_deck_questions(
             parser = parser_map[doc.file_type]
             parsed_doc = parser.parse(doc.file_path)
             all_parsed_docs.append(parsed_doc)
-            combined_text += f"\n\n=== {doc.title or doc.original_filename} ===\n\n{parsed_doc.full_text}"
+            combined_text += (
+                f"\n\n=== {doc.title or doc.original_filename} ===\n\n{parsed_doc.full_text}"
+            )
 
-        logger.info(f"Combined {len(all_parsed_docs)} documents, total {len(combined_text)} characters")
+        logger.info(
+            f"Combined {len(all_parsed_docs)} documents, total {len(combined_text)} characters"
+        )
 
         # Analyze existing question styles if available (from database history)
         example_questions = []
@@ -569,6 +581,7 @@ def regenerate_deck_questions(
 
             # Create a combined parsed document
             from ..services.parsers.base_parser import ParsedDocument
+
             all_sections = []
             for parsed in all_parsed_docs:
                 all_sections.extend(parsed.sections)
@@ -577,7 +590,7 @@ def regenerate_deck_questions(
                 full_text=combined_text,
                 sections=all_sections,
                 title=deck.name,
-                metadata={"regenerated": True, "source_docs": len(documents)}
+                metadata={"regenerated": True, "source_docs": len(documents)},
             )
 
             questions_data = generator.generate_questions(
@@ -585,7 +598,7 @@ def regenerate_deck_questions(
                 num_questions=total_questions,
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
-                example_questions=example_questions
+                example_questions=example_questions,
             )
 
         except ValueError as e:
@@ -609,10 +622,9 @@ def regenerate_deck_questions(
 
             # Add to deck
             from ..models.deck import DeckQuestion
+
             deck_question = DeckQuestion(
-                deck_id=deck.id,
-                question_id=question.id,
-                order=len(deck.deck_questions)
+                deck_id=deck.id, question_id=question.id, order=len(deck.deck_questions)
             )
             deck.deck_questions.append(deck_question)
 
@@ -627,7 +639,9 @@ def regenerate_deck_questions(
                 db.add(option)
 
         db.commit()
-        logger.info(f"✅ Successfully regenerated deck {deck_id} with {len(questions_data)} questions")
+        logger.info(
+            f"✅ Successfully regenerated deck {deck_id} with {len(questions_data)} questions"
+        )
 
     except Exception as e:
         logger.error(f"❌ Error regenerating deck {deck_id}: {e}")

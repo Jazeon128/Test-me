@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { progressAPI } from '../services/api'
-import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, ArrowRight } from 'lucide-react'
+import { Clock, CheckCircle, XCircle, Flame, Trophy, Target } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function TestSession() {

@@ -11,15 +11,15 @@ class CSVExporter:
 
     # CSV Headers for simplified format
     HEADERS = [
-        'Question',
-        'OptionA',
-        'OptionB',
-        'OptionC',
-        'OptionD',
-        'CorrectAnswer',
-        'Explanation',
-        'Source',
-        'Difficulty'
+        "Question",
+        "OptionA",
+        "OptionB",
+        "OptionC",
+        "OptionD",
+        "CorrectAnswer",
+        "Explanation",
+        "Source",
+        "Difficulty",
     ]
 
     def export_test(self, db: Session, test: Test, output_path: str) -> str:
@@ -34,7 +34,7 @@ class CSVExporter:
         Returns:
             Path to the created CSV file
         """
-        with open(output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        with open(output_path, "w", newline="", encoding="utf-8-sig") as csvfile:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
 
             # Write header row
@@ -58,7 +58,7 @@ class CSVExporter:
         Returns:
             Path to the created CSV file
         """
-        with open(output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        with open(output_path, "w", newline="", encoding="utf-8-sig") as csvfile:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
 
             # Write header row
@@ -108,10 +108,10 @@ class CSVExporter:
         options = sorted(question.options, key=lambda x: x.order)
 
         # Extract option texts (pad if less than 4 options)
-        option_texts = [opt.option_text for opt in options] + [''] * (4 - len(options))
+        option_texts = [opt.option_text for opt in options] + [""] * (4 - len(options))
 
         # Find correct answer letter (A, B, C, or D)
-        correct_answer = ''
+        correct_answer = ""
         for opt in options:
             if opt.is_correct:
                 correct_answer = chr(65 + opt.order)  # Convert 0->A, 1->B, etc.
@@ -127,10 +127,10 @@ class CSVExporter:
             option_texts[1],
             option_texts[2],
             option_texts[3],
-            correct_answer or 'A',  # Default to A if no correct answer found
-            question.explanation or 'No explanation provided.',
+            correct_answer or "A",  # Default to A if no correct answer found
+            question.explanation or "No explanation provided.",
             source,
-            question.difficulty or 'medium'
+            question.difficulty or "medium",
         ]
 
         return row
@@ -146,21 +146,21 @@ class CSVExporter:
             Formatted reference string
         """
         if not source_reference:
-            return ''
+            return ""
 
         parts = []
 
-        if source_reference.get('page'):
+        if source_reference.get("page"):
             parts.append(f"Page {source_reference['page']}")
 
-        if source_reference.get('section'):
+        if source_reference.get("section"):
             parts.append(f"Section: {source_reference['section']}")
 
-        if source_reference.get('text'):
-            text = source_reference['text']
+        if source_reference.get("text"):
+            text = source_reference["text"]
             # Truncate long text to 100 characters
             if len(text) > 100:
                 text = text[:100] + "..."
             parts.append(f'"{text}"')
 
-        return ', '.join(parts)
+        return ", ".join(parts)

@@ -8,13 +8,13 @@ ensuring all logs are structured, consistent, and easily parseable.
 import logging
 import sys
 import structlog
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 def configure_logging(log_level: str = "INFO") -> None:
     """
     Configure structured logging for the application
-    
+
     Args:
         log_level: The logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
@@ -24,7 +24,7 @@ def configure_logging(log_level: str = "INFO") -> None:
         stream=sys.stdout,
         level=getattr(logging, log_level.upper()),
     )
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -39,7 +39,8 @@ def configure_logging(log_level: str = "INFO") -> None:
             # Decode unicode
             structlog.processors.UnicodeDecoder(),
             # Render as JSON for production, console for development
-            structlog.processors.JSONRenderer() if log_level.upper() != "DEBUG"
+            structlog.processors.JSONRenderer()
+            if log_level.upper() != "DEBUG"
             else structlog.dev.ConsoleRenderer(),  # type: ignore[list-item]
         ],
         context_class=dict,
@@ -51,10 +52,10 @@ def configure_logging(log_level: str = "INFO") -> None:
 def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
     """
     Get a structured logger instance
-    
+
     Args:
         name: Optional logger name (typically __name__ of the module)
-        
+
     Returns:
         A configured structlog logger
     """
@@ -66,9 +67,9 @@ def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
 def bind_context(**kwargs: Any) -> None:
     """
     Bind context variables to the current logger
-    
+
     This adds persistent context that will be included in all subsequent log entries
-    
+
     Args:
         **kwargs: Key-value pairs to add to logging context
     """
@@ -78,7 +79,7 @@ def bind_context(**kwargs: Any) -> None:
 def unbind_context(*keys: str) -> None:
     """
     Remove context variables from the current logger
-    
+
     Args:
         *keys: Keys to remove from logging context
     """
@@ -93,33 +94,33 @@ def clear_context() -> None:
 class LoggerAdapter:
     """
     Adapter to provide a consistent logging interface
-    
+
     This allows gradual migration from standard logging to structlog
     """
-    
+
     def __init__(self, logger: structlog.BoundLogger):
         self.logger = logger
-    
+
     def debug(self, message: str, **kwargs: Any) -> None:
         """Log a debug message"""
         self.logger.debug(message, **kwargs)
-    
+
     def info(self, message: str, **kwargs: Any) -> None:
         """Log an info message"""
         self.logger.info(message, **kwargs)
-    
+
     def warning(self, message: str, **kwargs: Any) -> None:
         """Log a warning message"""
         self.logger.warning(message, **kwargs)
-    
+
     def error(self, message: str, **kwargs: Any) -> None:
         """Log an error message"""
         self.logger.error(message, **kwargs)
-    
+
     def critical(self, message: str, **kwargs: Any) -> None:
         """Log a critical message"""
         self.logger.critical(message, **kwargs)
-    
+
     def exception(self, message: str, **kwargs: Any) -> None:
         """Log an exception with stack trace"""
         self.logger.exception(message, **kwargs)

@@ -21,7 +21,7 @@ class GenerationStatus(Base):
     total_documents = Column(Integer, default=0)
     total_questions_requested = Column(Integer, default=0)
     total_questions_generated = Column(Integer, default=0)
-    
+
     # Progress tracking fields
     current_question = Column(Integer, default=0)
     total_questions = Column(Integer, default=0)
@@ -34,13 +34,14 @@ class GenerationStatus(Base):
     def add_log(self, message: str, level: str = "info") -> None:
         """Add a log message with timestamp"""
         import datetime
+
         if self.logs is None:
             self.logs = []
 
         log_entry = {
             "timestamp": datetime.datetime.now().isoformat(),
             "level": level,
-            "message": message
+            "message": message,
         }
         self.logs.append(log_entry)
 

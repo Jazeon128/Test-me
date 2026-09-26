@@ -37,7 +37,7 @@ class StartTestSessionRequest(BaseModel):
 async def create_test(request: CreateTestRequest, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use POST /api/decks/ instead
-    
+
     Create a new test from selected questions
     """
     # Validate questions exist
@@ -70,7 +70,7 @@ async def create_test(request: CreateTestRequest, db: Session = Depends(get_db))
 async def get_test(test_id: int, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use GET /api/decks/{deck_id} instead
-    
+
     Get test details
     """
     test = db.query(Test).filter(Test.id == test_id).first()
@@ -99,7 +99,7 @@ async def get_test(test_id: int, db: Session = Depends(get_db)):
 async def list_tests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use GET /api/decks/ instead
-    
+
     List all tests
     """
     tests = db.query(Test).offset(skip).limit(limit).all()
@@ -120,7 +120,7 @@ async def list_tests(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 async def delete_test(test_id: int, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use DELETE /api/decks/{deck_id} instead
-    
+
     Delete a test
     """
     test = db.query(Test).filter(Test.id == test_id).first()
@@ -138,7 +138,7 @@ async def delete_test(test_id: int, db: Session = Depends(get_db)):
 async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use GET /api/decks/{deck_id}/export/anki instead
-    
+
     Export test to Anki .apkg format
     """
     test = db.query(Test).filter(Test.id == test_id).first()
@@ -150,7 +150,7 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Test has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='wb', suffix='.apkg', delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".apkg", delete=False) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -159,7 +159,7 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, test, output_path)
 
         # Read file content
-        with open(output_path, 'rb') as f:
+        with open(output_path, "rb") as f:
             content = f.read()
 
         # Clean up temp file
@@ -170,7 +170,7 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
@@ -184,7 +184,7 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
 async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use GET /api/decks/{deck_id}/export/csv instead
-    
+
     Export test to CSV format compatible with Anki import
     """
     test = db.query(Test).filter(Test.id == test_id).first()
@@ -196,7 +196,9 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Test has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8-sig"
+    ) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -205,7 +207,7 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, test, output_path)
 
         # Read file content
-        with open(output_path, 'r', encoding='utf-8-sig') as f:
+        with open(output_path, "r", encoding="utf-8-sig") as f:
             content = f.read()
 
         # Clean up temp file
@@ -214,9 +216,9 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
         # Return file
         filename = f"{test.name.replace(' ', '_')}.csv"
         return Response(
-            content=content.encode('utf-8-sig'),
+            content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
@@ -230,7 +232,7 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
 async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
     """
     DEPRECATED: Use GET /api/decks/{deck_id}/export/anki-csv instead
-    
+
     Export test to Anki All-In-One CSV format
     """
     test = db.query(Test).filter(Test.id == test_id).first()
@@ -242,7 +244,9 @@ async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Test has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8-sig"
+    ) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -251,7 +255,7 @@ async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, test, output_path)
 
         # Read file content
-        with open(output_path, 'r', encoding='utf-8-sig') as f:
+        with open(output_path, "r", encoding="utf-8-sig") as f:
             content = f.read()
 
         # Clean up temp file
@@ -260,9 +264,9 @@ async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
         # Return file
         filename = f"{test.name.replace(' ', '_')}_AllInOne.csv"
         return Response(
-            content=content.encode('utf-8-sig'),
+            content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
@@ -274,13 +278,11 @@ async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{test_id}/start")
 async def start_test_session(
-    test_id: int,
-    time_limit_seconds: int = 30,
-    db: Session = Depends(get_db)
+    test_id: int, time_limit_seconds: int = 30, db: Session = Depends(get_db)
 ):
     """
     DEPRECATED: This endpoint is deprecated
-    
+
     Start a test session - returns questions in order without answers
 
     Args:

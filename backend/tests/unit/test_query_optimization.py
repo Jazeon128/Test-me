@@ -6,20 +6,37 @@ N+1 query patterns have been eliminated.
 """
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
+from app.models.base import Base
 from app.models.user_progress import UserProgress
 from app.models.question import Question
-from app.db import engine
+
+
+@pytest.fixture(scope="module")
+def inspector():
+    """Inspect a schema built the way the application builds it.
+
+    init_db() calls create_all(), so this asserts the indexes reach a fresh
+    database. Inspecting the developer's own test_me.db instead would depend on
+    a gitignored file that does not exist in a clean clone or in CI.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    return inspect(engine)
 
 
 class TestCompositeIndexes:
     """Test that composite indexes are created correctly."""
-    
-    def test_user_progress_composite_index_exists(self):
+
+    def test_user_progress_composite_index_exists(self, inspector):
         """Verify composite index on user_progress (question_id, next_review_date)."""
-        inspector = inspect(engine)
         indexes = inspector.get_indexes('user_progress')
         
         # Find the composite index
@@ -33,9 +50,8 @@ class TestCompositeIndexes:
         assert composite_index['column_names'] == ['question_id', 'next_review_date']
         assert composite_index['unique'] == 0  # Not unique
     
-    def test_questions_composite_index_exists(self):
+    def test_questions_composite_index_exists(self, inspector):
         """Verify composite index on questions (document_id, difficulty)."""
-        inspector = inspect(engine)
         indexes = inspector.get_indexes('questions')
         
         # Find the composite index
@@ -49,9 +65,8 @@ class TestCompositeIndexes:
         assert composite_index['column_names'] == ['document_id', 'difficulty']
         assert composite_index['unique'] == 0  # Not unique
     
-    def test_tags_index_exists(self):
+    def test_tags_index_exists(self, inspector):
         """Verify index on tags.name exists."""
-        inspector = inspect(engine)
         indexes = inspector.get_indexes('tags')
         
         # Find the name index

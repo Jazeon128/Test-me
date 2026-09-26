@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
-import { Upload as UploadIcon, FileText, CheckCircle, AlertCircle, Plus, Loader2, Book, FileType, Youtube } from 'lucide-react'
+import { Upload as UploadIcon, CheckCircle, AlertCircle, Loader2, Book, FileType, Youtube } from 'lucide-react'
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -23,7 +23,7 @@ export default function Upload() {
 
   // Generation status tracking
   const [generating, setGenerating] = useState(false)
-  const [jobId, setJobId] = useState(null)
+  const [, setJobId] = useState(null)
   const [generationStatus, setGenerationStatus] = useState(null)
   const [generationLogs, setGenerationLogs] = useState([])
   const [statusCheckInterval, setStatusCheckInterval] = useState(null)

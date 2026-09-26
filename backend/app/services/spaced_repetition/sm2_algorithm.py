@@ -6,6 +6,7 @@ from enum import Enum
 
 class ReviewResult(Enum):
     """Quality of answer recall (0-5 scale)"""
+
     COMPLETE_BLACKOUT = 0  # Complete failure to recall
     INCORRECT_HARD = 1  # Incorrect, but remembered on seeing answer
     INCORRECT_EASY = 2  # Incorrect, but seemed easy on seeing answer
@@ -17,6 +18,7 @@ class ReviewResult(Enum):
 @dataclass
 class ReviewData:
     """Data for a single review session"""
+
     quality: ReviewResult
     time_taken_seconds: float
     timestamp: Optional[datetime] = None
@@ -29,11 +31,11 @@ class ReviewData:
 class SM2Algorithm:
     """
     SuperMemo 2 (SM-2) Spaced Repetition Algorithm
-    
+
     This is the algorithm used by Anki and other spaced repetition systems for scheduling
     card reviews. The algorithm optimizes learning by scheduling reviews at increasing
     intervals based on how well the learner recalls the information.
-    
+
     Core Concepts:
     --------------
     - **Easiness Factor (EF)**: A multiplier (1.3 to 2.5+) that represents how "easy" a card is.
@@ -41,7 +43,7 @@ class SM2Algorithm:
     - **Interval**: Number of days until the next review.
     - **Repetitions**: Count of consecutive correct answers.
     - **Quality**: Rating of recall quality (0-5 scale).
-    
+
     Algorithm Flow:
     ---------------
     1. After each review, calculate a new EF based on the quality rating
@@ -50,21 +52,21 @@ class SM2Algorithm:
        - First correct answer: 1 day
        - Second correct answer: 6 days
        - Subsequent: previous_interval * EF
-    
+
     Example Usage:
     --------------
     ```python
     from datetime import datetime
     from app.services.spaced_repetition.sm2_algorithm import SM2Algorithm, ReviewResult
-    
+
     # Initial state for a new card
     easiness_factor = 2.5
     interval = 0
     repetitions = 0
-    
+
     # User answers correctly with good recall
     quality = ReviewResult.CORRECT_MEDIUM
-    
+
     # Calculate next review parameters
     new_ef, new_interval, new_reps, next_date = SM2Algorithm.calculate_next_review(
         easiness_factor=easiness_factor,
@@ -73,15 +75,15 @@ class SM2Algorithm:
         quality=quality,
         time_taken_seconds=15.0
     )
-    
+
     print(f"Next review in {new_interval} days")
     print(f"New easiness factor: {new_ef}")
     ```
-    
+
     Reference:
     ----------
     https://www.supermemo.com/en/archives1990-2015/english/ol/sm2
-    
+
     Notes:
     ------
     - The algorithm includes a time penalty: if the user takes too long to answer,
@@ -97,18 +99,18 @@ class SM2Algorithm:
         repetitions: int,
         quality: ReviewResult,
         time_taken_seconds: Optional[float] = None,
-        time_limit_seconds: float = 30.0
+        time_limit_seconds: float = 30.0,
     ) -> Tuple[float, int, int, datetime]:
         """
         Calculate the next review parameters based on SM-2 algorithm.
-        
+
         This is the core method of the SM-2 algorithm. It takes the current state of a card
         and the quality of the user's recall, then calculates when the card should be reviewed
         next and updates the card's difficulty parameters.
-        
+
         The algorithm uses the following formula for updating the easiness factor:
         EF' = EF + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
-        
+
         Where:
         - EF' is the new easiness factor
         - EF is the current easiness factor
@@ -137,7 +139,7 @@ class SM2Algorithm:
             - new_interval: Days until next review (1 for first correct, 6 for second, then EF * previous)
             - new_repetitions: Updated consecutive correct count (0 if incorrect, incremented if correct)
             - next_review_date: Calculated datetime for the next review
-            
+
         Example:
             >>> from datetime import datetime
             >>> ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
@@ -158,7 +160,9 @@ class SM2Algorithm:
 
         # Calculate new E-Factor
         # EF' = EF + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
-        new_ef = easiness_factor + (0.1 - (5 - adjusted_quality) * (0.08 + (5 - adjusted_quality) * 0.02))
+        new_ef = easiness_factor + (
+            0.1 - (5 - adjusted_quality) * (0.08 + (5 - adjusted_quality) * 0.02)
+        )
 
         # E-Factor should not fall below 1.3
         new_ef = max(1.3, new_ef)
@@ -187,9 +191,7 @@ class SM2Algorithm:
 
     @staticmethod
     def determine_quality_from_attempt(
-        correct: bool,
-        time_taken_seconds: float,
-        time_limit_seconds: float = 30.0
+        correct: bool, time_taken_seconds: float, time_limit_seconds: float = 30.0
     ) -> ReviewResult:
         """
         Determine the quality rating based on correctness and time taken
@@ -226,25 +228,22 @@ class SM2Algorithm:
 
     @staticmethod
     def calculate_mastery_level(
-        repetitions: int,
-        easiness_factor: float,
-        times_correct: int,
-        times_incorrect: int
+        repetitions: int, easiness_factor: float, times_correct: int, times_incorrect: int
     ) -> Tuple[bool, int]:
         """
         Determine if a question is mastered and calculate mastery percentage.
-        
+
         A question is considered "mastered" when the learner has demonstrated consistent
         and easy recall over multiple reviews. This method uses three criteria:
-        
+
         Mastery Criteria:
         -----------------
         1. At least 5 consecutive correct answers (repetitions >= 5)
         2. High easiness factor (EF >= 2.5), indicating the card is easy
         3. High success rate (>= 80% correct overall)
-        
+
         All three criteria must be met for a question to be considered mastered.
-        
+
         Mastery Percentage Calculation:
         --------------------------------
         The mastery percentage (0-100) is a weighted combination of:
@@ -262,7 +261,7 @@ class SM2Algorithm:
             Tuple of (is_mastered, mastery_percentage):
             - is_mastered: Boolean indicating if all mastery criteria are met
             - mastery_percentage: Integer 0-100 representing overall mastery level
-            
+
         Example:
             >>> is_mastered, percentage = SM2Algorithm.calculate_mastery_level(
             ...     repetitions=6,
@@ -272,7 +271,7 @@ class SM2Algorithm:
             ... )
             >>> print(f"Mastered: {is_mastered}, Level: {percentage}%")
             Mastered: True, Level: 87%
-            
+
         Notes:
             - A question can have a high mastery percentage without being "mastered"
               if it doesn't meet all three criteria.
@@ -291,10 +290,13 @@ class SM2Algorithm:
             is_mastered = True
 
         # Calculate mastery percentage (0-100)
-        mastery_percentage = min(100, int(
-            (repetitions / 10 * 30) +  # 30% weight on repetitions
-            ((easiness_factor - 1.3) / 1.2 * 35) +  # 35% weight on E-Factor
-            (success_rate * 35)  # 35% weight on success rate
-        ))
+        mastery_percentage = min(
+            100,
+            int(
+                (repetitions / 10 * 30)
+                + ((easiness_factor - 1.3) / 1.2 * 35)  # 30% weight on repetitions
+                + (success_rate * 35)  # 35% weight on E-Factor  # 35% weight on success rate
+            ),
+        )
 
         return is_mastered, mastery_percentage

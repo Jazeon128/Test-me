@@ -13,13 +13,15 @@ class Deck(Base, TimestampMixin):
     description = Column(String(1000), nullable=True)
 
     # Relationships
-    deck_questions = relationship("DeckQuestion", back_populates="deck", cascade="all, delete-orphan")
-    
+    deck_questions = relationship(
+        "DeckQuestion", back_populates="deck", cascade="all, delete-orphan"
+    )
+
     @property
     def questions(self):
         """Get questions through DeckQuestion association"""
         return [dq.question for dq in sorted(self.deck_questions, key=lambda x: x.order)]
-    
+
     @questions.setter
     def questions(self, question_list):
         """Set questions through DeckQuestion association"""
@@ -28,11 +30,8 @@ class Deck(Base, TimestampMixin):
         # Add new associations with order
         for idx, question in enumerate(question_list):
             # Get question ID - handle both Question objects and integer IDs
-            question_id = question.id if hasattr(question, 'id') else question
-            deck_question = DeckQuestion(
-                question_id=question_id,
-                order=idx
-            )
+            question_id = question.id if hasattr(question, "id") else question
+            deck_question = DeckQuestion(question_id=question_id, order=idx)
             # SQLAlchemy will set deck_id automatically when deck is saved
             self.deck_questions.append(deck_question)
 
@@ -45,8 +44,8 @@ class DeckQuestion(Base):
 
     __tablename__ = "deck_questions"
 
-    deck_id = Column(Integer, ForeignKey('decks.id'), primary_key=True)
-    question_id = Column(Integer, ForeignKey('questions.id'), primary_key=True)
+    deck_id = Column(Integer, ForeignKey("decks.id"), primary_key=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), primary_key=True)
     order = Column(Integer, nullable=False)
 
     # Relationships

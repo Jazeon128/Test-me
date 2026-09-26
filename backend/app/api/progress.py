@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from ..db import get_db
 from ..models.user_progress import UserProgress
@@ -40,9 +40,12 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         - Gamification stats
     """
     # Get question with options eagerly loaded to avoid N+1
-    question = db.query(Question).options(
-        joinedload(Question.options)
-    ).filter(Question.id == request.question_id).first()
+    question = (
+        db.query(Question)
+        .options(joinedload(Question.options))
+        .filter(Question.id == request.question_id)
+        .first()
+    )
 
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -59,9 +62,9 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
             break
 
     # Get or create user progress
-    progress = db.query(UserProgress).filter(
-        UserProgress.question_id == request.question_id
-    ).first()
+    progress = (
+        db.query(UserProgress).filter(UserProgress.question_id == request.question_id).first()
+    )
 
     if not progress:
         progress = UserProgress(
@@ -91,7 +94,9 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         progress.streak = 0
 
     # Update average time
-    total_time = progress.average_time_seconds * (progress.times_seen - 1) + request.time_taken_seconds
+    total_time = (
+        progress.average_time_seconds * (progress.times_seen - 1) + request.time_taken_seconds
+    )
     progress.average_time_seconds = total_time / progress.times_seen
 
     # Determine quality rating for SM-2
@@ -107,7 +112,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         quality = SM2Algorithm.determine_quality_from_attempt(
             correct=is_correct,
             time_taken_seconds=request.time_taken_seconds,
-            time_limit_seconds=30.0
+            time_limit_seconds=30.0,
         )
 
     # Calculate next review using SM-2 algorithm
@@ -134,12 +139,14 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     if progress.attempt_history is None:
         progress.attempt_history = []
 
-    progress.attempt_history.append({
-        "date": datetime.utcnow().isoformat(),
-        "correct": is_correct,
-        "time_seconds": request.time_taken_seconds,
-        "quality": quality.value,
-    })
+    progress.attempt_history.append(
+        {
+            "date": datetime.utcnow().isoformat(),
+            "correct": is_correct,
+            "time_seconds": request.time_taken_seconds,
+            "quality": quality.value,
+        }
+    )
 
     # Check if mastered
     is_mastered, mastery_percentage = SM2Algorithm.calculate_mastery_level(
@@ -152,7 +159,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
 
     db.commit()
     db.refresh(progress)
-    
+
     # Invalidate stats cache when progress is updated
     stats_cache.invalidate_all()
 
@@ -178,16 +185,14 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
             "points_earned": 10 if is_correct else 0,
             "streak_bonus": progress.streak * 5 if is_correct else 0,
             "mastery_achieved": is_mastered and not progress.is_mastered,
-        }
+        },
     }
 
 
 @router.get("/question/{question_id}")
 async def get_question_progress(question_id: int, db: Session = Depends(get_db)):
     """Get progress for a specific question"""
-    progress = db.query(UserProgress).filter(
-        UserProgress.question_id == question_id
-    ).first()
+    progress = db.query(UserProgress).filter(UserProgress.question_id == question_id).first()
 
     if not progress:
         return {
@@ -207,7 +212,9 @@ async def get_question_progress(question_id: int, db: Session = Depends(get_db))
         "times_seen": progress.times_seen,
         "times_correct": progress.times_correct,
         "times_incorrect": progress.times_incorrect,
-        "success_rate": progress.times_correct / progress.times_seen if progress.times_seen > 0 else 0,
+        "success_rate": progress.times_correct / progress.times_seen
+        if progress.times_seen > 0
+        else 0,
         "average_time_seconds": progress.average_time_seconds,
         "streak": progress.streak,
         "best_streak": progress.best_streak,
@@ -223,8 +230,7 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
     """
     Get questions for a review session based on spaced repetition
     """
-    from ..models.test import Test
-    
+
     questions_to_review = []
 
     if request.include_review:
@@ -233,11 +239,19 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
 
         if request.deck_id:
             from ..models.deck import DeckQuestion, Deck
-            query = query.join(Question.deck_questions).join(DeckQuestion.deck).filter(Deck.id == request.deck_id)
-            
-        due_progress = query.filter(
-            UserProgress.next_review_date <= datetime.utcnow()
-        ).order_by(UserProgress.next_review_date.asc()).limit(request.num_questions).all()
+
+            query = (
+                query.join(Question.deck_questions)
+                .join(DeckQuestion.deck)
+                .filter(Deck.id == request.deck_id)
+            )
+
+        due_progress = (
+            query.filter(UserProgress.next_review_date <= datetime.utcnow())
+            .order_by(UserProgress.next_review_date.asc())
+            .limit(request.num_questions)
+            .all()
+        )
 
         questions_to_review.extend([p.question_id for p in due_progress])
 
@@ -250,16 +264,24 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
 
         if request.deck_id:
             from ..models.deck import DeckQuestion, Deck
-            query = query.join(Question.deck_questions).join(DeckQuestion.deck).filter(Deck.id == request.deck_id)
-            
+
+            query = (
+                query.join(Question.deck_questions)
+                .join(DeckQuestion.deck)
+                .filter(Deck.id == request.deck_id)
+            )
+
         new_questions = query.limit(request.num_questions - len(questions_to_review)).all()
 
         questions_to_review.extend([q.id for q in new_questions])
 
     # Get full question details with options eagerly loaded to avoid N+1
-    questions = db.query(Question).options(
-        joinedload(Question.options)
-    ).filter(Question.id.in_(questions_to_review)).all()
+    questions = (
+        db.query(Question)
+        .options(joinedload(Question.options))
+        .filter(Question.id.in_(questions_to_review))
+        .all()
+    )
 
     response_data = {
         "num_questions": len(questions),
@@ -276,12 +298,14 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
                 ],
                 "difficulty": q.difficulty,
                 "explanation": q.explanation,
-                "correct_option": next((chr(65 + opt.order) for opt in q.options if opt.is_correct), None)
+                "correct_option": next(
+                    (chr(65 + opt.order) for opt in q.options if opt.is_correct), None
+                ),
             }
             for q in questions
-        ]
+        ],
     }
-    
+
     return response_data
 
 
@@ -293,7 +317,7 @@ async def get_overall_stats(db: Session = Depends(get_db)):
     cached_result = stats_cache.get(cache_key)
     if cached_result is not None:
         return cached_result
-    
+
     # Query database if not cached
     all_progress = db.query(UserProgress).all()
 
@@ -314,8 +338,7 @@ async def get_overall_stats(db: Session = Depends(get_db)):
     total_attempts = sum(p.times_seen for p in all_progress)
     mastered_count = sum(1 for p in all_progress if p.is_mastered)
     questions_due = sum(
-        1 for p in all_progress
-        if SM2Algorithm.get_due_questions_count(p.next_review_date)
+        1 for p in all_progress if SM2Algorithm.get_due_questions_count(p.next_review_date)
     )
 
     # Get current streak (most recent progress)
@@ -336,7 +359,7 @@ async def get_overall_stats(db: Session = Depends(get_db)):
         "questions_due": questions_due,
         "average_easiness_factor": sum(p.easiness_factor for p in all_progress) / len(all_progress),
     }
-    
+
     # Cache the result
     stats_cache.set(cache_key, result)
     return result

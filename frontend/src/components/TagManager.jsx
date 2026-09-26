@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { tagsAPI } from '../services/api'
-import { Tag, Plus, X, Trash2 } from 'lucide-react'
+import { Tag, Plus, X } from 'lucide-react'
 
 const PRESET_COLORS = [
     { name: 'blue', value: '#3B82F6', light: '#DBEAFE', text: '#1E40AF' },

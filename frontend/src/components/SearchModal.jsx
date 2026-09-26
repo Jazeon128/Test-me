@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, BookOpen, FileText, Loader2 } from 'lucide-react'
+import { Search, BookOpen, FileText, Loader2 } from 'lucide-react'
 import axios from 'axios'
 
 export default function SearchModal({ isOpen, onClose }) {
@@ -98,7 +98,7 @@ export default function SearchModal({ isOpen, onClose }) {
                     <ul className="max-h-96 scroll-py-3 overflow-y-auto p-3">
                         {results.length === 0 && query.length > 1 && !loading ? (
                             <li className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                No results found for "{query}"
+                                No results found for &ldquo;{query}&rdquo;
                             </li>
                         ) : (
                             results.map((result, index) => (

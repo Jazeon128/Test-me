@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { progressAPI } from '../services/api'
-import { Brain, Target, Flame, Trophy, Play, Plus, ArrowRight } from 'lucide-react'
+import { Brain, Target, Flame, Trophy, Play, Plus } from 'lucide-react'
 
 export default function Dashboard() {
   const navigate = useNavigate()

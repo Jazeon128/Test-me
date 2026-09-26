@@ -13,21 +13,21 @@ class AnkiExporter:
         # Create a custom model for our multiple-choice questions
         self.model = genanki.Model(
             random.randrange(1 << 30, 1 << 31),  # Random model ID
-            'Test Me - Multiple Choice',
+            "Test Me - Multiple Choice",
             fields=[
-                {'name': 'Question'},
-                {'name': 'OptionA'},
-                {'name': 'OptionB'},
-                {'name': 'OptionC'},
-                {'name': 'OptionD'},
-                {'name': 'CorrectAnswer'},
-                {'name': 'Explanation'},
-                {'name': 'Reference'},
+                {"name": "Question"},
+                {"name": "OptionA"},
+                {"name": "OptionB"},
+                {"name": "OptionC"},
+                {"name": "OptionD"},
+                {"name": "CorrectAnswer"},
+                {"name": "Explanation"},
+                {"name": "Reference"},
             ],
             templates=[
                 {
-                    'name': 'Multiple Choice Card',
-                    'qfmt': '''
+                    "name": "Multiple Choice Card",
+                    "qfmt": """
                         <div class="question">{{Question}}</div>
                         <hr>
                         <div class="options">
@@ -36,8 +36,8 @@ class AnkiExporter:
                             <div class="option">C) {{OptionC}}</div>
                             <div class="option">D) {{OptionD}}</div>
                         </div>
-                    ''',
-                    'afmt': '''
+                    """,
+                    "afmt": """
                         <div class="question">{{Question}}</div>
                         <hr>
                         <div class="options">
@@ -58,10 +58,10 @@ class AnkiExporter:
                             <em>Reference: {{Reference}}</em>
                         </div>
                         {{/Reference}}
-                    ''',
+                    """,
                 },
             ],
-            css='''
+            css="""
                 .card {
                     font-family: arial;
                     font-size: 20px;
@@ -108,7 +108,7 @@ class AnkiExporter:
                     margin-top: 15px;
                     font-style: italic;
                 }
-            '''
+            """,
         )
 
     def export_test(self, db: Session, test: Test, output_path: str) -> str:
@@ -124,10 +124,7 @@ class AnkiExporter:
             Path to the created .apkg file
         """
         # Create deck
-        deck = genanki.Deck(
-            random.randrange(1 << 30, 1 << 31),  # Random deck ID
-            test.name
-        )
+        deck = genanki.Deck(random.randrange(1 << 30, 1 << 31), test.name)  # Random deck ID
 
         # Add each question as a note
         for question in test.questions:
@@ -153,10 +150,7 @@ class AnkiExporter:
             Path to the created .apkg file
         """
         # Create deck
-        deck = genanki.Deck(
-            random.randrange(1 << 30, 1 << 31),
-            deck_name
-        )
+        deck = genanki.Deck(random.randrange(1 << 30, 1 << 31), deck_name)
 
         # Add each question
         for question in questions:
@@ -175,7 +169,7 @@ class AnkiExporter:
         options = sorted(question.options, key=lambda x: x.order)
 
         # Extract option texts (pad if less than 4 options)
-        option_texts = [opt.option_text for opt in options] + [''] * (4 - len(options))
+        option_texts = [opt.option_text for opt in options] + [""] * (4 - len(options))
 
         # Find correct answer letter
         correct_answer = None
@@ -189,13 +183,13 @@ class AnkiExporter:
         if question.source_reference:
             ref = question.source_reference
             parts = []
-            if ref.get('page'):
+            if ref.get("page"):
                 parts.append(f"Page {ref['page']}")
-            if ref.get('section'):
+            if ref.get("section"):
                 parts.append(f"Section: {ref['section']}")
-            if ref.get('text'):
-                text = ref['text'][:100] + "..." if len(ref['text']) > 100 else ref['text']
-                parts.append(f"\"{text}\"")
+            if ref.get("text"):
+                text = ref["text"][:100] + "..." if len(ref["text"]) > 100 else ref["text"]
+                parts.append(f'"{text}"')
             reference = ", ".join(parts)
 
         # Create note
@@ -211,7 +205,7 @@ class AnkiExporter:
                 question.explanation or "No explanation provided.",
                 reference,
             ],
-            tags=[f"difficulty:{question.difficulty}"]
+            tags=[f"difficulty:{question.difficulty}"],
         )
 
         return note

@@ -10,12 +10,8 @@ from sqlalchemy.orm import Session
 from ...config import settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
 from ...utils.logging import get_logger
-from ...utils.metrics import (
-    track_question_generation,
-    track_ai_api_call,
-    estimate_cost
-)
-from ...exceptions import AIServiceError, QuestionGenerationError
+from ...utils.metrics import track_question_generation, track_ai_api_call, estimate_cost
+from ...exceptions import AIServiceError
 
 logger = get_logger(__name__)
 
@@ -23,6 +19,7 @@ logger = get_logger(__name__)
 def get_setting(db: Session, key: str) -> Optional[str]:
     """Get a setting value from database"""
     from ...models.settings import Settings
+
     setting = db.query(Settings).filter(Settings.key == key).first()
     return setting.value if setting else None
 
@@ -30,18 +27,18 @@ def get_setting(db: Session, key: str) -> Optional[str]:
 class QuestionGenerator:
     """
     Generate multiple-choice questions from document content using AI.
-    
+
     This class uses various AI providers (Anthropic Claude, OpenAI GPT, Google Gemini) to
     automatically generate high-quality multiple-choice questions from parsed document content.
     The generator supports customization of difficulty levels, question count, and can use
     example questions to guide the AI's output style.
-    
+
     Supported AI Providers:
     -----------------------
     - **Anthropic Claude**: claude-3-5-sonnet-20241022 (default)
     - **OpenAI GPT**: gpt-4o (default)
     - **Google Gemini**: gemini-2.0-flash-exp (default)
-    
+
     Features:
     ---------
     - Generates questions with exactly 4 options (A, B, C, D)
@@ -51,7 +48,7 @@ class QuestionGenerator:
     - Distributes questions evenly across document sections
     - Tracks metrics: generation time, token usage, estimated costs
     - Comprehensive error handling and logging
-    
+
     Question Quality Guidelines:
     ----------------------------
     The generator enforces strict quality requirements:
@@ -60,41 +57,41 @@ class QuestionGenerator:
     - Professional, exam-appropriate language
     - Focus on understanding, not memorization
     - Avoids trick questions and "none of the above"
-    
+
     Example Usage:
     --------------
     ```python
     from sqlalchemy.orm import Session
     from app.services.ai.question_generator import QuestionGenerator
     from app.services.parsers.pdf_parser import PDFParser
-    
+
     # Initialize with database session for settings
     generator = QuestionGenerator(db=db_session)
-    
+
     # Parse a document
     parser = PDFParser()
     parsed_doc = parser.parse("study_guide.pdf")
-    
+
     # Generate 10 medium difficulty questions
     questions = generator.generate_questions(
         parsed_doc=parsed_doc,
         num_questions=10,
         difficulty="medium"
     )
-    
+
     # Each question has: question_text, options, correct_answer, explanation, difficulty
     for q in questions:
         print(f"Q: {q['question']}")
         for opt in q['options']:
             print(f"  {opt['option']}. {opt['text']}")
     ```
-    
+
     Configuration:
     --------------
     The generator can be configured via:
     1. Database settings (preferred): ai_provider, ai_model, api_key
     2. Environment variables: AI_PROVIDER, AI_MODEL, ANTHROPIC_API_KEY, etc.
-    
+
     Metrics Tracking:
     -----------------
     The generator automatically tracks:
@@ -130,7 +127,7 @@ class QuestionGenerator:
             raise AIServiceError(
                 message=f"No API key configured for provider: {self.provider}",
                 provider=self.provider,
-                details={"configuration_required": True}
+                details={"configuration_required": True},
             )
 
         if self.provider == "anthropic":
@@ -144,16 +141,14 @@ class QuestionGenerator:
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
             if not self.model:
-                self.model = "gemini-2.0-flash-exp" # Default to latest fast model
+                self.model = "gemini-2.0-flash-exp"  # Default to latest fast model
             self.client = genai.GenerativeModel(self.model)
         else:
             raise AIServiceError(
                 message=f"Unknown AI provider: {self.provider}",
                 provider=self.provider,
-                details={"supported_providers": ["anthropic", "openai", "gemini"]}
+                details={"supported_providers": ["anthropic", "openai", "gemini"]},
             )
-
-
 
     def generate_questions(
         self,
@@ -162,7 +157,7 @@ class QuestionGenerator:
         difficulty: str = "mixed",
         custom_prompt: Optional[str] = None,
         example_questions: Optional[List[Dict]] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -173,30 +168,36 @@ class QuestionGenerator:
             difficulty: "easy", "medium", "hard", or "mixed"
             custom_prompt: Optional custom instructions for question generation
             example_questions: Optional list of example questions to inspire style
-            progress_callback: Optional callback function invoked as (current, total) 
+            progress_callback: Optional callback function invoked as (current, total)
                              after each question completes. Allows real-time progress tracking.
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
         """
         start_time = time.time()
-        
+
         try:
             return self._generate_questions_internal(
-                parsed_doc, num_questions, difficulty, custom_prompt, example_questions, start_time, progress_callback
+                parsed_doc,
+                num_questions,
+                difficulty,
+                custom_prompt,
+                example_questions,
+                start_time,
+                progress_callback,
             )
-        except Exception as e:
-            # Track failed generation
+        except Exception:
+            # Track failed generation, then re-raise unchanged
             elapsed_time = time.time() - start_time
             track_question_generation(
                 provider=self.provider,
                 difficulty=difficulty,
                 duration=elapsed_time,
                 num_questions=0,
-                success=False
+                success=False,
             )
             raise
-    
+
     def _generate_questions_internal(
         self,
         parsed_doc: ParsedDocument,
@@ -205,10 +206,10 @@ class QuestionGenerator:
         custom_prompt: Optional[str],
         example_questions: Optional[List[Dict]],
         start_time: float,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[Dict]:
         """Internal method for question generation with metrics tracking"""
-        
+
         logger.info(
             "question_generation_started",
             document_title=parsed_doc.title,
@@ -217,9 +218,9 @@ class QuestionGenerator:
             difficulty=difficulty,
             provider=self.provider,
             model=self.model,
-            has_custom_prompt=custom_prompt is not None
+            has_custom_prompt=custom_prompt is not None,
         )
-        
+
         # Select diverse sections to cover different parts of the document
         # If we need more questions than sections, we'll reuse sections
         num_sections = len(parsed_doc.sections)
@@ -253,7 +254,7 @@ class QuestionGenerator:
                 total_sections=len(selected_sections),
                 batch_size=batch_size,
                 questions_generated=len(all_questions),
-                questions_target=num_questions
+                questions_target=num_questions,
             )
 
             questions = self._generate_batch_questions(
@@ -264,7 +265,7 @@ class QuestionGenerator:
                 example_questions,
                 progress_callback,
                 len(all_questions),
-                num_questions
+                num_questions,
             )
 
             if questions:
@@ -273,28 +274,28 @@ class QuestionGenerator:
                     "section_processed_success",
                     section_number=i,
                     questions_from_section=len(questions),
-                    total_questions=len(all_questions)
+                    total_questions=len(all_questions),
                 )
             else:
                 logger.warning(
                     "section_processed_failure",
                     section_number=i,
-                    section_text_length=len(section.text)
+                    section_text_length=len(section.text),
                 )
 
         # Limit to requested number
         final_questions = all_questions[:num_questions]
         elapsed_time = time.time() - start_time
-        
+
         # Track metrics
         track_question_generation(
             provider=self.provider,
             difficulty=difficulty,
             duration=elapsed_time,
             num_questions=len(final_questions),
-            success=True
+            success=True,
         )
-        
+
         logger.info(
             "question_generation_completed",
             questions_generated=len(final_questions),
@@ -302,12 +303,14 @@ class QuestionGenerator:
             duration_seconds=round(elapsed_time, 2),
             provider=self.provider,
             model=self.model,
-            success=True
+            success=True,
         )
-        
+
         return final_questions
 
-    def _select_sections(self, sections: List[ParsedSection], num_needed: int) -> List[ParsedSection]:
+    def _select_sections(
+        self, sections: List[ParsedSection], num_needed: int
+    ) -> List[ParsedSection]:
         """Select diverse sections from the document"""
         if len(sections) <= num_needed:
             return sections
@@ -330,15 +333,11 @@ class QuestionGenerator:
         example_questions: Optional[List[Dict]] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         questions_so_far: int = 0,
-        total_questions: int = 0
+        total_questions: int = 0,
     ) -> List[Dict]:
         """Generate a batch of multiple-choice questions from a section"""
         prompt = self._build_batch_prompt(
-            section.text,
-            count,
-            difficulty,
-            custom_prompt,
-            example_questions
+            section.text, count, difficulty, custom_prompt, example_questions
         )
 
         try:
@@ -346,7 +345,7 @@ class QuestionGenerator:
             provider_display = {
                 "anthropic": "Anthropic Claude",
                 "openai": "OpenAI GPT-4",
-                "gemini": "Google Gemini"
+                "gemini": "Google Gemini",
             }.get(self.provider, self.provider)
 
             logger.debug(
@@ -354,7 +353,7 @@ class QuestionGenerator:
                 provider=self.provider,
                 model=self.model,
                 questions_requested=count,
-                section_length=len(section.text)
+                section_length=len(section.text),
             )
 
             api_start_time = time.time()
@@ -370,7 +369,7 @@ class QuestionGenerator:
                 )
                 content = response.content[0].text
                 # Extract token usage from response
-                if hasattr(response, 'usage'):
+                if hasattr(response, "usage"):
                     input_tokens = response.usage.input_tokens
                     output_tokens = response.usage.output_tokens
 
@@ -383,7 +382,7 @@ class QuestionGenerator:
                 )
                 content = response.choices[0].message.content
                 # Extract token usage from response
-                if hasattr(response, 'usage'):
+                if hasattr(response, "usage"):
                     input_tokens = response.usage.prompt_tokens
                     output_tokens = response.usage.completion_tokens
 
@@ -392,27 +391,21 @@ class QuestionGenerator:
                     max_output_tokens=8192,
                     temperature=0.7,
                 )
-                response = self.client.generate_content(
-                    prompt,
-                    generation_config=generation_config
-                )
+                response = self.client.generate_content(prompt, generation_config=generation_config)
                 content = response.text
                 # Extract token usage from response
-                if hasattr(response, 'usage_metadata'):
+                if hasattr(response, "usage_metadata"):
                     input_tokens = response.usage_metadata.prompt_token_count
                     output_tokens = response.usage_metadata.candidates_token_count
 
             api_elapsed = time.time() - api_start_time
-            
+
             # Calculate estimated cost if we have token counts
             if input_tokens is not None and output_tokens is not None:
                 estimated_cost_value = estimate_cost(
-                    self.provider,
-                    self.model,
-                    input_tokens,
-                    output_tokens
+                    self.provider, self.model, input_tokens, output_tokens
                 )
-            
+
             # Track AI API metrics
             track_ai_api_call(
                 provider=self.provider,
@@ -421,9 +414,9 @@ class QuestionGenerator:
                 success=True,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                estimated_cost=estimated_cost_value
+                estimated_cost=estimated_cost_value,
             )
-            
+
             logger.info(
                 "ai_api_call_completed",
                 provider=self.provider,
@@ -433,7 +426,7 @@ class QuestionGenerator:
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 estimated_cost_usd=round(estimated_cost_value, 6) if estimated_cost_value else None,
-                success=True
+                success=True,
             )
 
             # Parse the response
@@ -448,9 +441,11 @@ class QuestionGenerator:
                     "section": section.section,
                     "paragraph": section.paragraph,
                 }
-                q_data["difficulty"] = difficulty if difficulty != "mixed" else q_data.get("difficulty", "medium")
+                q_data["difficulty"] = (
+                    difficulty if difficulty != "mixed" else q_data.get("difficulty", "medium")
+                )
                 valid_questions.append(q_data)
-                
+
                 # Invoke progress callback after each question is parsed
                 if progress_callback is not None:
                     current_question = questions_so_far + len(valid_questions)
@@ -459,21 +454,18 @@ class QuestionGenerator:
             logger.debug(
                 "questions_validated",
                 questions_parsed=len(questions_data),
-                questions_valid=len(valid_questions)
+                questions_valid=len(valid_questions),
             )
-            
+
             return valid_questions
 
         except Exception as e:
             # Track failed API call
-            api_elapsed = time.time() - api_start_time if 'api_start_time' in locals() else 0
+            api_elapsed = time.time() - api_start_time if "api_start_time" in locals() else 0
             track_ai_api_call(
-                provider=self.provider,
-                model=self.model,
-                duration=api_elapsed,
-                success=False
+                provider=self.provider, model=self.model, duration=api_elapsed, success=False
             )
-            
+
             logger.error(
                 "question_generation_error",
                 error_type=type(e).__name__,
@@ -483,17 +475,14 @@ class QuestionGenerator:
                 section_page=section.page,
                 section_paragraph=section.paragraph,
                 stack_trace=traceback.format_exc(),
-                exc_info=True
+                exc_info=True,
             )
             # Raise AIServiceError for API failures
             if "API" in str(e) or "timeout" in str(e).lower() or "rate limit" in str(e).lower():
                 raise AIServiceError(
                     message=f"AI service request failed: {str(e)}",
                     provider=self.provider,
-                    details={
-                        "model": self.model,
-                        "error_type": type(e).__name__
-                    }
+                    details={"model": self.model, "error_type": type(e).__name__},
                 )
             return []
 
@@ -503,7 +492,7 @@ class QuestionGenerator:
         count: int,
         difficulty: str,
         custom_prompt: Optional[str] = None,
-        example_questions: Optional[List[Dict]] = None
+        example_questions: Optional[List[Dict]] = None,
     ) -> str:
         """Build the prompt for batch question generation"""
 
@@ -511,13 +500,15 @@ class QuestionGenerator:
             "easy": "Create straightforward exam-style questions testing basic recall and key facts.",
             "medium": "Create exam-style questions requiring comprehension and application of concepts.",
             "hard": "Create challenging exam-style questions requiring analysis, synthesis, or evaluation.",
-            "mixed": "Create exam-style questions with varying difficulty levels."
+            "mixed": "Create exam-style questions with varying difficulty levels.",
         }
 
         # Build example questions section if provided
         examples_section = ""
         if example_questions and len(example_questions) > 0:
-            examples_section = "\n\nEXAMPLE QUESTIONS (use these as inspiration for style and format):\n"
+            examples_section = (
+                "\n\nEXAMPLE QUESTIONS (use these as inspiration for style and format):\n"
+            )
             for i, ex in enumerate(example_questions[:2], 1):
                 examples_section += f"\nExample {i}:\n"
                 examples_section += f"Question: {ex.get('question', '')}\n"
@@ -580,7 +571,7 @@ CRITICAL QUALITY REQUIREMENTS:
 **CRITICAL INSTRUCTION:**
 Focus ONLY on the educational subject matter and concepts taught in the text. Ignore all headers, footers, page numbers, copyright notices, and legal text. If the text contains a cheat sheet or summary, ask about the *concepts* in it, not about the cheat sheet itself.
 
-Generate EXACTLY {count} questions following these guidelines.
+Generate EXACTLY {count} questions following these guidelines.{custom_section}
 
 RESPOND ONLY with a valid JSON ARRAY of objects in this exact format:
 [
@@ -615,11 +606,11 @@ JSON Response:"""
                 if isinstance(data, list):
                     valid_items = []
                     required_fields = ["question", "options", "correct_answer", "explanation"]
-                    
+
                     for item in data:
                         if all(field in item for field in required_fields):
                             valid_items.append(item)
-                    
+
                     return valid_items
 
         except json.JSONDecodeError as e:

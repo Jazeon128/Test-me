@@ -6,9 +6,24 @@ import uuid
 from unittest.mock import Mock, MagicMock
 from hypothesis import given, strategies as st, settings, HealthCheck, assume
 from app.models.generation_status import GenerationStatus
+from app.models.settings import Settings
 from app.services.ai.question_generator import QuestionGenerator
 from app.services.parsers.base_parser import ParsedDocument, ParsedSection
 from app.utils.progress import calculate_generation_progress
+
+
+def _seed_ai_settings(db_session):
+    """Give QuestionGenerator the provider and key it reads from the settings table.
+
+    That is the same place the Settings screen writes them, and without a row the
+    constructor raises before any mocked generation runs. Hypothesis reuses one
+    function-scoped session across examples, so this must not insert twice.
+    """
+    for key, value in (("ai_provider", "anthropic"), ("api_key", "test-key")):
+        if not db_session.query(Settings).filter(Settings.key == key).first():
+            db_session.add(Settings(key=key, value=value))
+    db_session.commit()
+
 
 
 @st.composite
@@ -268,6 +283,8 @@ class TestProgressTrackingProperties:
         monkeypatch.setattr(QuestionGenerator, "_generate_batch_questions", mock_generate_batch)
         
         # Create generator and generate questions with callback
+        _seed_ai_settings(db_session)
+
         generator = QuestionGenerator(db=db_session)
         questions = generator.generate_questions(
             parsed_doc=parsed_doc,
@@ -386,6 +403,8 @@ class TestProgressTrackingProperties:
         monkeypatch.setattr(QuestionGenerator, "_generate_batch_questions", mock_generate_batch)
         
         # Create generator and generate questions with callback
+        _seed_ai_settings(db_session)
+
         generator = QuestionGenerator(db=db_session)
         questions = generator.generate_questions(
             parsed_doc=parsed_doc,

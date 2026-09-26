@@ -284,11 +284,13 @@ describe('ModelSelector', () => {
       expect(screen.getByText(/without validation/i)).toBeInTheDocument()
     })
 
-    it('should have accessible warning with role="alert"', () => {
+    it('should expose the custom-model notice to screen readers', () => {
       const { container } = render(<ModelSelector {...defaultProps} isCustom={true} provider="openai" />)
-      
-      const alerts = container.querySelectorAll('[role="alert"]')
-      expect(alerts.length).toBeGreaterThan(0)
+
+      // role="note", not "alert": the notice is always present in custom mode, so
+      // role="alert" is reserved for the validation error below the input.
+      expect(container.querySelectorAll('[role="note"]').length).toBeGreaterThan(0)
+      expect(container.querySelectorAll('[role="alert"]').length).toBe(0)
     })
   })
 })

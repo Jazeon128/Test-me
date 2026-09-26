@@ -13,22 +13,20 @@ from typing import Optional
 # ============================================================================
 
 question_generation_duration = Histogram(
-    'question_generation_duration_seconds',
-    'Time spent generating questions',
-    ['provider', 'difficulty'],
-    buckets=(1, 5, 10, 20, 30, 45, 60, 90, 120, 180, 300)
+    "question_generation_duration_seconds",
+    "Time spent generating questions",
+    ["provider", "difficulty"],
+    buckets=(1, 5, 10, 20, 30, 45, 60, 90, 120, 180, 300),
 )
 
 question_generation_total = Counter(
-    'question_generation_total',
-    'Total number of question generation requests',
-    ['provider', 'difficulty', 'status']
+    "question_generation_total",
+    "Total number of question generation requests",
+    ["provider", "difficulty", "status"],
 )
 
 questions_generated_count = Counter(
-    'questions_generated_count',
-    'Total number of questions generated',
-    ['provider', 'difficulty']
+    "questions_generated_count", "Total number of questions generated", ["provider", "difficulty"]
 )
 
 # ============================================================================
@@ -36,28 +34,22 @@ questions_generated_count = Counter(
 # ============================================================================
 
 ai_api_calls_total = Counter(
-    'ai_api_calls_total',
-    'Total number of AI API calls',
-    ['provider', 'model', 'status']
+    "ai_api_calls_total", "Total number of AI API calls", ["provider", "model", "status"]
 )
 
 ai_api_duration = Histogram(
-    'ai_api_duration_seconds',
-    'Duration of AI API calls',
-    ['provider', 'model'],
-    buckets=(0.5, 1, 2, 5, 10, 15, 20, 30, 45, 60)
+    "ai_api_duration_seconds",
+    "Duration of AI API calls",
+    ["provider", "model"],
+    buckets=(0.5, 1, 2, 5, 10, 15, 20, 30, 45, 60),
 )
 
 ai_tokens_used = Counter(
-    'ai_tokens_used_total',
-    'Total number of tokens used',
-    ['provider', 'model', 'token_type']
+    "ai_tokens_used_total", "Total number of tokens used", ["provider", "model", "token_type"]
 )
 
 ai_estimated_cost = Counter(
-    'ai_estimated_cost_usd',
-    'Estimated cost of AI API usage in USD',
-    ['provider', 'model']
+    "ai_estimated_cost_usd", "Estimated cost of AI API usage in USD", ["provider", "model"]
 )
 
 # ============================================================================
@@ -65,16 +57,14 @@ ai_estimated_cost = Counter(
 # ============================================================================
 
 api_requests_total = Counter(
-    'api_requests_total',
-    'Total number of API requests',
-    ['method', 'endpoint', 'status']
+    "api_requests_total", "Total number of API requests", ["method", "endpoint", "status"]
 )
 
 api_request_duration = Histogram(
-    'api_request_duration_seconds',
-    'Duration of API requests',
-    ['method', 'endpoint'],
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10)
+    "api_request_duration_seconds",
+    "Duration of API requests",
+    ["method", "endpoint"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
 )
 
 # ============================================================================
@@ -82,16 +72,14 @@ api_request_duration = Histogram(
 # ============================================================================
 
 db_query_duration = Histogram(
-    'db_query_duration_seconds',
-    'Duration of database queries',
-    ['operation'],
-    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1)
+    "db_query_duration_seconds",
+    "Duration of database queries",
+    ["operation"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1),
 )
 
 db_operations_total = Counter(
-    'db_operations_total',
-    'Total number of database operations',
-    ['operation', 'status']
+    "db_operations_total", "Total number of database operations", ["operation", "status"]
 )
 
 # ============================================================================
@@ -99,23 +87,21 @@ db_operations_total = Counter(
 # ============================================================================
 
 document_uploads_total = Counter(
-    'document_uploads_total',
-    'Total number of document uploads',
-    ['file_type', 'status']
+    "document_uploads_total", "Total number of document uploads", ["file_type", "status"]
 )
 
 document_parsing_duration = Histogram(
-    'document_parsing_duration_seconds',
-    'Duration of document parsing',
-    ['file_type'],
-    buckets=(0.1, 0.5, 1, 2, 5, 10, 20, 30)
+    "document_parsing_duration_seconds",
+    "Duration of document parsing",
+    ["file_type"],
+    buckets=(0.1, 0.5, 1, 2, 5, 10, 20, 30),
 )
 
 document_size_bytes = Histogram(
-    'document_size_bytes',
-    'Size of uploaded documents in bytes',
-    ['file_type'],
-    buckets=(1024, 10240, 102400, 1024000, 10240000, 52428800)
+    "document_size_bytes",
+    "Size of uploaded documents in bytes",
+    ["file_type"],
+    buckets=(1024, 10240, 102400, 1024000, 10240000, 52428800),
 )
 
 # ============================================================================
@@ -123,56 +109,39 @@ document_size_bytes = Histogram(
 # ============================================================================
 
 answers_submitted_total = Counter(
-    'answers_submitted_total',
-    'Total number of answers submitted',
-    ['result', 'difficulty']
+    "answers_submitted_total", "Total number of answers submitted", ["result", "difficulty"]
 )
 
 review_sessions_total = Counter(
-    'review_sessions_total',
-    'Total number of review sessions started',
-    ['session_type']
+    "review_sessions_total", "Total number of review sessions started", ["session_type"]
 )
 
 # ============================================================================
 # Error Metrics
 # ============================================================================
 
-errors_total = Counter(
-    'errors_total',
-    'Total number of errors',
-    ['error_type', 'endpoint']
-)
+errors_total = Counter("errors_total", "Total number of errors", ["error_type", "endpoint"])
 
 # ============================================================================
 # System Metrics
 # ============================================================================
 
-active_users = Gauge(
-    'active_users',
-    'Number of currently active users'
-)
+active_users = Gauge("active_users", "Number of currently active users")
 
-application_info = Info(
-    'application',
-    'Application version and configuration'
-)
+application_info = Info("application", "Application version and configuration")
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
+
 def track_question_generation(
-    provider: str,
-    difficulty: str,
-    duration: float,
-    num_questions: int,
-    success: bool
+    provider: str, difficulty: str, duration: float, num_questions: int, success: bool
 ) -> None:
     """
     Track question generation metrics
-    
+
     Args:
         provider: AI provider name (anthropic, openai, gemini)
         difficulty: Question difficulty level
@@ -180,24 +149,16 @@ def track_question_generation(
         num_questions: Number of questions generated
         success: Whether generation was successful
     """
-    status = 'success' if success else 'failure'
-    
-    question_generation_duration.labels(
-        provider=provider,
-        difficulty=difficulty
-    ).observe(duration)
-    
-    question_generation_total.labels(
-        provider=provider,
-        difficulty=difficulty,
-        status=status
-    ).inc()
-    
+    status = "success" if success else "failure"
+
+    question_generation_duration.labels(provider=provider, difficulty=difficulty).observe(duration)
+
+    question_generation_total.labels(provider=provider, difficulty=difficulty, status=status).inc()
+
     if success:
-        questions_generated_count.labels(
-            provider=provider,
-            difficulty=difficulty
-        ).inc(num_questions)
+        questions_generated_count.labels(provider=provider, difficulty=difficulty).inc(
+            num_questions
+        )
 
 
 def track_ai_api_call(
@@ -207,11 +168,11 @@ def track_ai_api_call(
     success: bool,
     input_tokens: Optional[int] = None,
     output_tokens: Optional[int] = None,
-    estimated_cost: Optional[float] = None
+    estimated_cost: Optional[float] = None,
 ) -> None:
     """
     Track AI API call metrics
-    
+
     Args:
         provider: AI provider name
         model: Model name
@@ -221,49 +182,28 @@ def track_ai_api_call(
         output_tokens: Number of output tokens (if available)
         estimated_cost: Estimated cost in USD (if available)
     """
-    status = 'success' if success else 'failure'
-    
-    ai_api_calls_total.labels(
-        provider=provider,
-        model=model,
-        status=status
-    ).inc()
-    
-    ai_api_duration.labels(
-        provider=provider,
-        model=model
-    ).observe(duration)
-    
+    status = "success" if success else "failure"
+
+    ai_api_calls_total.labels(provider=provider, model=model, status=status).inc()
+
+    ai_api_duration.labels(provider=provider, model=model).observe(duration)
+
     if input_tokens is not None:
-        ai_tokens_used.labels(
-            provider=provider,
-            model=model,
-            token_type='input'
-        ).inc(input_tokens)
-    
+        ai_tokens_used.labels(provider=provider, model=model, token_type="input").inc(input_tokens)
+
     if output_tokens is not None:
-        ai_tokens_used.labels(
-            provider=provider,
-            model=model,
-            token_type='output'
-        ).inc(output_tokens)
-    
+        ai_tokens_used.labels(provider=provider, model=model, token_type="output").inc(
+            output_tokens
+        )
+
     if estimated_cost is not None:
-        ai_estimated_cost.labels(
-            provider=provider,
-            model=model
-        ).inc(estimated_cost)
+        ai_estimated_cost.labels(provider=provider, model=model).inc(estimated_cost)
 
 
-def estimate_cost(
-    provider: str,
-    model: str,
-    input_tokens: int,
-    output_tokens: int
-) -> float:
+def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: int) -> float:
     """
     Estimate the cost of an AI API call based on token usage
-    
+
     Pricing as of December 2024 (updated 2025-12-05):
     - Claude 3.5 Sonnet: $3/MTok input, $15/MTok output
     - Claude 3.5 Haiku: $0.80/MTok input, $4/MTok output
@@ -272,91 +212,76 @@ def estimate_cost(
     - Gemini 2.5 Flash: Free during preview
     - Gemini 2.5 Flash-Lite: Free during preview
     - Gemini 2.5 Pro: Free during preview
-    
+
     Args:
         provider: AI provider name
         model: Model name
         input_tokens: Number of input tokens
         output_tokens: Number of output tokens
-    
+
     Returns:
         Estimated cost in USD
     """
     # Pricing per million tokens (MTok) - Updated 2025-12-05
     pricing = {
-        'anthropic': {
-            'claude-3-5-sonnet-20241022': {'input': 3.0, 'output': 15.0},
-            'claude-3-5-sonnet': {'input': 3.0, 'output': 15.0},
-            'claude-3-5-haiku-20241022': {'input': 0.80, 'output': 4.0},
-            'claude-3-5-haiku': {'input': 0.80, 'output': 4.0},
-            'claude-3-opus': {'input': 15.0, 'output': 75.0},
-            'claude-3-sonnet': {'input': 3.0, 'output': 15.0},
-            'claude-3-haiku': {'input': 0.25, 'output': 1.25},
+        "anthropic": {
+            "claude-3-5-sonnet-20241022": {"input": 3.0, "output": 15.0},
+            "claude-3-5-sonnet": {"input": 3.0, "output": 15.0},
+            "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.0},
+            "claude-3-5-haiku": {"input": 0.80, "output": 4.0},
+            "claude-3-opus": {"input": 15.0, "output": 75.0},
+            "claude-3-sonnet": {"input": 3.0, "output": 15.0},
+            "claude-3-haiku": {"input": 0.25, "output": 1.25},
         },
-        'openai': {
-            'gpt-4o': {'input': 2.5, 'output': 10.0},
-            'gpt-4o-mini': {'input': 0.15, 'output': 0.6},
-            'gpt-4-turbo': {'input': 10.0, 'output': 30.0},
-            'gpt-4': {'input': 30.0, 'output': 60.0},
-            'gpt-3.5-turbo': {'input': 0.5, 'output': 1.5},
+        "openai": {
+            "gpt-4o": {"input": 2.5, "output": 10.0},
+            "gpt-4o-mini": {"input": 0.15, "output": 0.6},
+            "gpt-4-turbo": {"input": 10.0, "output": 30.0},
+            "gpt-4": {"input": 30.0, "output": 60.0},
+            "gpt-3.5-turbo": {"input": 0.5, "output": 1.5},
         },
-        'gemini': {
+        "gemini": {
             # Gemini 3.0 Series (preview pricing)
-            'gemini-3-pro-preview': {'input': 0.0, 'output': 0.0},
+            "gemini-3-pro-preview": {"input": 0.0, "output": 0.0},
             # Gemini 2.5 Series (preview pricing)
-            'gemini-2.5-flash': {'input': 0.0, 'output': 0.0},
-            'gemini-2.5-flash-lite': {'input': 0.0, 'output': 0.0},
-            'gemini-2.5-pro': {'input': 0.0, 'output': 0.0},
-        }
+            "gemini-2.5-flash": {"input": 0.0, "output": 0.0},
+            "gemini-2.5-flash-lite": {"input": 0.0, "output": 0.0},
+            "gemini-2.5-pro": {"input": 0.0, "output": 0.0},
+        },
     }
-    
+
     # Get pricing for the specific model
     provider_pricing = pricing.get(provider, {})
-    model_pricing = provider_pricing.get(model, {'input': 1.0, 'output': 3.0})  # Default fallback
-    
+    model_pricing = provider_pricing.get(model, {"input": 1.0, "output": 3.0})  # Default fallback
+
     # Calculate cost (tokens / 1,000,000 * price per MTok)
-    input_cost = (input_tokens / 1_000_000) * model_pricing['input']
-    output_cost = (output_tokens / 1_000_000) * model_pricing['output']
-    
+    input_cost = (input_tokens / 1_000_000) * model_pricing["input"]
+    output_cost = (output_tokens / 1_000_000) * model_pricing["output"]
+
     return input_cost + output_cost
 
 
-def track_api_request(
-    method: str,
-    endpoint: str,
-    status_code: int,
-    duration: float
-) -> None:
+def track_api_request(method: str, endpoint: str, status_code: int, duration: float) -> None:
     """
     Track API request metrics
-    
+
     Args:
         method: HTTP method
         endpoint: API endpoint path
         status_code: HTTP status code
         duration: Request duration in seconds
     """
-    api_requests_total.labels(
-        method=method,
-        endpoint=endpoint,
-        status=str(status_code)
-    ).inc()
-    
-    api_request_duration.labels(
-        method=method,
-        endpoint=endpoint
-    ).observe(duration)
+    api_requests_total.labels(method=method, endpoint=endpoint, status=str(status_code)).inc()
+
+    api_request_duration.labels(method=method, endpoint=endpoint).observe(duration)
 
 
 def track_error(error_type: str, endpoint: str) -> None:
     """
     Track error occurrence
-    
+
     Args:
         error_type: Type of error
         endpoint: Endpoint where error occurred
     """
-    errors_total.labels(
-        error_type=error_type,
-        endpoint=endpoint
-    ).inc()
+    errors_total.labels(error_type=error_type, endpoint=endpoint).inc()

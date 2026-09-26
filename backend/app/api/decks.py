@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 import os
 
 from ..db import get_db
 from ..models.test import Test
-from ..models.document import Document
 
 router = APIRouter()
 
@@ -42,9 +41,7 @@ async def create_deck(request: CreateDeckRequest, db: Session = Depends(get_db))
 async def list_decks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all decks"""
     # Eagerly load deck_questions to avoid N+1 when counting
-    decks = db.query(Test).options(
-        joinedload(Test.deck_questions)
-    ).offset(skip).limit(limit).all()
+    decks = db.query(Test).options(joinedload(Test.deck_questions)).offset(skip).limit(limit).all()
 
     return [
         {
@@ -64,10 +61,17 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
     # Eagerly load deck_questions and their questions/documents to avoid N+1
     from ..models.deck import DeckQuestion
     from ..models.question import Question
-    
-    deck = db.query(Test).options(
-        joinedload(Test.deck_questions).joinedload(DeckQuestion.question).joinedload(Question.document)
-    ).filter(Test.id == deck_id).first()
+
+    deck = (
+        db.query(Test)
+        .options(
+            joinedload(Test.deck_questions)
+            .joinedload(DeckQuestion.question)
+            .joinedload(Question.document)
+        )
+        .filter(Test.id == deck_id)
+        .first()
+    )
 
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
@@ -146,9 +150,7 @@ async def delete_deck(deck_id: int, db: Session = Depends(get_db)):
 
 @router.post("/import/csv")
 async def import_csv(
-    file: UploadFile = File(...),
-    deck_name: Optional[str] = None,
-    db: Session = Depends(get_db)
+    file: UploadFile = File(...), deck_name: Optional[str] = None, db: Session = Depends(get_db)
 ):
     """Import a deck from a CSV file (Front, Back format)"""
     import csv
@@ -159,64 +161,52 @@ async def import_csv(
     # Read file content
     content = await file.read()
     text_content = content.decode("utf-8")
-    
+
     # Parse CSV
     csv_reader = csv.reader(io.StringIO(text_content))
-    
+
     # Create Deck
     name = deck_name or file.filename.replace(".csv", "").replace("_", " ").title()
     deck = Test(name=name, description="Imported from CSV")
     db.add(deck)
-    db.flush() # Get ID
-    
+    db.flush()  # Get ID
+
     count = 0
     for row in csv_reader:
         if len(row) < 2:
             continue
-            
+
         front = row[0].strip()
         back = row[1].strip()
-        
+
         if not front or not back:
             continue
-            
+
         # Create Question
-        question = Question(
-            question_text=front,
-            explanation=back,
-            difficulty="medium"
-        )
+        question = Question(question_text=front, explanation=back, difficulty="medium")
         db.add(question)
         db.flush()
-        
+
         # Create a default option (since our model requires options for MCQs)
         # For flashcard mode, this might be ignored or used as the "reveal"
         option = QuestionOption(
-            question_id=question.id,
-            option_text="Flip to see answer",
-            is_correct=True,
-            order=0
+            question_id=question.id, option_text="Flip to see answer", is_correct=True, order=0
         )
         db.add(option)
-        
+
         # Link to Deck
-        test_question = TestQuestion(
-            test_id=deck.id,
-            question_id=question.id,
-            order=count
-        )
+        test_question = TestQuestion(test_id=deck.id, question_id=question.id, order=count)
         db.add(test_question)
         count += 1
-        
+
     db.commit()
-    
+
     return {
         "id": deck.id,
         "name": deck.name,
         "num_questions": count,
-        "message": f"Successfully imported {count} cards"
+        "message": f"Successfully imported {count} cards",
     }
-
 
 
 @router.get("/{deck_id}/export/anki")
@@ -225,7 +215,7 @@ async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
     from ..services.anki_export import AnkiExporter
     from ..models.test import Test
     import tempfile
-    
+
     deck = db.query(Test).filter(Test.id == deck_id).first()
 
     if not deck:
@@ -235,7 +225,7 @@ async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Deck has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='wb', suffix='.apkg', delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".apkg", delete=False) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -244,7 +234,7 @@ async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, deck, output_path)
 
         # Read file content
-        with open(output_path, 'rb') as f:
+        with open(output_path, "rb") as f:
             content = f.read()
 
         # Clean up temp file
@@ -255,7 +245,7 @@ async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
@@ -271,7 +261,7 @@ async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
     from ..services.csv_export import CSVExporter
     from ..models.test import Test
     import tempfile
-    
+
     deck = db.query(Test).filter(Test.id == deck_id).first()
 
     if not deck:
@@ -281,7 +271,9 @@ async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Deck has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8-sig"
+    ) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -290,7 +282,7 @@ async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, deck, output_path)
 
         # Read file content
-        with open(output_path, 'r', encoding='utf-8-sig') as f:
+        with open(output_path, "r", encoding="utf-8-sig") as f:
             content = f.read()
 
         # Clean up temp file
@@ -299,9 +291,9 @@ async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
         # Return file
         filename = f"{deck.name.replace(' ', '_')}.csv"
         return Response(
-            content=content.encode('utf-8-sig'),
+            content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
@@ -317,7 +309,7 @@ async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
     from ..services.anki_all_in_one_export import AnkiAllInOneExporter
     from ..models.test import Test
     import tempfile
-    
+
     deck = db.query(Test).filter(Test.id == deck_id).first()
 
     if not deck:
@@ -327,7 +319,9 @@ async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Deck has no questions")
 
     # Create temporary file for export
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8-sig"
+    ) as tmp_file:
         output_path = tmp_file.name
 
     try:
@@ -336,7 +330,7 @@ async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
         exporter.export_test(db, deck, output_path)
 
         # Read file content
-        with open(output_path, 'r', encoding='utf-8-sig') as f:
+        with open(output_path, "r", encoding="utf-8-sig") as f:
             content = f.read()
 
         # Clean up temp file
@@ -345,9 +339,9 @@ async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
         # Return file
         filename = f"{deck.name.replace(' ', '_')}_AllInOne.csv"
         return Response(
-            content=content.encode('utf-8-sig'),
+            content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:

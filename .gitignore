@@ -47,8 +47,8 @@ Thumbs.db
 uploads/
 *.pdf
 *.docx
-*.html
-*.htm
+uploads/*.html
+uploads/*.htm
 
 # Node
 node_modules/

@@ -5,6 +5,7 @@ from .user_progress import UserProgress
 from .settings import Settings
 from .generation_status import GenerationStatus
 from .tag import Tag, question_tags
+from .canvas import Canvas, CanvasRoutingLog
 
 __all__ = [
     "Base",
@@ -16,4 +17,6 @@ __all__ = [
     "GenerationStatus",
     "Tag",
     "question_tags",
+    "Canvas",
+    "CanvasRoutingLog",
 ]

@@ -3,29 +3,32 @@ from unittest.mock import MagicMock, patch
 from app.services.parsers.youtube import YouTubeParser
 from app.services.parsers.powerpoint import PowerPointParser
 
+
 # Mock the youtube_transcript_api
-@patch('app.services.parsers.youtube.YouTubeTranscriptApi')
+@patch("app.services.parsers.youtube.YouTubeTranscriptApi")
 def test_youtube_parser(mock_yt_api):
     # Setup mock
     mock_yt_api.get_transcript.return_value = [
-        {'text': 'Hello world', 'start': 0.0, 'duration': 1.0},
-        {'text': 'This is a test', 'start': 1.0, 'duration': 2.0}
+        {"text": "Hello world", "start": 0.0, "duration": 1.0},
+        {"text": "This is a test", "start": 1.0, "duration": 2.0},
     ]
 
     parser = YouTubeParser()
     result = parser.parse("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
     assert result.full_text == "Hello world This is a test"
-    assert result.metadata['source'] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    assert result.metadata['video_id'] == "dQw4w9WgXcQ"
+    assert result.metadata["source"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert result.metadata["video_id"] == "dQw4w9WgXcQ"
+
 
 def test_youtube_parser_invalid_url():
     parser = YouTubeParser()
     with pytest.raises(ValueError):
         parser.parse("https://notayoutubeurl.com")
 
+
 # Mock the pptx library
-@patch('app.services.parsers.powerpoint.Presentation')
+@patch("app.services.parsers.powerpoint.Presentation")
 def test_pptx_parser(mock_presentation):
     # Setup mock presentation structure
     mock_prs = MagicMock()
@@ -55,4 +58,4 @@ def test_pptx_parser(mock_presentation):
 
     expected_content = "Slide 1 Title\nSlide 1 Content\n\nSlide 2 Content"
     assert result.full_text.strip() == expected_content.strip()
-    assert result.metadata['source'] == "dummy_path.pptx"
+    assert result.metadata["source"] == "dummy_path.pptx"

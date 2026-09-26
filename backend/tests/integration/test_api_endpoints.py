@@ -105,7 +105,7 @@ class TestTestsAPI:
         test_data = {
             "name": "New Test",
             "description": "Test description",
-            "question_ids": [sample_question.id]
+            "question_ids": [sample_question.id],
         }
 
         response = client.post("/api/tests", json=test_data)
@@ -136,7 +136,7 @@ class TestProgressAPI:
         answer_data = {
             "question_id": sample_question.id,
             "selected_option": correct_char,
-            "time_taken_seconds": 15.0
+            "time_taken_seconds": 15.0,
         }
 
         response = client.post("/api/progress/submit", json=answer_data)
@@ -155,7 +155,7 @@ class TestProgressAPI:
         answer_data = {
             "question_id": sample_question.id,
             "selected_option": incorrect_char,
-            "time_taken_seconds": 20.0
+            "time_taken_seconds": 20.0,
         }
 
         response = client.post("/api/progress/submit", json=answer_data)
@@ -174,15 +174,15 @@ class TestProgressAPI:
             "question_id": sample_question.id,
             "selected_option": correct_char,
             "time_taken_seconds": 5.0,
-            "manual_quality": 5
+            "manual_quality": 5,
         }
 
         response = client.post("/api/progress/submit", json=answer_data)
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify the quality was used (should result in larger interval)
-        # Note: We can't easily check the internal state here without DB access, 
+        # Note: We can't easily check the internal state here without DB access,
         # but we can check the returned progress data if available
         assert "progress" in data
         # For quality 5, first interval should be > 1 if it was 0 before
@@ -199,9 +199,6 @@ class TestProgressAPI:
         assert "current_streak" in data
 
 
-
-
-
 @pytest.mark.integration
 class TestSettingsAPI:
     """Tests for settings API endpoints"""
@@ -216,10 +213,7 @@ class TestSettingsAPI:
 
     def test_update_settings(self, client):
         """Test updating settings"""
-        settings_data = {
-            "provider": "anthropic",
-            "api_key": "sk-ant-test-key-123456"
-        }
+        settings_data = {"provider": "anthropic", "api_key": "sk-ant-test-key-123456"}
 
         response = client.post("/api/settings/ai-config", json=settings_data)
         assert response.status_code == 200
@@ -280,11 +274,10 @@ class TestReviewSessionAPI:
 
     def test_start_review_session(self, client, sample_test):
         """Test starting a review session"""
-        response = client.post("/api/progress/review-session", json={
-            "num_questions": 10,
-            "include_new": True,
-            "include_review": True
-        })
+        response = client.post(
+            "/api/progress/review-session",
+            json={"num_questions": 10, "include_new": True, "include_review": True},
+        )
 
         # Status code depends on implementation
         # Might be 200 with questions or 404 if no due questions
@@ -294,11 +287,10 @@ class TestReviewSessionAPI:
 
     def test_get_due_questions(self, client, sample_question):
         """Test getting due questions via review session"""
-        response = client.post("/api/progress/review-session", json={
-            "num_questions": 10,
-            "include_new": False,
-            "include_review": True
-        })
+        response = client.post(
+            "/api/progress/review-session",
+            json={"num_questions": 10, "include_new": False, "include_review": True},
+        )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data["questions"], list)
@@ -341,21 +333,17 @@ Python has several built-in data types:
 - str: Text strings
 - bool: True/False values
 """
-        
+
         test_file = tmp_path / "test_python.md"
         test_file.write_text(test_content)
-        
+
         # Upload the document
         with open(test_file, "rb") as f:
             files = [("files", ("test_python.md", f, "text/markdown"))]
-            data = {
-                "num_questions": 5,
-                "difficulty": "medium",
-                "deck_name": "Python Basics Deck"
-            }
-            
+            data = {"num_questions": 5, "difficulty": "medium", "deck_name": "Python Basics Deck"}
+
             response = client.post("/api/documents/upload", files=files, data=data)
-        
+
         # Verify upload response
         assert response.status_code == 200
         upload_data = response.json()
@@ -363,24 +351,26 @@ Python has several built-in data types:
         assert "deck_id" in upload_data
         assert upload_data["deck_name"] == "Python Basics Deck"
         assert len(upload_data["documents"]) == 1
-        
+
         deck_id = upload_data["deck_id"]
         document_id = upload_data["documents"][0]["id"]
-        
+
         # Verify document was created in database
         from app.models.document import Document
+
         document = db_session.query(Document).filter(Document.id == document_id).first()
         assert document is not None
         assert document.original_filename == "test_python.md"
         assert document.file_type.value == "markdown"
         # Content may be None before background processing completes
-        
+
         # Verify deck was created
         from app.models.test import Test
+
         deck = db_session.query(Test).filter(Test.id == deck_id).first()
         assert deck is not None
         assert deck.name == "Python Basics Deck"
-        
+
         # Note: Questions are generated in background task, so we can't verify them
         # in this synchronous test without mocking or waiting
 
@@ -389,12 +379,12 @@ Python has several built-in data types:
         test_content = "# Test Document\n\nSome content here."
         test_file = tmp_path / "my_study_guide.md"
         test_file.write_text(test_content)
-        
+
         with open(test_file, "rb") as f:
             files = [("files", ("my_study_guide.md", f, "text/markdown"))]
             data = {"num_questions": 3}
             response = client.post("/api/documents/upload", files=files, data=data)
-        
+
         assert response.status_code == 200
         upload_data = response.json()
         # Should use filename without extension
@@ -405,15 +395,12 @@ Python has several built-in data types:
         test_content = "# Additional Content\n\nMore study material."
         test_file = tmp_path / "additional.md"
         test_file.write_text(test_content)
-        
+
         with open(test_file, "rb") as f:
             files = [("files", ("additional.md", f, "text/markdown"))]
-            data = {
-                "num_questions": 2,
-                "deck_id": str(sample_test.id)
-            }
+            data = {"num_questions": 2, "deck_id": str(sample_test.id)}
             response = client.post("/api/documents/upload", files=files, data=data)
-        
+
         assert response.status_code == 200
         upload_data = response.json()
         assert upload_data["deck_id"] == sample_test.id
@@ -430,34 +417,39 @@ class TestAnswerSubmissionFlow:
         Validates: Requirements 6.2
         """
         from app.models.user_progress import UserProgress
-        
+
         # Verify no progress exists initially
-        progress = db_session.query(UserProgress).filter(
-            UserProgress.question_id == sample_question.id
-        ).first()
+        progress = (
+            db_session.query(UserProgress)
+            .filter(UserProgress.question_id == sample_question.id)
+            .first()
+        )
         assert progress is None
-        
+
         # Find correct option
         correct_option = next(opt for opt in sample_question.options if opt.is_correct)
         correct_char = chr(65 + correct_option.order)
-        
+
         # Submit correct answer
-        response = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": correct_char,
-            "time_taken_seconds": 15.0
-        })
-        
+        response = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": correct_char,
+                "time_taken_seconds": 15.0,
+            },
+        )
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify response structure
         assert data["correct"] is True
         assert data["correct_answer"] == correct_char
         assert "explanation" in data
         assert "progress" in data
         assert "gamification" in data
-        
+
         # Verify progress data
         progress_data = data["progress"]
         assert progress_data["times_seen"] == 1
@@ -466,16 +458,18 @@ class TestAnswerSubmissionFlow:
         assert progress_data["success_rate"] == 1.0
         assert progress_data["streak"] == 1
         assert progress_data["average_time_seconds"] == 15.0
-        
+
         # Verify gamification data
         assert data["gamification"]["points_earned"] == 10
         assert data["gamification"]["streak_bonus"] == 5
-        
+
         # Verify UserProgress was created in database
         db_session.expire_all()  # Refresh from database
-        progress = db_session.query(UserProgress).filter(
-            UserProgress.question_id == sample_question.id
-        ).first()
+        progress = (
+            db_session.query(UserProgress)
+            .filter(UserProgress.question_id == sample_question.id)
+            .first()
+        )
         assert progress is not None
         assert progress.times_seen == 1
         assert progress.times_correct == 1
@@ -491,25 +485,28 @@ class TestAnswerSubmissionFlow:
         Validates: Requirements 6.2
         """
         from app.models.user_progress import UserProgress
-        
+
         # Find incorrect option
         incorrect_option = next(opt for opt in sample_question.options if not opt.is_correct)
         incorrect_char = chr(65 + incorrect_option.order)
-        
+
         # Submit incorrect answer
-        response = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": incorrect_char,
-            "time_taken_seconds": 20.0
-        })
-        
+        response = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": incorrect_char,
+                "time_taken_seconds": 20.0,
+            },
+        )
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify response
         assert data["correct"] is False
         assert "progress" in data
-        
+
         # Verify progress data
         progress_data = data["progress"]
         assert progress_data["times_seen"] == 1
@@ -517,21 +514,25 @@ class TestAnswerSubmissionFlow:
         assert progress_data["times_incorrect"] == 1
         assert progress_data["success_rate"] == 0.0
         assert progress_data["streak"] == 0
-        
+
         # Verify gamification (no points for incorrect)
         assert data["gamification"]["points_earned"] == 0
         assert data["gamification"]["streak_bonus"] == 0
-        
+
         # Verify database state
         db_session.expire_all()
-        progress = db_session.query(UserProgress).filter(
-            UserProgress.question_id == sample_question.id
-        ).first()
+        progress = (
+            db_session.query(UserProgress)
+            .filter(UserProgress.question_id == sample_question.id)
+            .first()
+        )
         assert progress is not None
         assert progress.times_incorrect == 1
         assert progress.streak == 0
 
-    def test_sm2_algorithm_applied_on_submission(self, client, sample_question, sample_user_progress, db_session):
+    def test_sm2_algorithm_applied_on_submission(
+        self, client, sample_question, sample_user_progress, db_session
+    ):
         """
         Test that SM-2 algorithm calculations are applied correctly
         Validates: Requirements 6.2
@@ -540,40 +541,46 @@ class TestAnswerSubmissionFlow:
         initial_ef = sample_user_progress.easiness_factor
         initial_interval = sample_user_progress.interval
         initial_repetitions = sample_user_progress.repetitions
-        
+
         # Submit correct answer
         correct_option = next(opt for opt in sample_question.options if opt.is_correct)
         correct_char = chr(65 + correct_option.order)
-        
-        response = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": correct_char,
-            "time_taken_seconds": 10.0
-        })
-        
+
+        response = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": correct_char,
+                "time_taken_seconds": 10.0,
+            },
+        )
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify SM-2 calculations were applied
         progress_data = data["progress"]
-        
+
         # For correct answer, interval should increase (or stay same if was 0)
         assert progress_data["interval_days"] >= initial_interval
-        
+
         # Easiness factor should be >= 1.3 (SM-2 minimum)
         assert initial_ef >= 1.3
-        
+
         # Verify database reflects SM-2 updates
         db_session.expire_all()
         from app.models.user_progress import UserProgress
-        progress = db_session.query(UserProgress).filter(
-            UserProgress.question_id == sample_question.id
-        ).first()
-        
+
+        progress = (
+            db_session.query(UserProgress)
+            .filter(UserProgress.question_id == sample_question.id)
+            .first()
+        )
+
         assert progress.easiness_factor >= 1.3
         assert progress.interval >= 0
         assert progress.next_review_date is not None
-        
+
         # For correct answer, repetitions should increase
         assert progress.repetitions >= initial_repetitions
 
@@ -581,37 +588,46 @@ class TestAnswerSubmissionFlow:
         """Test that multiple submissions are tracked in attempt history"""
         correct_option = next(opt for opt in sample_question.options if opt.is_correct)
         correct_char = chr(65 + correct_option.order)
-        
+
         # Submit first answer
-        response1 = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": correct_char,
-            "time_taken_seconds": 15.0
-        })
+        response1 = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": correct_char,
+                "time_taken_seconds": 15.0,
+            },
+        )
         assert response1.status_code == 200
-        
+
         # Submit second answer
-        response2 = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": correct_char,
-            "time_taken_seconds": 12.0
-        })
+        response2 = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": correct_char,
+                "time_taken_seconds": 12.0,
+            },
+        )
         assert response2.status_code == 200
-        
+
         data = response2.json()
         assert data["progress"]["times_seen"] == 2
         assert data["progress"]["times_correct"] == 2
         assert data["progress"]["streak"] == 2
-        
+
         # Verify database has attempt history
         # Note: The attempt_history field may have issues with JSON mutation tracking
         # We verify the core metrics are correct
         db_session.expire_all()
         from app.models.user_progress import UserProgress
-        progress = db_session.query(UserProgress).filter(
-            UserProgress.question_id == sample_question.id
-        ).first()
-        
+
+        progress = (
+            db_session.query(UserProgress)
+            .filter(UserProgress.question_id == sample_question.id)
+            .first()
+        )
+
         assert progress.times_seen == 2
         assert progress.times_correct == 2
         assert progress.streak == 2
@@ -632,21 +648,22 @@ class TestEndToEndWorkflow:
         test_data = response.json()
 
         # 2. Start a review session
-        response = client.post("/api/progress/review-session", json={
-            "num_questions": 10
-        })
+        response = client.post("/api/progress/review-session", json={"num_questions": 10})
         # May return 404 if no due questions initially
         assert response.status_code == 200
 
         # 3. Answer a question
         correct_option = next(opt for opt in sample_question.options if opt.is_correct)
         correct_char = chr(65 + correct_option.order)
-        
-        response = client.post("/api/progress/submit", json={
-            "question_id": sample_question.id,
-            "selected_option": correct_char,
-            "time_taken_seconds": 12.0
-        })
+
+        response = client.post(
+            "/api/progress/submit",
+            json={
+                "question_id": sample_question.id,
+                "selected_option": correct_char,
+                "time_taken_seconds": 12.0,
+            },
+        )
         assert response.status_code == 200
 
         # 4. Check statistics

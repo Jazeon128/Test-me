@@ -16,7 +16,7 @@ class TestConfigValidation:
             SECRET_KEY="test-secret-key",
             ENVIRONMENT="development",
             LOG_LEVEL="INFO",
-            MAX_UPLOAD_SIZE=10485760
+            MAX_UPLOAD_SIZE=10485760,
         )
         # Should not raise any exception
         settings.validate_required_settings()
@@ -26,7 +26,7 @@ class TestConfigValidation:
         settings = Settings(
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="invalid-provider",
-            SECRET_KEY="test-secret-key"
+            SECRET_KEY="test-secret-key",
         )
         with pytest.raises(ValueError):
             settings.validate_required_settings()
@@ -43,7 +43,7 @@ class TestConfigValidation:
             OPENAI_API_KEY="",
             GEMINI_API_KEY="",
             AI_PROVIDER="anthropic",
-            SECRET_KEY="test-secret-key"
+            SECRET_KEY="test-secret-key",
         )
         settings.validate_required_settings()
 
@@ -53,7 +53,7 @@ class TestConfigValidation:
             ANTHROPIC_API_KEY="",
             OPENAI_API_KEY="test-key",
             AI_PROVIDER="anthropic",  # Provider set to anthropic but no key
-            SECRET_KEY="test-secret-key"
+            SECRET_KEY="test-secret-key",
         )
         settings.validate_required_settings()
 
@@ -63,7 +63,7 @@ class TestConfigValidation:
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
             SECRET_KEY="dev-secret-key-change-in-production",
-            ENVIRONMENT="production"
+            ENVIRONMENT="production",
         )
         with pytest.raises(ValueError):
             settings.validate_required_settings()
@@ -74,7 +74,7 @@ class TestConfigValidation:
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
             SECRET_KEY="test-secret-key",
-            LOG_LEVEL="INVALID"
+            LOG_LEVEL="INVALID",
         )
         with pytest.raises(ValueError):
             settings.validate_required_settings()
@@ -85,7 +85,7 @@ class TestConfigValidation:
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
             SECRET_KEY="test-secret-key",
-            ENVIRONMENT="invalid-env"
+            ENVIRONMENT="invalid-env",
         )
         with pytest.raises(ValueError):
             settings.validate_required_settings()
@@ -96,7 +96,7 @@ class TestConfigValidation:
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
             SECRET_KEY="test-secret-key",
-            MAX_UPLOAD_SIZE=-1
+            MAX_UPLOAD_SIZE=-1,
         )
         with pytest.raises(ValueError):
             settings.validate_required_settings()
@@ -106,7 +106,7 @@ class TestConfigValidation:
         settings = Settings(
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
-            CORS_ORIGINS_STR="http://localhost:3000,http://localhost:5173"
+            CORS_ORIGINS_STR="http://localhost:3000,http://localhost:5173",
         )
         origins = settings.CORS_ORIGINS
         assert len(origins) == 2
@@ -118,7 +118,7 @@ class TestConfigValidation:
         settings = Settings(
             ANTHROPIC_API_KEY="test-key",
             AI_PROVIDER="anthropic",
-            CORS_ORIGINS_STR="http://localhost:3000 , http://localhost:5173"
+            CORS_ORIGINS_STR="http://localhost:3000 , http://localhost:5173",
         )
         origins = settings.CORS_ORIGINS
         assert len(origins) == 2
@@ -132,7 +132,7 @@ class TestConfigValidation:
             OPENAI_API_KEY="openai-key",
             GEMINI_API_KEY="gemini-key",
             AI_PROVIDER="openai",
-            SECRET_KEY="test-secret-key"
+            SECRET_KEY="test-secret-key",
         )
         # Should not raise any exception
         settings.validate_required_settings()

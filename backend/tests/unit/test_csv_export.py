@@ -21,9 +21,9 @@ class TestCSVExporter:
         rows = list(reader)
 
         assert len(rows) == 1
-        assert rows[0]['Question'] == "What is Python?"
-        assert rows[0]['CorrectAnswer'] == 'A'
-        assert rows[0]['Difficulty'] == 'medium'
+        assert rows[0]["Question"] == "What is Python?"
+        assert rows[0]["CorrectAnswer"] == "A"
+        assert rows[0]["Difficulty"] == "medium"
 
     def test_export_to_string_multiple_questions(self, db_session, sample_document):
         """Test exporting multiple questions"""
@@ -35,7 +35,7 @@ class TestCSVExporter:
                 question_text=f"Question {i+1}?",
                 explanation=f"Explanation {i+1}",
                 difficulty="easy",
-                source_reference={"page": i+1}
+                source_reference={"page": i + 1},
             )
             db_session.add(q)
             db_session.flush()
@@ -43,10 +43,7 @@ class TestCSVExporter:
             # Add options
             for j in range(4):
                 opt = QuestionOption(
-                    question_id=q.id,
-                    option_text=f"Option {j+1}",
-                    is_correct=(j == 0),
-                    order=j
+                    question_id=q.id, option_text=f"Option {j+1}", is_correct=(j == 0), order=j
                 )
                 db_session.add(opt)
 
@@ -62,8 +59,8 @@ class TestCSVExporter:
 
         assert len(rows) == 3
         for i, row in enumerate(rows):
-            assert row['Question'] == f"Question {i+1}?"
-            assert row['Explanation'] == f"Explanation {i+1}"
+            assert row["Question"] == f"Question {i+1}?"
+            assert row["Explanation"] == f"Explanation {i+1}"
 
     def test_format_question_row_correct_answer(self, sample_question):
         """Test that correct answer is properly identified"""
@@ -71,7 +68,7 @@ class TestCSVExporter:
         row = exporter._format_question_row(sample_question)
 
         # Row format: [Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Source, Difficulty]
-        assert row[5] == 'A'  # CorrectAnswer field
+        assert row[5] == "A"  # CorrectAnswer field
         assert row[1] == "A programming language"  # OptionA
 
     def test_format_question_row_with_all_options(self, sample_question):
@@ -90,7 +87,7 @@ class TestCSVExporter:
             document_id=sample_document.id,
             question_text="Binary question?",
             explanation="Test",
-            difficulty="easy"
+            difficulty="easy",
         )
         db_session.add(question)
         db_session.flush()
@@ -117,7 +114,7 @@ class TestCSVExporter:
         source_ref = {
             "page": 5,
             "section": "Introduction",
-            "text": "This is the source text from the document"
+            "text": "This is the source text from the document",
         }
 
         result = exporter._format_source_reference(source_ref)
@@ -156,8 +153,15 @@ class TestCSVExporter:
         """Test that CSV headers match expected format"""
         exporter = CSVExporter()
         expected_headers = [
-            'Question', 'OptionA', 'OptionB', 'OptionC', 'OptionD',
-            'CorrectAnswer', 'Explanation', 'Source', 'Difficulty'
+            "Question",
+            "OptionA",
+            "OptionB",
+            "OptionC",
+            "OptionD",
+            "CorrectAnswer",
+            "Explanation",
+            "Source",
+            "Difficulty",
         ]
         assert exporter.HEADERS == expected_headers
 
@@ -167,7 +171,7 @@ class TestCSVExporter:
             document_id=sample_document.id,
             question_text='What is "Python"?',
             explanation="It's a language with 'quotes'",
-            difficulty="medium"
+            difficulty="medium",
         )
         db_session.add(question)
         db_session.flush()
@@ -176,7 +180,7 @@ class TestCSVExporter:
             question_id=question.id,
             option_text='A "programming" language',
             is_correct=True,
-            order=0
+            order=0,
         )
         db_session.add(opt)
         db_session.commit()
@@ -200,11 +204,11 @@ class TestCSVExporter:
         assert output_file.exists()
 
         # Read and verify content
-        with open(output_file, 'r', encoding='utf-8-sig') as f:
+        with open(output_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 1
-            assert rows[0]['Question'] == "What is Python?"
+            assert rows[0]["Question"] == "What is Python?"
 
     def test_export_questions_to_file(self, sample_question, tmp_path):
         """Test exporting questions list to file"""
@@ -217,9 +221,9 @@ class TestCSVExporter:
         assert output_file.exists()
 
         # Verify UTF-8 BOM encoding
-        with open(output_file, 'rb') as f:
+        with open(output_file, "rb") as f:
             first_bytes = f.read(3)
-            assert first_bytes == b'\xef\xbb\xbf'  # UTF-8 BOM
+            assert first_bytes == b"\xef\xbb\xbf"  # UTF-8 BOM
 
     def test_correct_answer_letter_mapping(self, db_session, sample_document):
         """Test correct answer letter mapping for different positions"""
@@ -229,7 +233,7 @@ class TestCSVExporter:
             question = Question(
                 document_id=sample_document.id,
                 question_text=f"Question with answer at position {correct_index}",
-                difficulty="medium"
+                difficulty="medium",
             )
             db_session.add(question)
             db_session.flush()
@@ -239,7 +243,7 @@ class TestCSVExporter:
                     question_id=question.id,
                     option_text=f"Option {i}",
                     is_correct=(i == correct_index),
-                    order=i
+                    order=i,
                 )
                 db_session.add(opt)
 
@@ -256,7 +260,7 @@ class TestCSVExporter:
             document_id=sample_document.id,
             question_text="Question without explanation",
             explanation=None,
-            difficulty="easy"
+            difficulty="easy",
         )
         db_session.add(question)
         db_session.commit()
@@ -271,7 +275,7 @@ class TestCSVExporter:
         question = Question(
             document_id=sample_document.id,
             question_text="Question without difficulty",
-            difficulty=None
+            difficulty=None,
         )
         db_session.add(question)
         db_session.commit()

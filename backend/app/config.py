@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "anthropic"  # "anthropic", "openai", or "gemini"
     AI_MODEL: str = ""  # Optional: specific model to use
 
+    # Canvas template routing (TypeSafe / Jev). Optional: without it the canvas
+    # asks the person which form to draw instead of choosing one.
+    TYPESAFE_API_KEY: str = ""
+
     # Application
     DEBUG: bool = True
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

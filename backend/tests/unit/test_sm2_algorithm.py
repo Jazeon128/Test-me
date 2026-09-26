@@ -2,11 +2,7 @@
 import pytest
 from datetime import datetime, timedelta
 
-from app.services.spaced_repetition.sm2_algorithm import (
-    SM2Algorithm,
-    ReviewResult,
-    ReviewData
-)
+from app.services.spaced_repetition.sm2_algorithm import SM2Algorithm, ReviewResult, ReviewData
 
 
 @pytest.mark.unit
@@ -31,9 +27,7 @@ class TestReviewData:
         """Test creating ReviewData with all fields"""
         timestamp = datetime.utcnow()
         data = ReviewData(
-            quality=ReviewResult.PERFECT,
-            time_taken_seconds=10.5,
-            timestamp=timestamp
+            quality=ReviewResult.PERFECT, time_taken_seconds=10.5, timestamp=timestamp
         )
 
         assert data.quality == ReviewResult.PERFECT
@@ -42,10 +36,7 @@ class TestReviewData:
 
     def test_review_data_auto_timestamp(self):
         """Test that timestamp is auto-generated if not provided"""
-        data = ReviewData(
-            quality=ReviewResult.CORRECT_MEDIUM,
-            time_taken_seconds=20.0
-        )
+        data = ReviewData(quality=ReviewResult.CORRECT_MEDIUM, time_taken_seconds=20.0)
 
         assert data.timestamp is not None
         assert isinstance(data.timestamp, datetime)
@@ -58,10 +49,7 @@ class TestSM2Algorithm:
     def test_calculate_next_review_first_correct(self):
         """Test first correct answer"""
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=2.5,
-            interval=0,
-            repetitions=0,
-            quality=ReviewResult.PERFECT
+            easiness_factor=2.5, interval=0, repetitions=0, quality=ReviewResult.PERFECT
         )
 
         assert reps == 1
@@ -71,10 +59,7 @@ class TestSM2Algorithm:
     def test_calculate_next_review_second_correct(self):
         """Test second consecutive correct answer"""
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=2.5,
-            interval=1,
-            repetitions=1,
-            quality=ReviewResult.PERFECT
+            easiness_factor=2.5, interval=1, repetitions=1, quality=ReviewResult.PERFECT
         )
 
         assert reps == 2
@@ -83,10 +68,7 @@ class TestSM2Algorithm:
     def test_calculate_next_review_third_correct(self):
         """Test third consecutive correct answer"""
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=2.5,
-            interval=6,
-            repetitions=2,
-            quality=ReviewResult.PERFECT
+            easiness_factor=2.5, interval=6, repetitions=2, quality=ReviewResult.PERFECT
         )
 
         assert reps == 3
@@ -95,10 +77,7 @@ class TestSM2Algorithm:
     def test_calculate_next_review_incorrect_resets(self):
         """Test that incorrect answer resets repetitions"""
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=2.5,
-            interval=15,
-            repetitions=5,
-            quality=ReviewResult.INCORRECT_HARD
+            easiness_factor=2.5, interval=15, repetitions=5, quality=ReviewResult.INCORRECT_HARD
         )
 
         assert reps == 0  # Reset
@@ -113,7 +92,7 @@ class TestSM2Algorithm:
                 easiness_factor=ef,
                 interval=1,
                 repetitions=0,
-                quality=ReviewResult.COMPLETE_BLACKOUT
+                quality=ReviewResult.COMPLETE_BLACKOUT,
             )
 
         assert ef >= 1.3  # Should never go below minimum
@@ -123,10 +102,7 @@ class TestSM2Algorithm:
         initial_ef = 2.0
 
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=initial_ef,
-            interval=1,
-            repetitions=1,
-            quality=ReviewResult.PERFECT
+            easiness_factor=initial_ef, interval=1, repetitions=1, quality=ReviewResult.PERFECT
         )
 
         assert ef > initial_ef
@@ -139,7 +115,7 @@ class TestSM2Algorithm:
             easiness_factor=initial_ef,
             interval=1,
             repetitions=1,
-            quality=ReviewResult.INCORRECT_HARD
+            quality=ReviewResult.INCORRECT_HARD,
         )
 
         assert ef < initial_ef
@@ -153,7 +129,7 @@ class TestSM2Algorithm:
             repetitions=1,
             quality=ReviewResult.PERFECT,
             time_taken_seconds=10.0,
-            time_limit_seconds=30.0
+            time_limit_seconds=30.0,
         )
 
         # Slow answer (with penalty)
@@ -163,7 +139,7 @@ class TestSM2Algorithm:
             repetitions=1,
             quality=ReviewResult.PERFECT,
             time_taken_seconds=35.0,  # Over time limit
-            time_limit_seconds=30.0
+            time_limit_seconds=30.0,
         )
 
         # Slow answer should have lower EF due to quality reduction
@@ -174,10 +150,7 @@ class TestSM2Algorithm:
         before = datetime.utcnow()
 
         ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-            easiness_factor=2.5,
-            interval=0,
-            repetitions=0,
-            quality=ReviewResult.PERFECT
+            easiness_factor=2.5, interval=0, repetitions=0, quality=ReviewResult.PERFECT
         )
 
         after = datetime.utcnow()
@@ -191,9 +164,7 @@ class TestSM2Algorithm:
     def test_determine_quality_correct_fast(self):
         """Test quality determination for fast correct answer"""
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=10.0,
-            time_limit_seconds=30.0
+            correct=True, time_taken_seconds=10.0, time_limit_seconds=30.0
         )
 
         assert quality == ReviewResult.PERFECT
@@ -201,9 +172,7 @@ class TestSM2Algorithm:
     def test_determine_quality_correct_medium(self):
         """Test quality determination for medium-speed correct answer"""
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=20.0,
-            time_limit_seconds=30.0
+            correct=True, time_taken_seconds=20.0, time_limit_seconds=30.0
         )
 
         assert quality == ReviewResult.CORRECT_MEDIUM
@@ -211,9 +180,7 @@ class TestSM2Algorithm:
     def test_determine_quality_correct_slow(self):
         """Test quality determination for slow correct answer"""
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=28.0,
-            time_limit_seconds=30.0
+            correct=True, time_taken_seconds=28.0, time_limit_seconds=30.0
         )
 
         assert quality == ReviewResult.CORRECT_HARD
@@ -221,9 +188,7 @@ class TestSM2Algorithm:
     def test_determine_quality_incorrect_fast(self):
         """Test quality determination for fast incorrect answer"""
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=False,
-            time_taken_seconds=10.0,
-            time_limit_seconds=30.0
+            correct=False, time_taken_seconds=10.0, time_limit_seconds=30.0
         )
 
         assert quality == ReviewResult.INCORRECT_EASY
@@ -231,9 +196,7 @@ class TestSM2Algorithm:
     def test_determine_quality_incorrect_slow(self):
         """Test quality determination for slow incorrect answer"""
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=False,
-            time_taken_seconds=25.0,
-            time_limit_seconds=30.0
+            correct=False, time_taken_seconds=25.0, time_limit_seconds=30.0
         )
 
         assert quality == ReviewResult.INCORRECT_HARD
@@ -262,10 +225,7 @@ class TestSM2Algorithm:
     def test_calculate_mastery_level_mastered(self):
         """Test mastery calculation for mastered question"""
         is_mastered, percentage = SM2Algorithm.calculate_mastery_level(
-            repetitions=5,
-            easiness_factor=2.6,
-            times_correct=10,
-            times_incorrect=2
+            repetitions=5, easiness_factor=2.6, times_correct=10, times_incorrect=2
         )
 
         # 5+ reps, EF >= 2.5, success rate 10/12 = 83% (>= 80%)
@@ -275,10 +235,7 @@ class TestSM2Algorithm:
     def test_calculate_mastery_level_not_mastered_low_reps(self):
         """Test that low repetitions prevent mastery"""
         is_mastered, percentage = SM2Algorithm.calculate_mastery_level(
-            repetitions=3,  # Less than 5
-            easiness_factor=2.6,
-            times_correct=10,
-            times_incorrect=2
+            repetitions=3, easiness_factor=2.6, times_correct=10, times_incorrect=2  # Less than 5
         )
 
         assert is_mastered is False
@@ -286,10 +243,7 @@ class TestSM2Algorithm:
     def test_calculate_mastery_level_not_mastered_low_ef(self):
         """Test that low EF prevents mastery"""
         is_mastered, percentage = SM2Algorithm.calculate_mastery_level(
-            repetitions=5,
-            easiness_factor=2.0,  # Less than 2.5
-            times_correct=10,
-            times_incorrect=2
+            repetitions=5, easiness_factor=2.0, times_correct=10, times_incorrect=2  # Less than 2.5
         )
 
         assert is_mastered is False
@@ -300,7 +254,7 @@ class TestSM2Algorithm:
             repetitions=5,
             easiness_factor=2.6,
             times_correct=5,
-            times_incorrect=5  # Success rate 50% (< 80%)
+            times_incorrect=5,  # Success rate 50% (< 80%)
         )
 
         assert is_mastered is False
@@ -308,10 +262,7 @@ class TestSM2Algorithm:
     def test_calculate_mastery_level_zero_attempts(self):
         """Test mastery calculation with no attempts"""
         is_mastered, percentage = SM2Algorithm.calculate_mastery_level(
-            repetitions=0,
-            easiness_factor=2.5,
-            times_correct=0,
-            times_incorrect=0
+            repetitions=0, easiness_factor=2.5, times_correct=0, times_incorrect=0
         )
 
         assert is_mastered is False
@@ -331,7 +282,7 @@ class TestSM2Algorithm:
                 repetitions=reps,
                 easiness_factor=ef,
                 times_correct=correct,
-                times_incorrect=incorrect
+                times_incorrect=incorrect,
             )
 
             assert 0 <= percentage <= 100
@@ -350,7 +301,7 @@ class TestSM2Algorithm:
                 easiness_factor=ef,
                 interval=interval,
                 repetitions=reps,
-                quality=ReviewResult.PERFECT
+                quality=ReviewResult.PERFECT,
             )
             intervals_progression.append(interval)
 
@@ -367,25 +318,19 @@ class TestSM2Algorithm:
 
         # Exactly at 50% (should be PERFECT)
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=15.0,
-            time_limit_seconds=time_limit
+            correct=True, time_taken_seconds=15.0, time_limit_seconds=time_limit
         )
         assert quality == ReviewResult.PERFECT
 
         # Exactly at 80% (should be CORRECT_MEDIUM)
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=24.0,
-            time_limit_seconds=time_limit
+            correct=True, time_taken_seconds=24.0, time_limit_seconds=time_limit
         )
         assert quality == ReviewResult.CORRECT_MEDIUM
 
         # Just over 80% (should be CORRECT_HARD)
         quality = SM2Algorithm.determine_quality_from_attempt(
-            correct=True,
-            time_taken_seconds=24.5,
-            time_limit_seconds=time_limit
+            correct=True, time_taken_seconds=24.5, time_limit_seconds=time_limit
         )
         assert quality == ReviewResult.CORRECT_HARD
 
@@ -396,10 +341,7 @@ class TestSM2Algorithm:
 
         # Perfect recall (q=5) should increase EF
         ef, _, _, _ = SM2Algorithm.calculate_next_review(
-            easiness_factor=initial_ef,
-            interval=1,
-            repetitions=1,
-            quality=ReviewResult.PERFECT
+            easiness_factor=initial_ef, interval=1, repetitions=1, quality=ReviewResult.PERFECT
         )
 
         # EF' = EF + (0.1 - (5 - 5) * (0.08 + (5 - 5) * 0.02))
@@ -408,12 +350,13 @@ class TestSM2Algorithm:
 
     def test_repetition_reset_on_any_incorrect(self):
         """Test that any quality < 3 resets repetitions"""
-        for quality in [ReviewResult.COMPLETE_BLACKOUT, ReviewResult.INCORRECT_HARD, ReviewResult.INCORRECT_EASY]:
+        for quality in [
+            ReviewResult.COMPLETE_BLACKOUT,
+            ReviewResult.INCORRECT_HARD,
+            ReviewResult.INCORRECT_EASY,
+        ]:
             ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
-                easiness_factor=2.5,
-                interval=10,
-                repetitions=5,
-                quality=quality
+                easiness_factor=2.5, interval=10, repetitions=5, quality=quality
             )
 
             assert reps == 0

@@ -229,6 +229,24 @@ export const statusAPI = {
   getByDeck: (deckId) => api.get(`/status/deck/${deckId}`),
 }
 
+// Canvas: diagrams drawn from a document
+export const canvasAPI = {
+  templates: () => api.get('/canvas/templates'),
+  generate: (documentId, requestText, template = null) =>
+    api.post('/canvas/generate', {
+      document_id: documentId,
+      request_text: requestText,
+      template,
+    }),
+  candidates: (jobId) => api.get(`/canvas/candidates/${jobId}`),
+  get: (canvasId) => api.get(`/canvas/${canvasId}`),
+  listForDocument: (documentId) => api.get(`/canvas/document/${documentId}`),
+  update: (canvasId, body) => api.patch(`/canvas/${canvasId}`, body),
+  nodeSource: (canvasId, nodeId) => api.get(`/canvas/${canvasId}/nodes/${nodeId}/source`),
+  questionsForNode: (canvasId, nodeId, count = 3) =>
+    api.post(`/canvas/${canvasId}/nodes/${nodeId}/questions?count=${count}`),
+}
+
 // Tags API
 export const tagsAPI = {
   list: () => api.get('/tags/'),

@@ -45,8 +45,8 @@ Thumbs.db
 
 # Uploads
 uploads/
-*.pdf
-*.docx
+uploads/*.pdf
+uploads/*.docx
 uploads/*.html
 uploads/*.htm
 
@@ -68,3 +68,11 @@ logs/
 # Temp
 temp/
 tmp/
+
+# Test artifacts
+.hypothesis/
+.coverage
+.coverage.*
+*.benchmarks/
+.benchmarks/
+.pytest_cache/

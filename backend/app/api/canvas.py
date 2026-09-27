@@ -324,11 +324,25 @@ async def routing_candidates(job_id: str, db: Session = Depends(get_db)):
 
 
 def _serialize(canvas: Canvas) -> Dict:
+    """One canvas, with enough context to say what it is and where it belongs.
+
+    The document and notebook are included because a canvas opened directly by
+    URL otherwise gives no clue which subject it came from.
+    """
+    template = viz_templates.TEMPLATES.get(canvas.template)
+    document = canvas.document
+    notebook = document.notebook if document else None
+
     return {
         "id": canvas.id,
         "document_id": canvas.document_id,
+        "document_name": (document.title or document.original_filename) if document else None,
+        "notebook_id": notebook.id if notebook else None,
+        "notebook_name": notebook.name if notebook else None,
+        "notebook_icon": notebook.icon if notebook else None,
         "request_text": canvas.request_text,
         "template": canvas.template,
+        "template_title": template.title if template else canvas.template,
         "title": canvas.title,
         "payload": canvas.payload_json,
         "layout": canvas.layout_json,
@@ -342,15 +356,14 @@ def _serialize(canvas: Canvas) -> Dict:
 async def list_all_canvases(db: Session = Depends(get_db)):
     """Every canvas, newest first, with the document each was drawn from."""
     rows = (
-        db.query(Canvas, Document)
+        db.query(Canvas)
         .join(Document, Canvas.document_id == Document.id)
         .order_by(Canvas.created_at.desc())
         .all()
     )
     out = []
-    for canvas, document in rows:
+    for canvas in rows:
         item = _serialize(canvas)
-        item["document_name"] = document.title or document.original_filename
         item["node_count"] = _count_nodes(canvas.payload_json)
         del item["payload"]
         out.append(item)

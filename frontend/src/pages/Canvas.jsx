@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ReactFlow,
   Background,
@@ -9,7 +9,7 @@ import {
   useEdgesState,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Loader2, Sparkles, AlertCircle } from 'lucide-react'
+import { Loader2, Sparkles, AlertCircle, ChevronRight, Wand2, Hand } from 'lucide-react'
 import PropTypes from 'prop-types'
 
 import { canvasAPI, statusAPI } from '../services/api'
@@ -39,6 +39,7 @@ const LAYOUTS = {
 
 export default function Canvas() {
   const { canvasId } = useParams()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const documentId = searchParams.get('document')
 
@@ -196,52 +197,75 @@ export default function Canvas() {
       style={{ borderColor: 'var(--line)' }}
     >
       <header
-        className="flex flex-wrap items-center gap-3 border-b px-4 py-3"
+        className="flex flex-col gap-3 border-b px-4 py-3"
         style={{ borderColor: 'var(--line)', background: 'var(--chrome)' }}
       >
-        <label htmlFor="canvas-request" className="sr-only">
-          What do you want to see?
-        </label>
-        <input
-          id="canvas-request"
-          value={request}
-          onChange={(event) => setRequest(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && request.trim()) start()
-          }}
-          placeholder="Ask about this document: how does a request flow through it, why does it fail…"
-          className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{
-            background: 'var(--bg)',
-            borderColor: 'var(--line2)',
-            color: 'var(--text)',
-            minHeight: 44,
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => start()}
-          disabled={!request.trim() || phase === 'generating'}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
-          style={{ background: 'var(--accent)', color: 'var(--accent-ink)', minHeight: 44 }}
-        >
-          {phase === 'generating' ? (
-            <Loader2 size={15} className="animate-spin" />
-          ) : (
-            <Sparkles size={15} />
-          )}
-          Draw it
-        </button>
         {canvas && (
-          <span className="tm-mono text-xs" style={{ color: 'var(--text3)' }}>
-            {canvas.template}
-            {canvas.routing_confidence != null
-              ? ` · ${Math.round(canvas.routing_confidence * 100)}%`
-              : canvas.chosen_by_user
-                ? ' · your choice'
-                : ''}
-          </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {canvas.notebook_id && (
+              <button
+                type="button"
+                onClick={() => navigate(`/notebooks/${canvas.notebook_id}`)}
+                className="flex items-center gap-1.5 text-xs"
+                style={{ color: 'var(--text3)' }}
+              >
+                <span aria-hidden="true">{canvas.notebook_icon || '\u{1F4D8}'}</span>
+                {canvas.notebook_name}
+                <ChevronRight size={12} />
+              </button>
+            )}
+
+            <h1
+              className="min-w-0 flex-1 truncate text-sm font-semibold"
+              style={{ color: 'var(--text)' }}
+              title={canvas.request_text}
+            >
+              {canvas.request_text}
+            </h1>
+
+            <TemplateBadge canvas={canvas} />
+          </div>
         )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="canvas-request" className="sr-only">
+            What do you want to see?
+          </label>
+          <input
+            id="canvas-request"
+            value={request}
+            onChange={(event) => setRequest(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && request.trim()) start()
+            }}
+            placeholder={
+              canvas
+                ? 'Ask something else about this source…'
+                : 'Ask about this document: how does a request flow through it, why does it fail…'
+            }
+            className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
+            style={{
+              background: 'var(--bg)',
+              borderColor: 'var(--line2)',
+              color: 'var(--text)',
+              minHeight: 44,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => start()}
+            disabled={!request.trim() || phase === 'generating'}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: 'var(--accent-ink)', minHeight: 44 }}
+          >
+            {phase === 'generating' ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Sparkles size={15} />
+            )}
+            Draw it
+          </button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -357,3 +381,47 @@ Generating.propTypes = {
   step: PropTypes.string,
   progress: PropTypes.number,
 }
+
+/**
+ * Which visual form this canvas is drawn as, and who decided.
+ *
+ * Whether the app chose the form or the person did is not a detail: the whole
+ * premise is that you do not pick the diagram type, so when it picks, it should
+ * say so and show how sure it was.
+ */
+function TemplateBadge({ canvas }) {
+  const chosenByModel = canvas.routing_confidence != null
+  const Icon = chosenByModel ? Wand2 : Hand
+  const label = canvas.template_title || canvas.template
+
+  const attribution = chosenByModel
+    ? `chosen for you, ${Math.round(canvas.routing_confidence * 100)}% confident`
+    : canvas.chosen_by_user
+      ? 'you chose this form'
+      : null
+
+  return (
+    <span
+      className="flex flex-none items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+      style={{
+        borderColor: 'var(--accent-line)',
+        background: 'var(--accent-soft)',
+        color: 'var(--accent)',
+      }}
+      title={attribution ? `${label} — ${attribution}` : label}
+    >
+      <Icon size={12} />
+      <span className="font-medium">{label}</span>
+      {attribution && (
+        <span style={{ color: 'var(--text3)' }} className="hidden sm:inline">
+          {'·'} {attribution}
+        </span>
+      )}
+    </span>
+  )
+}
+
+TemplateBadge.propTypes = {
+  canvas: PropTypes.object.isRequired,
+}
+

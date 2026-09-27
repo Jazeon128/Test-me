@@ -27,10 +27,11 @@ class YouTubeParser(BaseParser):
         Returns the transcript as a single string.
         """
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)  # type: ignore[attr-defined]
-            # Combine all text parts into one string
-            full_text = " ".join([item["text"] for item in transcript_list])
-            return full_text
+            # youtube-transcript-api 1.x is instance based: the old class method
+            # YouTubeTranscriptApi.get_transcript was removed, so the previous
+            # call raised AttributeError and no YouTube source ever parsed.
+            fetched = YouTubeTranscriptApi().fetch(video_id)
+            return " ".join(snippet.text for snippet in fetched)
         except Exception as e:
             raise Exception(f"Failed to fetch transcript: {str(e)}")
 

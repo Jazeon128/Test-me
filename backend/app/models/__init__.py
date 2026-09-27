@@ -8,6 +8,7 @@ from .tag import Tag, question_tags
 from .canvas import Canvas, CanvasRoutingLog
 from .deck import Deck, DeckQuestion
 from .notebook import Notebook
+from .activity import Award, StudyDay
 
 __all__ = [
     "Base",
@@ -24,4 +25,6 @@ __all__ = [
     "DeckQuestion",
     "CanvasRoutingLog",
     "Notebook",
+    "Award",
+    "StudyDay",
 ]

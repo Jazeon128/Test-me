@@ -274,6 +274,60 @@ TEMPLATES: Dict[str, Template] = {
             edge_extra={"label": "string, required, the relationship, at most 4 words"},
         ),
     ),
+    "decision_tree": Template(
+        id="decision_tree",
+        title="Decision tree",
+        description=(
+            "A question, its possible answers, and where each answer leads, "
+            "ending in a recommendation. Use when the material is about "
+            "choosing between options according to criteria: which service to "
+            "use when, which approach fits which situation. The branches are "
+            "conditions, not sequential steps."
+        ),
+        layout="layered",
+        node_kinds=["StepNode"],
+        payload_schema=_graph_schema(
+            node_extra={
+                **_COLOR,
+                "kind": "one of: question, outcome",
+            },
+            edge_extra={
+                "label": "string, required, the answer that takes you down this branch",
+            },
+        ),
+    ),
+    "sequence": Template(
+        id="sequence",
+        title="Sequence diagram",
+        description=(
+            "Messages passed between named participants, in order over time. "
+            "Use when the material says who calls whom and in what order, such "
+            "as an API exchange, a protocol, or a handshake. Different from a "
+            "flowchart because the same participant appears repeatedly and who "
+            "is acting matters as much as what happens."
+        ),
+        layout="sequence",
+        node_kinds=["MessageNode", "ActorNode"],
+        payload_schema={
+            "participants": [
+                {
+                    "id": "string, unique (p1, p2, ...)",
+                    "label": "string, at most 4 words, the participant's name",
+                    **_COLOR,
+                }
+            ],
+            "messages": [
+                {
+                    "id": "string, unique (m1, m2, ...)",
+                    "from": "string, a participant id",
+                    "to": "string, a participant id",
+                    "label": "string, at most 8 words, what is sent",
+                    "kind": "one of: call, return, async",
+                    "source_section_id": "string, the id of the source section",
+                }
+            ],
+        },
+    ),
     "causal_loop": Template(
         id="causal_loop",
         title="Causal loop",

@@ -37,10 +37,45 @@ const nodeTypeFor = (template, node) => {
   return node?.type || 'StepNode'
 }
 
+/** Participants as columns, messages down the page in order. */
+const ACTOR_GAP = 260
+const MESSAGE_GAP = 74
+
+function sequenceGraph(payload) {
+  const participants = payload.participants || []
+  const columnOf = new Map(participants.map((p, index) => [p.id, index]))
+
+  const nodes = participants.map((participant, index) => ({
+    id: participant.id,
+    type: 'ActorNode',
+    position: { x: index * ACTOR_GAP, y: 0 },
+    data: { ...participant },
+    draggable: false,
+  }))
+
+  const edges = []
+  ;(payload.messages || []).forEach((message, index) => {
+    const y = 110 + index * MESSAGE_GAP
+    const from = columnOf.get(message.from) ?? 0
+    const to = columnOf.get(message.to) ?? 0
+
+    nodes.push({
+      id: message.id,
+      type: 'MessageNode',
+      // Sit the message midway between the two participants it travels between.
+      position: { x: ((from + to) / 2) * ACTOR_GAP, y },
+      data: { ...message, rightward: to >= from },
+    })
+  })
+
+  return { nodes, edges, groups: [], preLaidOut: true }
+}
+
 /** Flatten a template payload into a flat node/edge list. */
 export function toGraph(template, payload) {
   if (template === 'fishbone') return fishboneGraph(payload)
   if (template === 'comparison_matrix') return matrixGraph(payload)
+  if (template === 'sequence') return sequenceGraph(payload)
 
   const nodes = (payload.nodes || []).map((node) => ({
     id: node.id,

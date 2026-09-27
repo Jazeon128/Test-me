@@ -22,6 +22,7 @@ from app.api import (
     search,
     canvas,
     notebooks,
+    activity,
 )
 from app.utils.logging import configure_logging, get_logger
 from app.utils.metrics import application_info
@@ -214,6 +215,7 @@ app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(canvas.router, prefix="/api/canvas", tags=["canvas"])
 app.include_router(notebooks.router, prefix="/api/notebooks", tags=["notebooks"])
+app.include_router(activity.router, prefix="/api/activity", tags=["activity"])
 
 
 if __name__ == "__main__":

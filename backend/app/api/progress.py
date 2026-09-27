@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from ..db import get_db
+from ..services import activity
 from ..models.user_progress import UserProgress
 from ..models.question import Question
 from ..services.spaced_repetition import SM2Algorithm, ReviewResult
@@ -163,6 +164,10 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     # Invalidate stats cache when progress is updated
     stats_cache.invalidate_all()
 
+    # Record the day, then see whether anything was earned by it.
+    points_earned = activity.record_answer(db, is_correct, progress.streak)
+    new_awards = activity.check_awards(db)
+
     return {
         "correct": is_correct,
         "correct_answer": correct_option,
@@ -182,9 +187,15 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
             "interval_days": progress.interval,
         },
         "gamification": {
-            "points_earned": 10 if is_correct else 0,
-            "streak_bonus": progress.streak * 5 if is_correct else 0,
+            # These are now recorded rather than calculated and discarded.
+            "points_earned": points_earned.base,
+            "streak_bonus": points_earned.bonus,
+            "points_total": points_earned.total,
+            "daily_streak": activity.current_streak(db),
             "mastery_achieved": is_mastered and not progress.is_mastered,
+            "awards": [
+                {"code": a.code, "title": a.title, "description": a.description} for a in new_awards
+            ],
         },
     }
 

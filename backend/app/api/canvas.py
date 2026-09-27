@@ -19,6 +19,7 @@ from ..models.document import Document
 from ..models.generation_status import GenerationStatus
 from ..models.settings import Settings
 from ..services.ai.question_generator import QuestionGenerator
+from ..services import activity
 from ..services.parsers import get_parser_for_type
 from ..services.viz import generator as viz_generator
 from ..services.viz import router as viz_router
@@ -195,6 +196,9 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         db.add(canvas)
         db.commit()
         db.refresh(canvas)
+
+        activity.record_canvas(db)
+        activity.check_awards(db)
 
         if routing_log_id is not None:
             log_row = (

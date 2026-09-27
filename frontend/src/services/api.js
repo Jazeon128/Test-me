@@ -229,6 +229,13 @@ export const statusAPI = {
   getByDeck: (deckId) => api.get(`/status/deck/${deckId}`),
 }
 
+// Activity: what you did, which day, and what it earned
+export const activityAPI = {
+  get: (days = 365) => api.get(`/activity/?days=${days}`),
+  mood: () => api.get('/activity/mood'),
+  awards: () => api.get('/activity/awards'),
+}
+
 // Notebooks: the topic a set of sources belongs to
 export const notebooksAPI = {
   list: () => api.get('/notebooks/'),

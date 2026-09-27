@@ -144,8 +144,48 @@ BoneNode.propTypes = nodeShape
 MatrixCell.propTypes = nodeShape
 GroupNode.propTypes = { data: PropTypes.object.isRequired }
 
+/** A participant in a sequence diagram: a column header. */
+export function ActorNode({ data, selected }) {
+  return (
+    <div
+      className={`tm-node shape-pill ${colorClass(data.color)}${selected ? ' is-selected' : ''}`}
+      style={{ minWidth: 120, textAlign: 'center' }}
+    >
+      <div className="tm-label">{data.label}</div>
+    </div>
+  )
+}
+
+/** One message travelling between participants. */
+export function MessageNode({ data, selected }) {
+  const arrow = data.rightward ? '→' : '←'
+  return (
+    <div
+      className={`tm-node ${colorClass(data.kind === 'return' ? 'slate' : 'blue')}${
+        selected ? ' is-selected' : ''
+      }`}
+      style={{ minWidth: 150 }}
+    >
+      <Handle type="target" position={Position.Left} />
+      <div className="tm-node-head">
+        <span className="tm-kind">
+          {arrow} {data.kind || 'call'}
+        </span>
+        <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+      </div>
+      <div className="tm-label">{data.label}</div>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  )
+}
+
+ActorNode.propTypes = nodeShape
+MessageNode.propTypes = nodeShape
+
 export const nodeTypes = {
   StepNode,
+  ActorNode,
+  MessageNode,
   ServiceNode,
   MilestoneNode,
   BoneNode,

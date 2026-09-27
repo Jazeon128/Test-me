@@ -35,6 +35,8 @@ const LAYOUTS = {
   c4_context: 'layered',
   concept_map: 'force',
   causal_loop: 'force',
+  decision_tree: 'layered',
+  sequence: 'sequence',
 }
 
 export default function Canvas() {

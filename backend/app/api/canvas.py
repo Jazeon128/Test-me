@@ -91,6 +91,59 @@ async def list_templates():
     ]
 
 
+def _ask_for_a_choice(db, status, message: str) -> None:
+    """Hand the decision back to the person."""
+    status.status = "needs_choice"
+    status.current_step = "Pick how this should be drawn"
+    status.error_message = None
+    status.add_log(message)
+    db.commit()
+
+
+def _decide_template(db, request, document, sections, status, step):
+    """Settle which template to draw.
+
+    Returns (template, routing, routing_log_id), or None when the decision has
+    been handed to the person and the job should stop here.
+    """
+    if request.template:
+        template = viz_templates.get(request.template)
+        step(f"Drawing the {template.title.lower()} you chose", 30)
+        return template, None, None
+
+    step("Choosing a form for this material", 25)
+    try:
+        routing = viz_router.route(
+            request_text=request.request_text,
+            title=document.title or document.original_filename,
+            sections=sections,
+            api_key=_typesafe_key(db),
+        )
+    except viz_router.RoutingUnavailable as exc:
+        logger.info("canvas_routing_unavailable", reason=str(exc))
+        _log_routing(db, request, None, None, needs_choice=True)
+        _ask_for_a_choice(db, status, f"Routing unavailable: {exc}")
+        return None
+
+    if not routing.is_confident:
+        _log_routing(db, request, routing, None, needs_choice=True)
+        _ask_for_a_choice(
+            db,
+            status,
+            f"Not confident enough to choose ({routing.confidence:.0%}); asking instead",
+        )
+        return None
+
+    # Log the decision now, not after the fill. A fill that fails would
+    # otherwise discard a routing answer that was made and acted on, biasing
+    # the log toward runs that happened to succeed.
+    routing_log_id = _log_routing(db, request, routing, None, needs_choice=False)
+
+    template = viz_templates.get(routing.template_id)
+    step(f"Drawing a {template.title.lower()}", 40)
+    return template, routing, routing_log_id
+
+
 def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
     """Route and fill, in the background, reporting progress as it goes."""
     db = SessionLocal()
@@ -111,41 +164,10 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         if not sections:
             raise ValueError("This document has no readable text to draw from.")
 
-        routing = None
-        if request.template:
-            template = viz_templates.get(request.template)
-            step(f"Drawing the {template.title.lower()} you chose", 30)
-        else:
-            step("Choosing a form for this material", 25)
-            try:
-                routing = viz_router.route(
-                    request_text=request.request_text,
-                    title=document.title or document.original_filename,
-                    sections=sections,
-                    api_key=_typesafe_key(db),
-                )
-            except viz_router.RoutingUnavailable as exc:
-                logger.info("canvas_routing_unavailable", reason=str(exc))
-                _log_routing(db, request, None, None, needs_choice=True)
-                status.status = "needs_choice"
-                status.current_step = "Pick how this should be drawn"
-                status.add_log(f"Routing unavailable: {exc}")
-                db.commit()
-                return
-
-            if not routing.is_confident:
-                _log_routing(db, request, routing, None, needs_choice=True)
-                status.status = "needs_choice"
-                status.current_step = "Pick how this should be drawn"
-                status.error_message = None
-                status.add_log(
-                    f"Not confident enough to choose ({routing.confidence:.0%}); asking instead"
-                )
-                db.commit()
-                return
-
-            template = viz_templates.get(routing.template_id)
-            step(f"Drawing a {template.title.lower()}", 40)
+        decision = _decide_template(db, request, document, sections, status, step)
+        if decision is None:
+            return
+        template, routing, routing_log_id = decision
 
         payload = viz_generator.generate(
             db=db,
@@ -174,7 +196,13 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         db.commit()
         db.refresh(canvas)
 
-        _log_routing(db, request, routing, canvas.id, needs_choice=False)
+        if routing_log_id is not None:
+            log_row = (
+                db.query(CanvasRoutingLog).filter(CanvasRoutingLog.id == routing_log_id).first()
+            )
+            if log_row:
+                log_row.canvas_id = canvas.id
+                db.commit()
 
         status.status = "completed"
         status.progress = 100
@@ -201,24 +229,26 @@ def _log_routing(
     routing: Optional[viz_router.Routing],
     canvas_id: Optional[int],
     needs_choice: bool,
-) -> None:
-    db.add(
-        CanvasRoutingLog(
-            canvas_id=canvas_id,
-            document_id=request.document_id,
-            request_text=request.request_text,
-            chosen_template=routing.template_id if routing else None,
-            confidence=routing.confidence if routing else 0.0,
-            probabilities_json=routing.probabilities if routing else None,
-            shape_signals_json=routing.shape_signals if routing else None,
-            granularity_index=routing.granularity_index if routing else None,
-            auto_applied=not needs_choice and request.template is None,
-            user_override=request.template,
-            duration_ms=routing.duration_ms if routing else None,
-            input_tokens=routing.input_tokens if routing else None,
-        )
+) -> Optional[int]:
+    """Record one routing decision. Returns the row id so a canvas can be linked."""
+    row = CanvasRoutingLog(
+        canvas_id=canvas_id,
+        document_id=request.document_id,
+        request_text=request.request_text,
+        chosen_template=routing.template_id if routing else None,
+        confidence=routing.confidence if routing else 0.0,
+        probabilities_json=routing.probabilities if routing else None,
+        shape_signals_json=routing.shape_signals if routing else None,
+        granularity_index=routing.granularity_index if routing else None,
+        auto_applied=not needs_choice and request.template is None,
+        user_override=request.template,
+        duration_ms=routing.duration_ms if routing else None,
+        input_tokens=routing.input_tokens if routing else None,
     )
+    db.add(row)
     db.commit()
+    db.refresh(row)
+    return row.id
 
 
 @router.post("/generate")

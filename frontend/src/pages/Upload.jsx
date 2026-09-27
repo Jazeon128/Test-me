@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
 import { Upload as UploadIcon, CheckCircle, AlertCircle, Loader2, Book, FileType, Youtube } from 'lucide-react'
 
 export default function Upload() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const notebookId = searchParams.get('notebook')
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [result, setResult] = useState(null)
@@ -59,9 +61,11 @@ export default function Upload() {
           message: 'Questions generated successfully!'
         })
 
-        // Redirect after a short delay
+        // Return to the notebook the upload came from, where the new source,
+        // its deck and any canvas of it all sit together. Only fall through to
+        // the deck when the upload was not started from a notebook.
         setTimeout(() => {
-          navigate(`/decks/${status.deck_id}`)
+          navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${status.deck_id}`)
         }, 2000)
       } else if (status.status === 'failed') {
         clearInterval(statusCheckInterval)
@@ -119,6 +123,12 @@ export default function Upload() {
     }
 
     // Add regenerate flag
+    // Keep the upload inside the notebook it was started from, so the source
+    // and its generated deck land in the same topic.
+    if (notebookId) {
+      formData.append('notebook_id', notebookId)
+    }
+
     formData.append('regenerate', regenerate)
 
     setUploading(true)

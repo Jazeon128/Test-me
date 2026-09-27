@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Upload, TrendingUp, BookOpen, Layers, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
+import { TrendingUp, BookOpen, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import SearchModal from './SearchModal'
 
@@ -59,23 +59,8 @@ export default function Layout({ children }) {
                   to="/"
                   className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all duration-200 ${isActive('/')}`}
                 >
-                  <Home size={18} />
-                  Dashboard
-                </Link>
-                <Link
-                  to="/upload"
-                  className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all duration-200 ${isActive('/upload')}`}
-                >
-                  <Upload size={18} />
-                  Upload
-                </Link>
-
-                <Link
-                  to="/decks"
-                  className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all duration-200 ${isActive('/decks')}`}
-                >
-                  <Layers size={18} />
-                  Decks
+                  <BookOpen size={18} />
+                  Notebooks
                 </Link>
 
                 <Link
@@ -134,24 +119,8 @@ export default function Layout({ children }) {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/')}`}
               >
-                <Home size={20} />
-                Dashboard
-              </Link>
-              <Link
-                to="/upload"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/upload')}`}
-              >
-                <Upload size={20} />
-                Upload
-              </Link>
-              <Link
-                to="/decks"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center gap-3 ${isActive('/decks')}`}
-              >
-                <Layers size={20} />
-                Decks
+                <BookOpen size={20} />
+                Notebooks
               </Link>
               <Link
                 to="/progress"

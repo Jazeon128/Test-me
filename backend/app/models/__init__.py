@@ -6,6 +6,8 @@ from .settings import Settings
 from .generation_status import GenerationStatus
 from .tag import Tag, question_tags
 from .canvas import Canvas, CanvasRoutingLog
+from .deck import Deck, DeckQuestion
+from .notebook import Notebook
 
 __all__ = [
     "Base",
@@ -18,5 +20,8 @@ __all__ = [
     "Tag",
     "question_tags",
     "Canvas",
+    "Deck",
+    "DeckQuestion",
     "CanvasRoutingLog",
+    "Notebook",
 ]

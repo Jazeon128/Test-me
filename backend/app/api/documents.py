@@ -45,6 +45,7 @@ async def upload_document(
     deck_id: Optional[str] = Form(None),
     deck_name: Optional[str] = Form(None),
     deck_description: Optional[str] = Form(None),
+    notebook_id: Optional[int] = Form(None),
     regenerate: bool = Form(False),
     custom_prompt: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
@@ -60,6 +61,7 @@ async def upload_document(
         deck_id: Optional deck ID to add questions to existing deck
         deck_name: Name for new deck (if creating)
         deck_description: Description for new deck (if creating)
+        notebook_id: The notebook these sources belong to
         regenerate: If True, regenerate all questions from all documents in deck
         custom_prompt: Custom instructions for question generation
     """
@@ -101,7 +103,11 @@ async def upload_document(
             final_deck_name = deck_name
 
         final_deck_description = deck_description or f"Questions from {len(files)} document(s)"
-        deck = Test(name=final_deck_name, description=final_deck_description)
+        deck = Test(
+            name=final_deck_name,
+            description=final_deck_description,
+            notebook_id=notebook_id,
+        )
         db.add(deck)
         db.commit()
         db.refresh(deck)
@@ -137,6 +143,7 @@ async def upload_document(
 
         # Create document record
         document = Document(
+            notebook_id=notebook_id,
             filename=filename,
             original_filename=file.filename,
             file_type=type_mapping[file_ext],

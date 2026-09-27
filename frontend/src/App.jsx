@@ -2,6 +2,8 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
+import Notebooks from './pages/Notebooks'
+import NotebookDetail from './pages/NotebookDetail'
 import Upload from './pages/Upload'
 import TestSession from './pages/TestSession'
 import Progress from './pages/Progress'
@@ -60,7 +62,9 @@ function App() {
       <UpdateNotification />
       <Layout>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Notebooks />} />
+          <Route path="/notebooks/:notebookId" element={<NotebookDetail />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/decks" element={<Decks />} />
           <Route path="/decks/:deckId" element={<DeckDetails />} />

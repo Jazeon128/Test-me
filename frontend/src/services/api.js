@@ -229,9 +229,19 @@ export const statusAPI = {
   getByDeck: (deckId) => api.get(`/status/deck/${deckId}`),
 }
 
+// Notebooks: the topic a set of sources belongs to
+export const notebooksAPI = {
+  list: () => api.get('/notebooks/'),
+  create: (body) => api.post('/notebooks/', body),
+  get: (id) => api.get(`/notebooks/${id}`),
+  update: (id, body) => api.patch(`/notebooks/${id}`, body),
+  remove: (id) => api.delete(`/notebooks/${id}`),
+}
+
 // Canvas: diagrams drawn from a document
 export const canvasAPI = {
   templates: () => api.get('/canvas/templates'),
+  listAll: () => api.get('/canvas/'),
   generate: (documentId, requestText, template = null) =>
     api.post('/canvas/generate', {
       document_id: documentId,

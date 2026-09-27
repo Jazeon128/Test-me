@@ -338,6 +338,41 @@ def _serialize(canvas: Canvas) -> Dict:
     }
 
 
+@router.get("/")
+async def list_all_canvases(db: Session = Depends(get_db)):
+    """Every canvas, newest first, with the document each was drawn from."""
+    rows = (
+        db.query(Canvas, Document)
+        .join(Document, Canvas.document_id == Document.id)
+        .order_by(Canvas.created_at.desc())
+        .all()
+    )
+    out = []
+    for canvas, document in rows:
+        item = _serialize(canvas)
+        item["document_name"] = document.title or document.original_filename
+        item["node_count"] = _count_nodes(canvas.payload_json)
+        del item["payload"]
+        out.append(item)
+    return out
+
+
+def _count_nodes(payload: Dict) -> int:
+    """How many nodes a payload holds, whatever its template's shape."""
+    return sum(1 for _ in _walk_labelled(payload))
+
+
+def _walk_labelled(payload):
+    if isinstance(payload, dict):
+        if "label" in payload and "id" in payload:
+            yield payload
+        for value in payload.values():
+            yield from _walk_labelled(value)
+    elif isinstance(payload, list):
+        for item in payload:
+            yield from _walk_labelled(item)
+
+
 @router.get("/document/{document_id}")
 async def list_canvases(document_id: int, db: Session = Depends(get_db)):
     canvases = (

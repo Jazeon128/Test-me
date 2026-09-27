@@ -27,6 +27,8 @@ cp .env.example .env
 # Edit .env and add:
 # - ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY
 # - AI_PROVIDER=anthropic, openai, or gemini
+# - TYPESAFE_API_KEY (optional): lets the canvas choose its own diagram type.
+#   Without it the canvas asks which form to draw.
 
 # Run development server
 python main.py
@@ -159,6 +161,41 @@ npm run lint
 4. **Question Generation**: AI generates questions from selected sections
 5. **Storage**: Questions stored with metadata and source references
 6. **Deck Creation**: Questions grouped into test/deck
+
+### Canvas Generation Flow
+
+A canvas is a diagram drawn from a document to answer a plain-language request.
+The person never picks the diagram type.
+
+1. **Request**: `/api/canvas/generate` takes a document id and a question. It
+   returns a job id; progress is polled at `/api/status/{job_id}`, reusing the
+   same `GenerationStatus` record question generation uses.
+2. **Route**: `services/viz/router.py` asks Jev (TypeSafe System One,
+   `jev-1.13.0`) seven independent questions in one request: which of the twelve
+   templates, how much detail, orientation, whether to group, and three signals
+   about the material. Roughly $0.00004 per canvas.
+3. **Decide**: below `CONFIDENCE_FLOOR` (0.6) the answer is **not** used. The
+   job goes to `needs_choice` and the frontend shows the top three candidates
+   with their probabilities. Jev answering `other` is never confident. Every
+   decision is written to `canvas_routing_log` so the floor can be tuned on real
+   data rather than guessed.
+4. **Fill**: `services/viz/generator.py` prompts the user's configured AI
+   provider with the chosen template's JSON schema. Retries once on invalid
+   output.
+5. **Validate**: every node must cite a `source_section_id` that exists. One
+   that does not has its citation cleared and reported; edges pointing at
+   unknown nodes are dropped.
+6. **Render**: the frontend runs elk over the payload (`src/canvas/layout.js`).
+   The fishbone is positioned directly, since no general graph layout draws a
+   spine with angled bones.
+
+**Without a `TYPESAFE_API_KEY` the canvas still works.** Routing is skipped and
+the person picks the form, which is the same path as a low-confidence answer.
+
+**Adding a template** means adding it to `services/viz/templates.py` (its
+description is what Jev sees, so it must read as a self-contained account of
+when that form is right) and mirroring its id and layout in the `LAYOUTS` map in
+`src/pages/Canvas.jsx`.
 
 ### Spaced Repetition (SM-2) Flow
 

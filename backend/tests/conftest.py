@@ -1,4 +1,9 @@
-"""Pytest configuration and fixtures"""
+"""Pytest configuration and fixtures.
+
+The database and upload directory are redirected to a temporary location in the
+rootdir conftest.py, which pytest loads before any application module.
+"""
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -7,11 +12,17 @@ from fastapi.testclient import TestClient
 
 from app.models.base import Base
 from app.db.database import get_db
+
+# These model imports look unused, but importing a model registers its table on
+# Base.metadata. Dropping one would silently leave that table out of the schema
+# every test builds.
 from app.models.document import Document
 from app.models.question import Question, QuestionOption
 from app.models.test import Test
 from app.models.user_progress import UserProgress
-from app.models.settings import Settings
+from app.models.settings import Settings  # noqa: F401
+from app.models.notebook import Notebook  # noqa: F401
+from app.models.canvas import Canvas, CanvasRoutingLog  # noqa: F401
 
 
 @pytest.fixture(scope="function")

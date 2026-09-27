@@ -447,7 +447,9 @@ class TestQuestionGeneratorProperties:
                     )
 
                     # Verify Gemini was configured with correct API key
-                    mock_genai.configure.assert_called_once_with(api_key="test-api-key-12345")
+                    mock_genai.configure.assert_called_once_with(
+                        api_key="test-api-key-12345", transport="rest"
+                    )
 
                     # Verify GenerativeModel was initialized with exact model name
                     mock_genai.GenerativeModel.assert_called_once_with(model_name)

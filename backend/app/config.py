@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # asks the person which form to draw instead of choosing one.
     TYPESAFE_API_KEY: str = ""
 
+    # Optional path to a CA bundle. Needed on a machine whose HTTPS is
+    # intercepted, by a corporate proxy or by antivirus scanning TLS: without
+    # the intercepting root in a bundle the HTTP clients trust, every provider
+    # call fails the handshake. Applied to the environment at startup so the
+    # SDKs pick it up.
+    CA_BUNDLE: str = ""
+
     # Application
     DEBUG: bool = True
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

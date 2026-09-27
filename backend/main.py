@@ -1,3 +1,6 @@
+import os
+import sys
+
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -5,6 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.config import settings as config_settings
+
 from app.db import init_db
 from app.api import (
     documents,
@@ -29,7 +33,30 @@ from app.middleware.error_handler import (
     generic_exception_handler,
 )
 from app.exceptions import TestMeException
-import os
+
+
+def _apply_ca_bundle() -> None:
+    """Point the HTTP clients at a CA bundle before any of them is built.
+
+    Set CA_BUNDLE when this machine intercepts HTTPS. All three variables are
+    set because different libraries read different ones, and an explicitly
+    configured bundle overrides whatever the environment already holds: a
+    machine-wide variable pointing at a stale bundle is exactly the situation
+    this setting exists to correct.
+    """
+    bundle = config_settings.CA_BUNDLE
+    if not bundle:
+        return
+    if not os.path.exists(bundle):
+        print(f"CA_BUNDLE is set to {bundle}, which does not exist", file=sys.stderr)
+        return
+    os.environ["REQUESTS_CA_BUNDLE"] = bundle
+    os.environ["SSL_CERT_FILE"] = bundle
+    os.environ["GRPC_DEFAULT_SSL_ROOTS_FILE_PATH"] = bundle
+
+
+_apply_ca_bundle()
+
 
 # Configure structured logging
 configure_logging(log_level=config_settings.LOG_LEVEL)

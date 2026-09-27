@@ -139,7 +139,11 @@ class QuestionGenerator:
             if not self.model:
                 self.model = "gpt-4o"
         elif self.provider == "gemini":
-            genai.configure(api_key=api_key)
+            # REST, not the default gRPC. gRPC reads neither REQUESTS_CA_BUNDLE
+            # nor SSL_CERT_FILE, so on a machine whose TLS is intercepted (a
+            # corporate proxy, or antivirus doing HTTPS scanning) it fails the
+            # handshake and retries forever instead of raising.
+            genai.configure(api_key=api_key, transport="rest")
             if not self.model:
                 self.model = "gemini-3.8-flash"
             self.client = genai.GenerativeModel(self.model)

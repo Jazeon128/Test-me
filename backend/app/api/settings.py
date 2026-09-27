@@ -259,9 +259,9 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
         )
     elif config.provider == "openai" and not config.api_key.startswith("sk-"):
         raise HTTPException(status_code=400, detail="Invalid OpenAI API key. Must start with 'sk-'")
-    elif config.provider == "gemini" and not config.api_key.startswith("AIza"):
-        # Gemini keys usually start with AIza, but let's be lenient if it changes
-        pass
+    # Gemini keys are deliberately not prefix-checked. Google has issued at
+    # least two formats (AIza..., AQ....), so a prefix rule would reject valid
+    # keys the next time the format changes.
 
     # Validate model name (accept any non-empty string)
     if config.model:

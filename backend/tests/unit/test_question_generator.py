@@ -125,7 +125,10 @@ class TestQuestionGeneratorInitialization:
 
             assert generator.provider == "gemini"
             assert generator.model == "gemini-3.8-flash"
-            mock_genai.configure.assert_called_once_with(api_key="test-key")
+            # transport="rest" is required, not incidental: the default gRPC
+            # transport ignores the CA bundle env vars, so it cannot be used on
+            # a machine whose HTTPS is intercepted.
+            mock_genai.configure.assert_called_once_with(api_key="test-key", transport="rest")
 
     def test_init_no_api_key_raises_error(self):
         """Test that initialization fails without API key"""

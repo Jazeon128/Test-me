@@ -25,11 +25,16 @@ def complete(
     prompt: str,
     max_tokens: int = 8192,
     temperature: float = 0.2,
+    timeout: float = 180.0,
 ) -> Completion:
     """Send one prompt and return the text.
 
     The default temperature is lower than question generation uses: this is
     called for structured JSON, where variety is not wanted.
+
+    The timeout matters: without one a provider that cannot complete a TLS
+    handshake retries indefinitely, and the job it belongs to sits reporting
+    progress forever instead of failing.
     """
     if provider == "anthropic":
         response = client.messages.create(
@@ -67,6 +72,7 @@ def complete(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
             ),
+            request_options={"timeout": timeout},
         )
         usage = getattr(response, "usage_metadata", None)
         return Completion(

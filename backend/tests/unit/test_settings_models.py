@@ -48,49 +48,21 @@ class TestGeminiModelList:
         """Test that Gemini model metadata is correct"""
         gemini_models = {m.id: m for m in AVAILABLE_MODELS if m.provider == "gemini"}
 
-        # Test Gemini 3 Pro Preview metadata
-        if "gemini-3-pro-preview" in gemini_models:
-            model = gemini_models["gemini-3-pro-preview"]
-            assert model.name == "Gemini 3 Pro Preview"
-            assert model.provider == "gemini"
-            assert model.context_window == 1048576
-            assert model.input_price == 0.00
-            assert model.output_price == 0.00
-            assert (
-                "multimodal" in model.description.lower() or "agentic" in model.description.lower()
-            )
+        # The model the generator falls back to must be offered in the list,
+        # or a new user cannot select what the app actually uses.
+        assert "gemini-3.8-flash" in gemini_models
 
-        # Test Gemini 2.5 Flash metadata
-        if "gemini-2.5-flash" in gemini_models:
-            model = gemini_models["gemini-2.5-flash"]
-            assert model.name == "Gemini 2.5 Flash"
-            assert model.provider == "gemini"
-            assert model.context_window == 1048576
-            assert model.input_price == 0.00
-            assert model.output_price == 0.00
-            assert "fast" in model.description.lower() or "thinking" in model.description.lower()
+        default = gemini_models["gemini-3.8-flash"]
+        assert default.name == "Gemini 3.8 Flash"
+        assert default.context_window == 1048576
+        assert default.input_price > 0, "paid-tier price, even though a free tier exists"
 
-        # Test Gemini 2.5 Flash-Lite metadata
-        if "gemini-2.5-flash-lite" in gemini_models:
-            model = gemini_models["gemini-2.5-flash-lite"]
-            assert model.name == "Gemini 2.5 Flash-Lite"
-            assert model.provider == "gemini"
-            assert model.context_window == 1048576
-            assert model.input_price == 0.00
-            assert model.output_price == 0.00
-            assert "fast" in model.description.lower() or "cost" in model.description.lower()
-
-        # Test Gemini 2.5 Pro metadata
-        if "gemini-2.5-pro" in gemini_models:
-            model = gemini_models["gemini-2.5-pro"]
-            assert model.name == "Gemini 2.5 Pro"
-            assert model.provider == "gemini"
-            assert model.context_window == 1048576
-            assert model.input_price == 0.00
-            assert model.output_price == 0.00
-            assert (
-                "thinking" in model.description.lower() or "reasoning" in model.description.lower()
-            )
+        # The legacy 2.5 entries are kept only so a saved configuration still
+        # resolves. Their descriptions say so, and are not asserted here: a test
+        # that pins wording fails on every honest catalogue update.
+        for legacy_id in ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"):
+            if legacy_id in gemini_models:
+                assert gemini_models[legacy_id].context_window == 1048576
 
 
 class TestModelListStructure:
@@ -122,10 +94,20 @@ class TestModelListStructure:
         assert "openai" in providers, "OpenAI models should be present"
         assert "gemini" in providers, "Gemini models should be present"
 
-    def test_gemini_has_correct_count(self):
-        """Test that Gemini has exactly 4 models (the new ones)"""
+    def test_gemini_models_are_well_formed(self):
+        """Every Gemini entry must be usable.
+
+        This deliberately does not assert a model count. The catalogue changes
+        whenever Google ships or retires a model, and a hard-coded count only
+        ever fails for legitimate updates.
+        """
         gemini_models = [m for m in AVAILABLE_MODELS if m.provider == "gemini"]
-        assert len(gemini_models) == 4, f"Expected 4 Gemini models, found {len(gemini_models)}"
+        assert gemini_models, "at least one Gemini model must be offered"
+
+        for model in gemini_models:
+            assert model.id and model.name, f"{model.id} is missing an id or name"
+            assert model.context_window > 0, f"{model.id} has no context window"
+            assert model.input_price >= 0 and model.output_price >= 0
 
 
 class TestCustomModelDetection:

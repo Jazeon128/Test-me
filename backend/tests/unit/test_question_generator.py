@@ -124,7 +124,7 @@ class TestQuestionGeneratorInitialization:
             generator = QuestionGenerator()
 
             assert generator.provider == "gemini"
-            assert generator.model == "gemini-2.0-flash-exp"
+            assert generator.model == "gemini-3.8-flash"
             mock_genai.configure.assert_called_once_with(api_key="test-key")
 
     def test_init_no_api_key_raises_error(self):

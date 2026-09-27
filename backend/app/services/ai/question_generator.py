@@ -37,7 +37,7 @@ class QuestionGenerator:
     -----------------------
     - **Anthropic Claude**: claude-sonnet-5 (default)
     - **OpenAI GPT**: gpt-4o (default)
-    - **Google Gemini**: gemini-2.0-flash-exp (default)
+    - **Google Gemini**: gemini-3.8-flash (default)
 
     Features:
     ---------
@@ -141,7 +141,7 @@ class QuestionGenerator:
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
             if not self.model:
-                self.model = "gemini-2.0-flash-exp"  # Default to latest fast model
+                self.model = "gemini-3.8-flash"
             self.client = genai.GenerativeModel(self.model)
         else:
             raise AIServiceError(

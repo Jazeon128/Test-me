@@ -244,7 +244,10 @@ def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: i
             "gpt-3.5-turbo": {"input": 0.5, "output": 1.5},
         },
         "gemini": {
-            # Gemini 3.0 Series (preview pricing)
+            # Paid-tier prices. On Google's free tier these cost nothing.
+            "gemini-3.8-flash": {"input": 0.75, "output": 3.75},
+            "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50},
+            "gemini-3.1-pro-preview": {"input": 0.0, "output": 0.0},
             "gemini-3-pro-preview": {"input": 0.0, "output": 0.0},
             # Gemini 2.5 Series (preview pricing)
             "gemini-2.5-flash": {"input": 0.0, "output": 0.0},

@@ -247,7 +247,7 @@ describe('ModelSelector', () => {
     it('should display format examples for Gemini provider', () => {
       render(<ModelSelector {...defaultProps} isCustom={true} provider="gemini" />)
       
-      expect(screen.getByText('gemini-2.5-flash')).toBeInTheDocument()
+      expect(screen.getByText('gemini-3.8-flash')).toBeInTheDocument()
     })
 
     it('should display documentation link in custom mode', () => {

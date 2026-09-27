@@ -120,7 +120,39 @@ AVAILABLE_MODELS = [
         output_price=30.00,
         description="Previous generation flagship",
     ),
-    # Google Gemini - https://ai.google.dev/pricing
+    # Google Gemini - https://ai.google.dev/gemini-api/docs/pricing
+    # Prices are the paid tier. All three below are also available on Google's
+    # free tier, where input and output are free of charge and your content is
+    # used to improve Google's products.
+    AIModel(
+        id="gemini-3.8-flash",
+        name="Gemini 3.8 Flash",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.75,
+        output_price=3.75,
+        description="The default. Free tier available",
+    ),
+    AIModel(
+        id="gemini-3.5-flash-lite",
+        name="Gemini 3.5 Flash-Lite",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.30,
+        output_price=2.50,
+        description="Fastest and cheapest, for routine material. Free tier available",
+    ),
+    AIModel(
+        id="gemini-3.1-pro-preview",
+        name="Gemini 3.1 Pro (preview)",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.00,
+        output_price=0.00,
+        description="Preview: stricter rate limits, and may start billing",
+    ),
+    # Google now limits the 2.5 models to projects that already used them, so
+    # these are kept only so an existing saved configuration still resolves.
     AIModel(
         id="gemini-3-pro-preview",
         name="Gemini 3 Pro Preview",
@@ -128,7 +160,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Preview pricing TBD
         output_price=0.00,
-        description="Most intelligent model with multimodal understanding and agentic capabilities",
+        description="Superseded by Gemini 3.1 Pro",
     ),
     AIModel(
         id="gemini-2.5-flash",
@@ -137,7 +169,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Fast and intelligent, best for price-performance with thinking capabilities",
+        description="Legacy: restricted to projects that already used it",
     ),
     AIModel(
         id="gemini-2.5-flash-lite",
@@ -146,7 +178,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Fastest flash model optimized for cost-efficiency and high throughput",
+        description="Legacy: restricted to projects that already used it",
     ),
     AIModel(
         id="gemini-2.5-pro",
@@ -155,7 +187,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Advanced thinking model for complex reasoning in code, math, and STEM",
+        description="Legacy: restricted to projects that already used it",
     ),
 ]
 

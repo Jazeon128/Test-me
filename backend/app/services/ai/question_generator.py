@@ -35,7 +35,7 @@ class QuestionGenerator:
 
     Supported AI Providers:
     -----------------------
-    - **Anthropic Claude**: claude-3-5-sonnet-20241022 (default)
+    - **Anthropic Claude**: claude-sonnet-5 (default)
     - **OpenAI GPT**: gpt-4o (default)
     - **Google Gemini**: gemini-2.0-flash-exp (default)
 
@@ -133,7 +133,7 @@ class QuestionGenerator:
         if self.provider == "anthropic":
             self.client = Anthropic(api_key=api_key)
             if not self.model:
-                self.model = "claude-3-5-sonnet-20241022"
+                self.model = "claude-sonnet-5"
         elif self.provider == "openai":
             self.client = OpenAI(api_key=api_key)
             if not self.model:

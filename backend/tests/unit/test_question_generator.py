@@ -96,7 +96,7 @@ class TestQuestionGeneratorInitialization:
             generator = QuestionGenerator()
 
             assert generator.provider == "anthropic"
-            assert generator.model == "claude-3-5-sonnet-20241022"
+            assert generator.model == "claude-sonnet-5"
             mock_anthropic.assert_called_once_with(api_key="test-key")
 
     @patch("app.services.ai.question_generator.OpenAI")

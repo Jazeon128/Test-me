@@ -14,9 +14,9 @@ describe('FormatExamples', () => {
       render(<FormatExamples provider="anthropic" />)
       
       expect(screen.getByText('Format Examples for Anthropic')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-5-sonnet-20241022')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-5-haiku-20241022')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-opus-20240229')).toBeInTheDocument()
+      expect(screen.getByText('claude-sonnet-5')).toBeInTheDocument()
+      expect(screen.getByText('claude-opus-5')).toBeInTheDocument()
+      expect(screen.getByText('claude-haiku-4-5')).toBeInTheDocument()
     })
 
     it('should display correct documentation link for Anthropic', () => {

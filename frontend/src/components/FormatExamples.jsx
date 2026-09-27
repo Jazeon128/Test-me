@@ -12,9 +12,9 @@ export default function FormatExamples({ provider }) {
   const formatData = {
     anthropic: {
       examples: [
-        'claude-3-5-sonnet-20241022',
-        'claude-3-5-haiku-20241022',
-        'claude-3-opus-20240229'
+        'claude-sonnet-5',
+        'claude-opus-5',
+        'claude-haiku-4-5'
       ],
       documentationUrl: 'https://docs.anthropic.com/en/docs/about-claude/models'
     },

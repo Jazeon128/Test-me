@@ -33,10 +33,38 @@ class AIModel(BaseModel):
     description: Optional[str] = None
 
 
-# Last updated: 2025-12-05
+# Last updated: 2026-09-26
 # To update: Call POST /api/settings/ai-config/models/refresh or manually update this list
 AVAILABLE_MODELS = [
     # Anthropic - https://www.anthropic.com/api
+    AIModel(
+        id="claude-sonnet-5",
+        name="Claude Sonnet 5",
+        provider="anthropic",
+        context_window=1000000,
+        input_price=2.00,
+        output_price=10.00,
+        description="The default. Strong reasoning at a moderate price",
+    ),
+    AIModel(
+        id="claude-opus-5",
+        name="Claude Opus 5",
+        provider="anthropic",
+        context_window=1000000,
+        input_price=5.00,
+        output_price=25.00,
+        description="Most capable, for the hardest material",
+    ),
+    AIModel(
+        id="claude-haiku-4-5",
+        name="Claude Haiku 4.5",
+        provider="anthropic",
+        context_window=200000,
+        input_price=1.00,
+        output_price=5.00,
+        description="Fastest and cheapest, for straightforward material",
+    ),
+    # Kept so a saved configuration naming an older model still resolves.
     AIModel(
         id="claude-3-5-sonnet-20241022",
         name="Claude 3.5 Sonnet",
@@ -44,7 +72,7 @@ AVAILABLE_MODELS = [
         context_window=200000,
         input_price=3.00,
         output_price=15.00,
-        description="Most intelligent model, best for complex reasoning",
+        description="Superseded by Claude Sonnet 5",
     ),
     AIModel(
         id="claude-3-5-haiku-20241022",

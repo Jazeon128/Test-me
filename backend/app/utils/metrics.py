@@ -222,9 +222,12 @@ def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: i
     Returns:
         Estimated cost in USD
     """
-    # Pricing per million tokens (MTok) - Updated 2025-12-05
+    # Pricing per million tokens (MTok) - Updated 2026-09-26
     pricing = {
         "anthropic": {
+            "claude-opus-5": {"input": 5.0, "output": 25.0},
+            "claude-sonnet-5": {"input": 2.0, "output": 10.0},
+            "claude-haiku-4-5": {"input": 1.0, "output": 5.0},
             "claude-3-5-sonnet-20241022": {"input": 3.0, "output": 15.0},
             "claude-3-5-sonnet": {"input": 3.0, "output": 15.0},
             "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.0},

@@ -241,7 +241,7 @@ describe('ModelSelector', () => {
     it('should display format examples for Anthropic provider', () => {
       render(<ModelSelector {...defaultProps} isCustom={true} provider="anthropic" />)
       
-      expect(screen.getByText('claude-3-5-sonnet-20241022')).toBeInTheDocument()
+      expect(screen.getByText('claude-sonnet-5')).toBeInTheDocument()
     })
 
     it('should display format examples for Gemini provider', () => {

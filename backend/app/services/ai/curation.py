@@ -143,19 +143,22 @@ def find_duplicates(
     return duplicates
 
 
-def suggest_tags(
+def score_tags(
     question: Dict,
     available_tags: List[str],
     api_key: str,
     timeout: float = jev.DEFAULT_TIMEOUT,
-) -> List[str]:
-    """Pick which of the existing tags apply to a question.
+) -> Optional[Dict[str, float]]:
+    """The probability that each existing tag describes a question.
 
     One Noul per tag rather than one Choice over all of them, because several
     tags can apply at once and a Choice would force a single winner.
+
+    Returns None when Jev is unavailable, so a caller can tell "no tag fits"
+    apart from "nothing was checked".
     """
     if not available_tags:
-        return []
+        return {}
 
     state = {
         "question": {
@@ -181,14 +184,27 @@ def suggest_tags(
     try:
         answers = jev.ask(state, questions_payload, api_key, timeout, label="suggest_tags")
     except jev.JevUnavailable:
+        return None
+
+    return {tag: answers.noul(f"tag_{index}") for index, tag in enumerate(available_tags)}
+
+
+def suggest_tags(
+    question: Dict,
+    available_tags: List[str],
+    api_key: str,
+    timeout: float = jev.DEFAULT_TIMEOUT,
+) -> List[str]:
+    """The existing tags that apply to a question, best first."""
+    scores = score_tags(question, available_tags, api_key, timeout)
+    if not scores:
         return []
 
-    suggested = [
-        tag
-        for index, tag in enumerate(available_tags)
-        if answers.noul(f"tag_{index}") >= TAG_THRESHOLD
-    ]
-
+    suggested = sorted(
+        (tag for tag, probability in scores.items() if probability >= TAG_THRESHOLD),
+        key=lambda tag: scores[tag],
+        reverse=True,
+    )
     logger.info("tags_suggested", available=len(available_tags), suggested=len(suggested))
     return suggested
 

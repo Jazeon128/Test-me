@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
-import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network } from 'lucide-react'
+import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network, Tag } from 'lucide-react'
 import TagManager, { TagBadge } from '../components/TagManager'
+import QuestionTagEditor from '../components/QuestionTagEditor'
 
 export default function DeckDetails() {
     const { deckId } = useParams()
@@ -14,6 +15,10 @@ export default function DeckDetails() {
     // Tag filtering
     const [filterTags, setFilterTags] = useState([])
     const [showFilters, setShowFilters] = useState(false)
+
+    // Per-card tag editing
+    const [editingTagsFor, setEditingTagsFor] = useState(null)
+    const [allTags, setAllTags] = useState([])
 
     // New Question State
     const [newQuestion, setNewQuestion] = useState({
@@ -91,6 +96,28 @@ export default function DeckDetails() {
             console.error('Failed to create question:', error)
             alert('Failed to create question')
         }
+    }
+
+    const toggleTagEditor = async (questionId) => {
+        if (editingTagsFor === questionId) {
+            setEditingTagsFor(null)
+            return
+        }
+        setEditingTagsFor(questionId)
+        // Reload each time: tags may have been created in the filter panel.
+        try {
+            const response = await tagsAPI.list()
+            setAllTags(response.data)
+        } catch (error) {
+            console.error('Failed to load tags:', error)
+        }
+    }
+
+    const setQuestionTags = (questionId, tags) => {
+        setDeck(current => ({
+            ...current,
+            questions: current.questions.map(q => q.id === questionId ? { ...q, tags } : q),
+        }))
     }
 
     const handleDeleteQuestion = async (questionId) => {
@@ -254,7 +281,7 @@ export default function DeckDetails() {
                                         <p className="text-gray-900 dark:text-white font-medium mb-2">{question.question_text}</p>
 
                                         {/* Tag Badges */}
-                                        {question.tags && question.tags.length > 0 && (
+                                        {editingTagsFor !== question.id && question.tags && question.tags.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {question.tags.map(tag => (
                                                     <TagBadge
@@ -275,14 +302,34 @@ export default function DeckDetails() {
                                             </div>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteQuestion(question.id)}
-                                        className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition p-2"
-                                        title="Delete Question"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => toggleTagEditor(question.id)}
+                                            aria-expanded={editingTagsFor === question.id}
+                                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition ${editingTagsFor === question.id
+                                                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200'
+                                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                                        >
+                                            <Tag size={16} aria-hidden="true" />
+                                            Tags
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteQuestion(question.id)}
+                                            className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition p-2"
+                                            title="Delete Question"
+                                            aria-label="Delete question"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
+                                {editingTagsFor === question.id && (
+                                    <QuestionTagEditor
+                                        question={question}
+                                        allTags={allTags}
+                                        onChange={(tags) => setQuestionTags(question.id, tags)}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>

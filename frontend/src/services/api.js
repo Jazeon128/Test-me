@@ -196,6 +196,7 @@ export const questionsAPI = {
   get: (id) => api.get(`/questions/${id}`),
   getByDocument: (documentId) => api.get(`/questions/document/${documentId}`),
   delete: (id) => api.delete(`/questions/${id}`),
+  suggestTags: (id) => api.get(`/questions/${id}/suggested-tags`),
 }
 
 

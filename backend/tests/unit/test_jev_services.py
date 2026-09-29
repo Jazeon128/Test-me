@@ -473,3 +473,16 @@ class TestRerank:
         monkeypatch.setattr(jev, "ask", unavailable)
 
         assert rerank.rerank("cache", CANDIDATES[:1], "key") == CANDIDATES[:1]
+
+
+class TestScoreTags:
+    def test_unavailable_is_none_not_empty(self, monkeypatch):
+        def down(*args, **kwargs):
+            raise jev.JevUnavailable("down")
+
+        monkeypatch.setattr(jev, "ask", down)
+        assert curation.score_tags({"question_text": "q"}, ["a"], "key") is None
+
+    def test_no_tags_is_empty_without_a_request(self, monkeypatch):
+        monkeypatch.setattr(jev, "ask", lambda *a, **k: pytest.fail("no request expected"))
+        assert curation.score_tags({"question_text": "q"}, [], "key") == {}

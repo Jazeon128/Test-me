@@ -428,34 +428,52 @@ def grade_written_answer(
 
 @router.get("/{question_id}/suggested-tags")
 def suggested_tags(question_id: int, db: Session = Depends(get_db)):
-    """Which of the existing tags apply to this question.
+    """Which of the existing tags apply to this question, best first.
 
     Only tags that already exist are offered, so the vocabulary stays controlled
-    instead of drifting with every generation.
+    instead of drifting with every generation. Tags already on the question are
+    not judged at all. Nothing is applied here: the user accepts each one.
+
+    `reason` is set whenever the list is empty for a reason other than "no tag
+    fits", so the interface can say why.
     """
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    available = [tag.name for tag in db.query(Tag).all()]
-    if not available:
-        return {"suggested": [], "reason": "No tags exist yet."}
+    applied = {tag.id for tag in question.tags}
+    candidates = [tag for tag in db.query(Tag).order_by(Tag.name).all() if tag.id not in applied]
+
+    if not candidates:
+        reason = "Every tag is already on this card." if applied else "Create a tag first."
+        return {"suggested": [], "reason": reason}
 
     api_key = _typesafe_key(db)
     if not api_key:
-        return {"suggested": [], "reason": "No TypeSafe API key configured."}
+        return {"suggested": [], "reason": "Tag suggestions need a TypeSafe API key."}
 
-    suggested = curation.suggest_tags(
+    scores = curation.score_tags(
         question={
             "question_text": question.question_text,
             "explanation": question.explanation,
         },
-        available_tags=available,
+        available_tags=[tag.name for tag in candidates],
         api_key=api_key,
     )
+    if scores is None:
+        return {"suggested": [], "reason": "The suggestion service is unavailable."}
 
-    already = {tag.name for tag in question.tags}
-    return {"suggested": [name for name in suggested if name not in already]}
+    suggested = sorted(
+        (
+            {"id": tag.id, "name": tag.name, "color": tag.color,
+             "probability": round(scores[tag.name], 3)}
+            for tag in candidates
+            if scores.get(tag.name, 0.0) >= curation.TAG_THRESHOLD
+        ),
+        key=lambda item: item["probability"],
+        reverse=True,
+    )
+    return {"suggested": suggested}
 
 
 class DuplicateCheckRequest(BaseModel):

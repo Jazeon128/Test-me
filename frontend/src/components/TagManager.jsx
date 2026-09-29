@@ -35,6 +35,7 @@ export const TagBadge = ({ tag, onClick, onRemove, size = 'md' }) => {
                         onRemove()
                     }}
                     className="hover:bg-black/10 rounded-full p-0.5"
+                    aria-label={`Remove ${tag.name}`}
                 >
                     <X size={size === 'sm' ? 12 : 14} />
                 </button>

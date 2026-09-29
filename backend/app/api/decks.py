@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -67,7 +67,10 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
         .options(
             joinedload(Test.deck_questions)
             .joinedload(DeckQuestion.question)
-            .joinedload(Question.document)
+            .joinedload(Question.document),
+            joinedload(Test.deck_questions)
+            .joinedload(DeckQuestion.question)
+            .selectinload(Question.tags),
         )
         .filter(Test.id == deck_id)
         .first()
@@ -103,6 +106,8 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
                 "question_text": q.question_text,
                 "difficulty": q.difficulty,
                 "document_id": q.document_id,
+                # The deck page filters and edits by tag, so it needs them here.
+                "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in q.tags],
             }
             for q in deck.questions
         ],

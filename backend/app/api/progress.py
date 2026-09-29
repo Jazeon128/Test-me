@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
@@ -8,17 +8,24 @@ from ..db import get_db
 from ..services import activity
 from ..models.user_progress import UserProgress
 from ..models.question import Question
+from ..models.notebook import Notebook
+from ..models.document import Document
+from ..models.deck import Deck, DeckQuestion
 from ..services.spaced_repetition import SM2Algorithm, ReviewResult
 from ..utils.cache import stats_cache
+from fastapi.concurrency import run_in_threadpool
+
+from .questions import expected_answer, grade_to_response, require_typesafe_key
 
 router = APIRouter()
 
 
 class SubmitAnswerRequest(BaseModel):
     question_id: int
-    selected_option: str  # A, B, C, or D
-    time_taken_seconds: float
-    manual_quality: Optional[int] = None  # 0-5 scale for manual grading
+    selected_option: str = ""  # Empty for a timeout or a written answer.
+    written_answer: Optional[str] = Field(default=None, min_length=1, max_length=10000)
+    time_taken_seconds: float = Field(ge=0)
+    manual_quality: Optional[int] = Field(default=None, ge=0, le=5)
 
 
 class ReviewSessionRequest(BaseModel):
@@ -62,6 +69,24 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
                 is_correct = True
             break
 
+    # Grade before writing progress. Unavailable grading must not count as failure.
+    written_grade = None
+    if request.written_answer is not None:
+        if not request.written_answer.strip():
+            raise HTTPException(status_code=422, detail="Write an answer before submitting.")
+        # Only the network call leaves the event loop. The read, update and
+        # commit below stay on it, so concurrent submissions for one question
+        # cannot interleave between reading progress and writing it back.
+        api_key = require_typesafe_key(db)
+        written_grade = await run_in_threadpool(
+            grade_to_response,
+            question.question_text,
+            expected_answer(question),
+            request.written_answer,
+            api_key,
+        )
+        is_correct = written_grade["passed"]
+
     # Get or create user progress
     progress = (
         db.query(UserProgress).filter(UserProgress.question_id == request.question_id).first()
@@ -101,7 +126,9 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     progress.average_time_seconds = total_time / progress.times_seen
 
     # Determine quality rating for SM-2
-    if request.manual_quality is not None:
+    if written_grade is not None:
+        quality = ReviewResult(written_grade["quality"])
+    elif request.manual_quality is not None:
         # Use manual quality if provided (0-5)
         try:
             quality = ReviewResult(request.manual_quality)
@@ -169,6 +196,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     new_awards = activity.check_awards(db)
 
     return {
+        "written_grade": written_grade,
         "correct": is_correct,
         "correct_answer": correct_option,
         "explanation": question.explanation,
@@ -374,3 +402,88 @@ async def get_overall_stats(db: Session = Depends(get_db)):
     # Cache the result
     stats_cache.set(cache_key, result)
     return result
+
+
+@router.get("/stats/by-notebook")
+async def get_stats_by_notebook(db: Session = Depends(get_db)):
+    """Per-notebook progress, one row per notebook.
+
+    A question belongs to a notebook by either of two routes: the document it
+    was generated from, or a deck it sits in. Both are followed and the ids are
+    merged, so a question in several decks of one notebook is still counted
+    once. Questions attached to neither are left out of every notebook rather
+    than landing in an arbitrary one.
+
+    Cached for 5 minutes alongside the overall stats, and cleared by the same
+    invalidation on answer submission.
+    """
+    cache_key = "stats_by_notebook"
+    cached_result = stats_cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    notebooks = db.query(Notebook).order_by(Notebook.name).all()
+
+    # question_id -> UserProgress, so each notebook's ids resolve without
+    # re-querying per notebook.
+    progress_by_question = {p.question_id: p for p in db.query(UserProgress).all()}
+
+    # Route 1: question -> document -> notebook
+    via_document = (
+        db.query(Question.id, Document.notebook_id)
+        .join(Document, Question.document_id == Document.id)
+        .filter(Document.notebook_id.isnot(None))
+        .all()
+    )
+
+    # Route 2: question -> deck_question -> deck -> notebook
+    via_deck = (
+        db.query(DeckQuestion.question_id, Deck.notebook_id)
+        .join(Deck, DeckQuestion.deck_id == Deck.id)
+        .filter(Deck.notebook_id.isnot(None))
+        .all()
+    )
+
+    questions_by_notebook: dict[int, set[int]] = {}
+    for question_id, notebook_id in list(via_document) + list(via_deck):
+        questions_by_notebook.setdefault(notebook_id, set()).add(question_id)
+
+    results = []
+    for notebook in notebooks:
+        question_ids = questions_by_notebook.get(notebook.id, set())
+        tracked = [
+            progress_by_question[qid] for qid in question_ids if qid in progress_by_question
+        ]
+
+        total_attempts = sum(p.times_seen for p in tracked)
+        total_correct = sum(p.times_correct for p in tracked)
+        mastered_count = sum(1 for p in tracked if p.is_mastered)
+        questions_due = sum(
+            1 for p in tracked if SM2Algorithm.get_due_questions_count(p.next_review_date)
+        )
+
+        last_studied = max(
+            (p.last_attempt_date for p in tracked if p.last_attempt_date), default=None
+        )
+
+        results.append(
+            {
+                "notebook_id": notebook.id,
+                "name": notebook.name,
+                "icon": notebook.icon,
+                # Every question in the notebook, including ones never answered.
+                "total_questions": len(question_ids),
+                "questions_seen": len(tracked),
+                "total_attempts": total_attempts,
+                "success_rate": total_correct / total_attempts if total_attempts > 0 else 0,
+                "questions_mastered": mastered_count,
+                # Measured against the whole notebook, so adding new material
+                # correctly lowers it rather than leaving it at 100%.
+                "mastery_rate": mastered_count / len(question_ids) if question_ids else 0,
+                "questions_due": questions_due,
+                "last_studied": last_studied.isoformat() if last_studied else None,
+            }
+        )
+
+    stats_cache.set(cache_key, results)
+    return results

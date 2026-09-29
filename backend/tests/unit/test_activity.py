@@ -140,6 +140,12 @@ class TestHeatmap:
 
 
 class TestMood:
+    @pytest.fixture(autouse=True)
+    def frozen_today(self, monkeypatch):
+        # mood() reads the real clock. Pin it to TODAY, or these tests start
+        # failing the day after TODAY because every streak looks broken.
+        monkeypatch.setattr(activity, "today", lambda: TODAY)
+
     def test_a_fresh_install_is_new_not_sad(self, db_session):
         assert activity.mood(db_session)["state"] == "new"
 

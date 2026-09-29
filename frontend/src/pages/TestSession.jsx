@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { progressAPI } from '../services/api'
 import { Clock, CheckCircle, XCircle, Flame, Trophy, Target } from 'lucide-react'
@@ -8,6 +8,11 @@ export default function TestSession() {
   const { deckId } = useParams()
   const navigate = useNavigate()
 
+  const [mode, setMode] = useState('choice')
+  const [writtenAnswer, setWrittenAnswer] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const submitLock = useRef(false)
   const [questions, setQuestions] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState(null)
@@ -25,82 +30,67 @@ export default function TestSession() {
 
   const timerRef = useRef(null)
 
-  useEffect(() => {
-    loadQuestions()
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!showResult && questions.length > 0) {
-      startTimer()
-      setStartTime(Date.now())
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [currentIndex, showResult, questions])
-
-  const loadQuestions = async () => {
-    try {
-      const response = await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
-      setQuestions(response.data.questions)
-    } catch (error) {
-      console.error('Failed to load questions:', error)
-      alert('Failed to load questions')
-      navigate('/')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const startTimer = () => {
+  const handleSubmit = useCallback((option) => {
     if (timerRef.current) clearInterval(timerRef.current)
-    setTimeLeft(30)
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Time's up - auto submit
-          handleSubmit(null)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
-
-  const handleSubmit = (option) => {
-    if (timerRef.current) clearInterval(timerRef.current)
-
     const currentQuestion = questions[currentIndex]
-    const selected = option || 'TIMEOUT' // Handle timeout
-    const isCorrect = selected === currentQuestion.correct_option
-
-    // Create local result for immediate feedback
-    const localResult = {
-      correct: isCorrect,
+    if (!currentQuestion) return
+    const selected = option || ''
+    setSelectedOption(selected)
+    setResult({
+      correct: selected === currentQuestion.correct_option,
       correct_answer: currentQuestion.correct_option,
       explanation: currentQuestion.explanation,
-      gamification: {
-        points_earned: 0, // Will be updated after grading
-        streak_bonus: 0,
+      gamification: { points_earned: 0, streak_bonus: 0 },
+    })
+    setShowResult(true)
+  }, [questions, currentIndex])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadQuestions = async () => {
+      try {
+        const response = await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
+        if (!cancelled) setQuestions(response.data.questions)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load questions:', error)
+          navigate('/')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
+    loadQuestions()
+    return () => { cancelled = true }
+  }, [deckId, navigate])
 
-    setResult(localResult)
-    setShowResult(true)
-  }
+  useEffect(() => {
+    if (showResult || questions.length === 0) return
+    setStartTime(Date.now())
+    if (mode === 'written') return
+    setTimeLeft(30)
+    const deadline = Date.now() + 30000
+    timerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      setTimeLeft(remaining)
+      if (remaining === 0) handleSubmit(null)
+    }, 1000)
+    return () => clearInterval(timerRef.current)
+  }, [currentIndex, showResult, questions, mode, handleSubmit])
 
   const handleGrading = async (quality) => {
+    if (submitLock.current) return
+    submitLock.current = true
+    setSubmitting(true)
+    setSubmitError('')
     const timeTaken = (Date.now() - startTime) / 1000
     const currentQuestion = questions[currentIndex]
 
     try {
       const response = await progressAPI.submit({
         question_id: currentQuestion.id,
-        selected_option: selectedOption || 'A', // Default if time ran out
+        selected_option: selectedOption || '',
+        ...(mode === 'written' ? { written_answer: writtenAnswer.trim() } : {}),
         time_taken_seconds: timeTaken,
         manual_quality: quality
       })
@@ -113,14 +103,23 @@ export default function TestSession() {
         streak: response.data.correct ? prev.streak + 1 : 0,
       }))
 
-      handleNext()
+      if (mode === 'written') {
+        setResult(response.data)
+        setShowResult(true)
+      } else handleNext()
     } catch (error) {
       console.error('Failed to submit grade:', error)
-      alert('Failed to submit grade')
+      setSubmitError(error.message || 'Failed to submit answer. Please retry.')
+    } finally {
+      submitLock.current = false
+      setSubmitting(false)
     }
   }
 
   const handleNext = () => {
+    setWrittenAnswer('')
+    setSubmitError('')
+    setStartTime(Date.now())
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1)
       setSelectedOption(null)
@@ -143,9 +142,9 @@ export default function TestSession() {
   if (questions.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Questions Available</h2>
-          <p className="text-gray-600 mb-6">Upload a document to generate questions first.</p>
+        <div className="glass-panel bg-white rounded-lg shadow p-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Questions Available</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">Upload a document to generate questions first.</p>
           <button
             onClick={() => navigate('/upload')}
             className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition"
@@ -162,6 +161,22 @@ export default function TestSession() {
 
   return (
     <div className="max-w-4xl mx-auto px-4">
+      <div className="mb-6">
+        <label htmlFor="answer-mode" className="mr-3 font-medium text-gray-700 dark:text-gray-200">Answer mode</label>
+        <select id="answer-mode" value={mode} disabled={showResult || submitting}
+          className="input-field max-w-xs"
+          onChange={(event) => {
+            setMode(event.target.value)
+            setSelectedOption(null)
+            setWrittenAnswer('')
+            setSubmitError('')
+            setStartTime(Date.now())
+          }}>
+          <option value="choice">Multiple choice</option>
+          <option value="written">Written answer</option>
+        </select>
+        {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. AI grading requires a TypeSafe key. Your score updates your review schedule.</p>}
+      </div>
       {/* Header Stats */}
       <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatBadge
@@ -207,27 +222,34 @@ export default function TestSession() {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -50 }}
-          className="bg-white rounded-lg shadow-lg p-8"
+          className="glass-panel bg-white rounded-lg shadow-lg p-8"
         >
           {/* Timer */}
           <div className="mb-6 flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-600">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Question {currentIndex + 1} of {questions.length}
             </span>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-700'
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}>
               <Clock size={18} />
-              <span className="font-bold">{timeLeft}s</span>
+              <span className="font-bold">{mode === 'written' ? 'Untimed' : `${timeLeft}s`}</span>
             </div>
           </div>
 
           {/* Question Text */}
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             {currentQuestion.question_text}
           </h2>
 
           {/* Options */}
-          <div className="space-y-3 mb-6">
+          {mode === 'written' ? (
+            <div className="mb-6">
+              <label htmlFor="written-answer" className="block mb-2 font-medium text-gray-700 dark:text-gray-200">Your answer</label>
+              <textarea id="written-answer" className="input-field" rows={5} maxLength={10000}
+                value={writtenAnswer} onChange={(event) => setWrittenAnswer(event.target.value)}
+                disabled={showResult || submitting} />
+            </div>
+          ) : <div className="space-y-3 mb-6">
             {currentQuestion.options.map((option, idx) => {
               const isSelected = selectedOption === option.option
               const isCorrect = result?.correct_answer === option.option
@@ -236,11 +258,11 @@ export default function TestSession() {
 
               let optionClass = 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
               if (showCorrect) {
-                optionClass = 'border-green-500 bg-green-50'
+                optionClass = 'border-green-500 bg-green-50 dark:bg-green-900/30'
               } else if (showIncorrect) {
-                optionClass = 'border-red-500 bg-red-50'
+                optionClass = 'border-red-500 bg-red-50 dark:bg-red-900/30'
               } else if (isSelected && !showResult) {
-                optionClass = 'border-primary-500 bg-primary-50'
+                optionClass = 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
               }
 
               return (
@@ -252,24 +274,25 @@ export default function TestSession() {
                     }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-lg text-gray-700">
+                    <span className="font-bold text-lg text-gray-700 dark:text-gray-200">
                       {option.option}.
                     </span>
-                    <span className="text-gray-900">{option.text}</span>
+                    <span className="text-gray-900 dark:text-white">{option.text}</span>
                     {showCorrect && <CheckCircle className="ml-auto text-green-600" size={24} />}
                     {showIncorrect && <XCircle className="ml-auto text-red-600" size={24} />}
                   </div>
                 </button>
               )
             })}
-          </div>
+          </div>}
 
+          {submitError && <p role="alert" className="mb-4 text-red-600">{submitError}</p>}
           {/* Result Feedback */}
           {showResult && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mb-6 p-4 rounded-lg ${result.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+              className={`mb-6 p-4 rounded-lg ${result.correct ? 'bg-green-50 dark:bg-green-900/30 border border-green-200' : 'bg-red-50 dark:bg-red-900/30 border border-red-200'
                 }`}
             >
               <div className="flex items-start gap-3">
@@ -279,14 +302,17 @@ export default function TestSession() {
                   <XCircle className="text-red-600 flex-shrink-0 mt-1" size={24} />
                 )}
                 <div>
-                  <h3 className={`font-bold mb-2 ${result.correct ? 'text-green-900' : 'text-red-900'}`}>
+                  <h3 className={`font-bold mb-2 ${result.correct ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'}`}>
                     {result.correct ? 'Correct!' : 'Incorrect'}
                   </h3>
-                  <p className={`text-sm mb-2 ${result.correct ? 'text-green-800' : 'text-red-800'}`}>
+                  <p className={`text-sm mb-2 ${result.correct ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                     {result.explanation}
+                    {result.written_grade && <span className="block mt-2">
+                      Score: {result.written_grade.quality}/5. Expected answer: {result.written_grade.expected_answer}
+                    </span>}
                   </p>
                   {result.gamification.points_earned > 0 && (
-                    <p className="text-sm font-semibold text-green-700">
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-200">
                       +{result.gamification.points_earned} points
                       {result.gamification.streak_bonus > 0 && ` (+${result.gamification.streak_bonus} streak bonus!)`}
                     </p>
@@ -297,32 +323,42 @@ export default function TestSession() {
           )}
 
           {/* Grading Buttons */}
-          {showResult ? (
+          {mode === 'written' ? (
+            <button disabled={submitting || (!showResult && !writtenAnswer.trim())}
+              onClick={() => showResult ? handleNext() : handleGrading(undefined)}
+              className="w-full rounded-lg bg-primary-600 px-6 py-3 text-white disabled:opacity-50">
+              {submitting ? 'Grading…' : showResult ? 'Next question' : 'Submit written answer'}
+            </button>
+          ) : showResult ? (
             <div className="grid grid-cols-4 gap-3">
               <button
+                disabled={submitting}
                 onClick={() => handleGrading(1)}
-                className="bg-red-100 text-red-700 border-2 border-red-200 px-4 py-3 rounded-lg font-bold hover:bg-red-200 transition flex flex-col items-center"
+                className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-2 border-red-200 px-4 py-3 rounded-lg font-bold hover:bg-red-200 transition flex flex-col items-center"
               >
                 <span>Again</span>
                 <span className="text-xs font-normal opacity-75">&lt; 1m</span>
               </button>
               <button
+                disabled={submitting}
                 onClick={() => handleGrading(3)}
-                className="bg-orange-100 text-orange-700 border-2 border-orange-200 px-4 py-3 rounded-lg font-bold hover:bg-orange-200 transition flex flex-col items-center"
+                className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-200 border-2 border-orange-200 px-4 py-3 rounded-lg font-bold hover:bg-orange-200 transition flex flex-col items-center"
               >
                 <span>Hard</span>
                 <span className="text-xs font-normal opacity-75">2d</span>
               </button>
               <button
+                disabled={submitting}
                 onClick={() => handleGrading(4)}
-                className="bg-green-100 text-green-700 border-2 border-green-200 px-4 py-3 rounded-lg font-bold hover:bg-green-200 transition flex flex-col items-center"
+                className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200 border-2 border-green-200 px-4 py-3 rounded-lg font-bold hover:bg-green-200 transition flex flex-col items-center"
               >
                 <span>Good</span>
                 <span className="text-xs font-normal opacity-75">4d</span>
               </button>
               <button
+                disabled={submitting}
                 onClick={() => handleGrading(5)}
-                className="bg-blue-100 text-blue-700 border-2 border-blue-200 px-4 py-3 rounded-lg font-bold hover:bg-blue-200 transition flex flex-col items-center"
+                className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border-2 border-blue-200 px-4 py-3 rounded-lg font-bold hover:bg-blue-200 transition flex flex-col items-center"
               >
                 <span>Easy</span>
                 <span className="text-xs font-normal opacity-75">7d</span>
@@ -332,7 +368,7 @@ export default function TestSession() {
             <button
               onClick={() => handleSubmit(selectedOption)}
               disabled={!selectedOption}
-              className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+              className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 disabled:cursor-not-allowed transition"
             >
               Show Answer
             </button>
@@ -345,9 +381,9 @@ export default function TestSession() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-6 bg-orange-50 border border-orange-200 rounded-lg p-4 text-center"
+          className="mt-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 rounded-lg p-4 text-center"
         >
-          <p className="text-orange-900 font-semibold">
+          <p className="text-orange-900 dark:text-orange-200 font-semibold">
             🔥 {sessionStats.streak} question streak! Keep it up!
           </p>
         </motion.div>
@@ -358,21 +394,21 @@ export default function TestSession() {
 
 function StatBadge({ icon, label, value, color }) {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-700',
-    orange: 'bg-orange-100 text-orange-700',
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-200',
     purple: 'bg-purple-100 text-purple-700',
-    green: 'bg-green-100 text-green-700',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200',
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="glass-panel bg-white rounded-lg shadow p-4">
       <div className="flex items-center gap-2 mb-1">
         <div className={`${colorClasses[color]}`}>
           {icon}
         </div>
-        <span className="text-xs text-gray-600">{label}</span>
+        <span className="text-xs text-gray-600 dark:text-gray-300">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
   )
 }

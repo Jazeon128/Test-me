@@ -44,7 +44,10 @@ api.interceptors.response.use(
   (error) => {
     // Extract error information
     const status = error.response?.status
-    const message = error.response?.data?.detail || error.response?.data?.message || error.message
+    // The backend's error handler nests the reason under error.message.
+    // Plain FastAPI responses use detail. Read both so the reason is not lost.
+    const data = error.response?.data
+    const message = data?.error?.message || data?.detail || data?.message || error.message
     const url = error.config?.url
 
     // Create user-friendly error object
@@ -202,6 +205,7 @@ export const progressAPI = {
   submit: (data) => api.post('/progress/submit', data),
   getQuestion: (questionId) => api.get(`/progress/question/${questionId}`),
   getStats: () => api.get('/progress/stats'),
+  getStatsByNotebook: () => api.get('/progress/stats/by-notebook'),
   getReviewSession: (numQuestions = 10, includeNew = true, includeReview = true, deckId = null) => {
     return api.post('/progress/review-session', {
       num_questions: numQuestions,

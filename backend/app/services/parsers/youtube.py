@@ -1,3 +1,4 @@
+import os
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
 from typing import Optional
@@ -35,10 +36,20 @@ class YouTubeParser(BaseParser):
         except Exception as e:
             raise Exception(f"Failed to fetch transcript: {str(e)}")
 
-    def parse(self, url: str) -> ParsedDocument:
+    def parse(self, source: str) -> ParsedDocument:
         """
         Main entry point: Parses a YouTube URL and returns the transcript text.
+
+        `source` is either the URL or the path of the `.youtube` file the upload
+        endpoint stores it in. Every other parser takes a file path, so upload
+        passes one here too; reading only a URL made every YouTube upload fail
+        with "Invalid YouTube URL".
         """
+        url = source
+        if os.path.isfile(source):
+            with open(source, encoding="utf-8") as handle:
+                url = handle.read().strip()
+
         video_id = self.extract_video_id(url)
         if not video_id:
             raise ValueError("Invalid YouTube URL")

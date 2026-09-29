@@ -63,3 +63,17 @@ def test_pptx_parser(mock_presentation):
     expected_content = "Slide 1 Title\nSlide 1 Content\n\nSlide 2 Content"
     assert result.full_text.strip() == expected_content.strip()
     assert result.metadata["source"] == "dummy_path.pptx"
+
+
+@patch("app.services.parsers.youtube.YouTubeTranscriptApi")
+def test_youtube_parser_reads_the_stored_url_file(mock_yt_api, tmp_path):
+    """Upload stores the URL in a .youtube file and passes its path, like every other parser."""
+    mock_yt_api.return_value.fetch.return_value = [SimpleNamespace(text="Hello", start=0.0, duration=1.0)]
+    stored = tmp_path / "20260929_video.youtube"
+    stored.write_text("https://www.youtube.com/watch?v=dQw4w9WgXcQ\n", encoding="utf-8")
+
+    result = YouTubeParser().parse(str(stored))
+
+    assert result.metadata["video_id"] == "dQw4w9WgXcQ"
+    assert result.metadata["source"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    mock_yt_api.return_value.fetch.assert_called_once_with("dQw4w9WgXcQ")

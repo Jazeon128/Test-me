@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { progressAPI } from '../services/api'
-import { Clock, CheckCircle, XCircle, Flame, Trophy, Target } from 'lucide-react'
+import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, Lightbulb } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function TestSession() {
@@ -10,6 +10,9 @@ export default function TestSession() {
 
   const [mode, setMode] = useState('choice')
   const [writtenAnswer, setWrittenAnswer] = useState('')
+  // Feedback from a failed first attempt: a hint (written) or flagged
+  // sentences (explain). While set, the next submission is the final one.
+  const [feedback, setFeedback] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const submitLock = useRef(false)
@@ -29,6 +32,7 @@ export default function TestSession() {
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef(null)
+  const typed = mode === 'written' || mode === 'explain'
 
   const handleSubmit = useCallback((option) => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -67,7 +71,7 @@ export default function TestSession() {
   useEffect(() => {
     if (showResult || questions.length === 0) return
     setStartTime(Date.now())
-    if (mode === 'written') return
+    if (typed) return
     setTimeLeft(30)
     const deadline = Date.now() + 30000
     timerRef.current = setInterval(() => {
@@ -76,7 +80,7 @@ export default function TestSession() {
       if (remaining === 0) handleSubmit(null)
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [currentIndex, showResult, questions, mode, handleSubmit])
+  }, [currentIndex, showResult, questions, typed, handleSubmit])
 
   const handleGrading = async (quality) => {
     if (submitLock.current) return
@@ -90,10 +94,21 @@ export default function TestSession() {
       const response = await progressAPI.submit({
         question_id: currentQuestion.id,
         selected_option: selectedOption || '',
-        ...(mode === 'written' ? { written_answer: writtenAnswer.trim() } : {}),
+        ...(typed ? {
+          written_answer: writtenAnswer.trim(),
+          explain: mode === 'explain',
+          retry_allowed: !feedback,
+          after_feedback: Boolean(feedback),
+        } : {}),
         time_taken_seconds: timeTaken,
         manual_quality: quality
       })
+
+      // A failed first attempt: show feedback, record nothing, allow one retry.
+      if (response.data.retry) {
+        setFeedback(response.data.feedback)
+        return
+      }
 
       // Update session stats with actual server response
       setSessionStats((prev) => ({
@@ -103,7 +118,7 @@ export default function TestSession() {
         streak: response.data.correct ? prev.streak + 1 : 0,
       }))
 
-      if (mode === 'written') {
+      if (typed) {
         setResult(response.data)
         setShowResult(true)
       } else handleNext()
@@ -118,6 +133,7 @@ export default function TestSession() {
 
   const handleNext = () => {
     setWrittenAnswer('')
+    setFeedback(null)
     setSubmitError('')
     setStartTime(Date.now())
     if (currentIndex < questions.length - 1) {
@@ -169,13 +185,16 @@ export default function TestSession() {
             setMode(event.target.value)
             setSelectedOption(null)
             setWrittenAnswer('')
+            setFeedback(null)
             setSubmitError('')
             setStartTime(Date.now())
           }}>
           <option value="choice">Multiple choice</option>
           <option value="written">Written answer</option>
+          <option value="explain">Explain it</option>
         </select>
-        {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. AI grading requires a TypeSafe key. Your score updates your review schedule.</p>}
+        {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
+        {mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
       </div>
       {/* Header Stats */}
       <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -232,7 +251,7 @@ export default function TestSession() {
             <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}>
               <Clock size={18} />
-              <span className="font-bold">{mode === 'written' ? 'Untimed' : `${timeLeft}s`}</span>
+              <span className="font-bold">{typed ? 'Untimed' : `${timeLeft}s`}</span>
             </div>
           </div>
 
@@ -242,9 +261,11 @@ export default function TestSession() {
           </h2>
 
           {/* Options */}
-          {mode === 'written' ? (
+          {typed ? (
             <div className="mb-6">
-              <label htmlFor="written-answer" className="block mb-2 font-medium text-gray-700 dark:text-gray-200">Your answer</label>
+              <label htmlFor="written-answer" className="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+                {mode === 'explain' ? 'Explain the idea behind this, as if to a curious 12-year-old' : 'Your answer'}
+              </label>
               <textarea id="written-answer" className="input-field" rows={5} maxLength={10000}
                 value={writtenAnswer} onChange={(event) => setWrittenAnswer(event.target.value)}
                 disabled={showResult || submitting} />
@@ -286,6 +307,7 @@ export default function TestSession() {
             })}
           </div>}
 
+          {feedback && !showResult && <FeedbackPanel feedback={feedback} />}
           {submitError && <p role="alert" className="mb-4 text-red-600">{submitError}</p>}
           {/* Result Feedback */}
           {showResult && (
@@ -308,8 +330,23 @@ export default function TestSession() {
                   <p className={`text-sm mb-2 ${result.correct ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                     {result.explanation}
                     {result.written_grade && <span className="block mt-2">
-                      Score: {result.written_grade.quality}/5. Expected answer: {result.written_grade.expected_answer}
+                      Score: {result.written_grade.quality}/5{feedback && result.correct ? ' (capped at 3 because it took a second try)' : ''}. Expected answer: {result.written_grade.expected_answer}
                     </span>}
+                    {result.written_grade?.points && (
+                      <span className="block mt-2">
+                        Key points:
+                        <span className="mt-1 block space-y-1">
+                          {result.written_grade.points.map((point, index) => (
+                            <span key={index} className="flex items-start gap-2">
+                              {point.covered
+                                ? <CheckCircle size={16} className="mt-0.5 shrink-0" aria-label="Covered" />
+                                : <XCircle size={16} className="mt-0.5 shrink-0" aria-label="Missed" />}
+                              {point.text}
+                            </span>
+                          ))}
+                        </span>
+                      </span>
+                    )}
                   </p>
                   {result.gamification.points_earned > 0 && (
                     <p className="text-sm font-semibold text-green-700 dark:text-green-200">
@@ -323,11 +360,11 @@ export default function TestSession() {
           )}
 
           {/* Grading Buttons */}
-          {mode === 'written' ? (
+          {typed ? (
             <button disabled={submitting || (!showResult && !writtenAnswer.trim())}
               onClick={() => showResult ? handleNext() : handleGrading(undefined)}
               className="w-full rounded-lg bg-primary-600 px-6 py-3 text-white disabled:opacity-50">
-              {submitting ? 'Grading…' : showResult ? 'Next question' : 'Submit written answer'}
+              {submitting ? 'Checking…' : showResult ? 'Next question' : feedback ? 'Try again' : mode === 'explain' ? 'Check my explanation' : 'Submit written answer'}
             </button>
           ) : showResult ? (
             <div className="grid grid-cols-4 gap-3">
@@ -409,6 +446,44 @@ function StatBadge({ icon, label, value, color }) {
         <span className="text-xs text-gray-600 dark:text-gray-300">{label}</span>
       </div>
       <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+    </div>
+  )
+}
+
+function FeedbackPanel({ feedback }) {
+  const flagged = (feedback.sentences || []).filter(sentence => sentence.wrong || sentence.unclear)
+  return (
+    <div role="status" className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-100">
+      <div className="flex items-start gap-3">
+        <Lightbulb size={22} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <div className="space-y-2 text-sm">
+          {feedback.hint !== undefined ? (
+            <>
+              <p className="font-bold">Not quite. Here is a hint.</p>
+              <p>{feedback.hint}</p>
+            </>
+          ) : (
+            <>
+              <p className="font-bold">
+                You covered {feedback.points_covered} of {feedback.points_total} key points.
+              </p>
+              {flagged.length > 0 ? (
+                <ul className="space-y-1">
+                  {flagged.map(sentence => (
+                    <li key={sentence.index}>
+                      <span className="font-medium">&ldquo;{sentence.text}&rdquo;</span>{' '}
+                      {sentence.wrong ? 'may be wrong.' : 'is unclear. Say it more plainly.'}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Nothing you wrote is wrong or unclear. Something important is missing.</p>
+              )}
+            </>
+          )}
+          <p className="opacity-80">Revise and try once more. The answer is shown after that.</p>
+        </div>
+      </div>
     </div>
   )
 }

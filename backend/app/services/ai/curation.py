@@ -16,6 +16,7 @@ that costs a hundred times as much.
 All three fail open and return nothing rather than raising.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -281,3 +282,201 @@ def grade_answer(
         passed=grade.passed,
     )
     return grade
+
+
+# ---------------------------------------------------------------------------
+# Feedback that makes the learner do the work: a hint instead of the answer,
+# and the gaps in their own explanation instead of a corrected one.
+# ---------------------------------------------------------------------------
+
+MAX_HINT_CANDIDATES = 12
+MAX_KEY_POINTS = 6
+MAX_EXPLANATION_SENTENCES = 12
+HINT_MIN_HELP = 0.5
+HINT_MAX_GIVEAWAY = 0.5
+#: A sentence is flagged at or above this.
+SENTENCE_FLAG_THRESHOLD = 0.6
+#: A key point counts as covered at or above this.
+POINT_COVERED_THRESHOLD = 0.6
+
+#: Depth of understanding an explanation shows, as the SM-2 quality it earns.
+EXPLANATION_LEVELS = [
+    "Shows no understanding. Off topic, or wrong about the core idea.",
+    "Mostly wrong or empty, with a fragment of the right idea.",
+    "Names the right idea but cannot say why or how it works.",
+    "Explains the core idea correctly, with gaps or some fuzziness.",
+    "Explains the idea clearly and correctly, missing only minor points.",
+    "Explains it completely, correctly and simply enough for a 12-year-old.",
+]
+
+
+def split_sentences(text: str) -> List[str]:
+    """Sentences, for judging one at a time. Code does the splitting, not the model."""
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text or "")
+    return [part.strip() for part in parts if len(part.strip()) > 3]
+
+
+def select_hint(
+    question_text: str,
+    expected_answer: str,
+    candidates: List[str],
+    api_key: str,
+    timeout: float = jev.DEFAULT_TIMEOUT,
+) -> Optional[str]:
+    """Pick the sentence that helps most without giving the answer away.
+
+    Select instead of generate: the hint is copied from the question's own
+    explanation and source, so it cannot invent anything. Returns None when no
+    candidate helps, every helpful one gives the answer away, or Jev is down.
+    """
+    candidates = [c for c in candidates if c][:MAX_HINT_CANDIDATES]
+    if not candidates:
+        return None
+
+    state = {
+        "question": question_text,
+        "expected_answer": expected_answer,
+        "candidates": [{"index": i, "text": jev.trim(c, 400)} for i, c in enumerate(candidates)],
+    }
+    questions_payload = {}
+    for i in range(len(candidates)):
+        questions_payload[f"helps_{i}"] = {
+            "type": "noul",
+            "instructions": (
+                f"A learner answered `question` wrongly. Would reading `candidates[{i}].text` "
+                f"move them toward `expected_answer`?"
+            ),
+            "criteria": {
+                "true": "It points at the idea the answer depends on",
+                "false": "It is unrelated, or too general to help",
+            },
+        }
+        questions_payload[f"gives_away_{i}"] = {
+            "type": "noul",
+            "instructions": (
+                f"Does `candidates[{i}].text` state `expected_answer` outright, so reading it "
+                f"would hand the learner the answer without any thinking?"
+            ),
+            "criteria": {
+                "true": "The answer can be read straight off it",
+                "false": "The learner still has to work the answer out",
+            },
+        }
+
+    try:
+        answers = jev.ask(state, questions_payload, api_key, timeout, label="select_hint")
+    except jev.JevUnavailable:
+        return None
+
+    usable = [
+        (answers.noul(f"helps_{i}"), candidates[i])
+        for i in range(len(candidates))
+        if answers.noul(f"gives_away_{i}") < HINT_MAX_GIVEAWAY
+        and answers.noul(f"helps_{i}") >= HINT_MIN_HELP
+    ]
+    logger.info("hint_selected", candidates=len(candidates), usable=len(usable))
+    if not usable:
+        return None
+    return max(usable, key=lambda item: item[0])[1]
+
+
+@dataclass
+class ExplanationReview:
+    """What the reviewer made of a learner's own explanation."""
+
+    quality: int
+    #: One entry per sentence of the learner's explanation.
+    sentences: List[Dict]
+    #: One entry per key point the explanation should convey.
+    points: List[Dict]
+    checked: bool = True
+
+    @property
+    def passed(self) -> bool:
+        return self.quality >= 3
+
+
+def review_explanation(
+    question_text: str,
+    key_points: List[str],
+    explanation: str,
+    api_key: str,
+    timeout: float = jev.DEFAULT_TIMEOUT,
+) -> ExplanationReview:
+    """Judge an explanation: its depth, its wrong and unclear sentences, and its gaps.
+
+    Everything is asked in one request over one state, so the sentence flags,
+    the point coverage and the overall quality are judged together.
+    """
+    sentences = split_sentences(explanation)[:MAX_EXPLANATION_SENTENCES] or [explanation.strip()]
+    points = [p for p in key_points if p][:MAX_KEY_POINTS]
+
+    state = {
+        "question": question_text,
+        "key_points": [{"index": i, "text": p} for i, p in enumerate(points)],
+        "explanation": [{"index": i, "text": jev.trim(s, 600)} for i, s in enumerate(sentences)],
+    }
+    questions_payload = {
+        "quality": {
+            "type": "score",
+            "instructions": (
+                "How well does the learner's `explanation`, read as a whole, show they "
+                "understand the idea behind `question`, measured against `key_points`?"
+            ),
+            "criteria": EXPLANATION_LEVELS,
+        }
+    }
+    for i in range(len(points)):
+        questions_payload[f"covered_{i}"] = {
+            "type": "noul",
+            "instructions": (
+                f"Does the learner's `explanation`, taken as a whole, convey "
+                f"`key_points[{i}].text`, in any wording?"
+            ),
+            "criteria": {"true": "The point is there", "false": "The point is missing"},
+        }
+    for i in range(len(sentences)):
+        questions_payload[f"wrong_{i}"] = {
+            "type": "noul",
+            "instructions": f"Does `explanation[{i}].text` state something factually wrong?",
+            "criteria": {"true": "It contains an error", "false": "It is correct or harmless"},
+        }
+        questions_payload[f"unclear_{i}"] = {
+            "type": "noul",
+            "instructions": (
+                f"Is `explanation[{i}].text` vague, or does it lean on jargon it does not "
+                f"explain, so a curious 12-year-old could not follow it?"
+            ),
+            "criteria": {"true": "It is unclear", "false": "It is plain and clear"},
+        }
+
+    try:
+        answers = jev.ask(state, questions_payload, api_key, timeout, label="review_explanation")
+    except jev.JevUnavailable:
+        logger.warning("explanation_review_unavailable")
+        return ExplanationReview(quality=0, sentences=[], points=[], checked=False)
+
+    review = ExplanationReview(
+        quality=max(0, min(5, int(round(answers.score("quality"))))),
+        sentences=[
+            {
+                "index": i,
+                "text": s,
+                "wrong": answers.noul(f"wrong_{i}") >= SENTENCE_FLAG_THRESHOLD,
+                "unclear": answers.noul(f"unclear_{i}") >= SENTENCE_FLAG_THRESHOLD,
+            }
+            for i, s in enumerate(sentences)
+        ],
+        points=[
+            {"text": p, "covered": answers.noul(f"covered_{i}") >= POINT_COVERED_THRESHOLD}
+            for i, p in enumerate(points)
+        ],
+    )
+    logger.info(
+        "explanation_reviewed",
+        quality=review.quality,
+        covered=sum(p["covered"] for p in review.points),
+        points=len(review.points),
+        flagged=sum(s["wrong"] or s["unclear"] for s in review.sentences),
+    )
+    return review

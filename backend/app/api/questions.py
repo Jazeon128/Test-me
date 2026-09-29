@@ -406,6 +406,51 @@ def grade_to_response(question_text: str, expected: str, answer: str, api_key: s
     }
 
 
+def key_points(question: Question) -> List[str]:
+    """What a good explanation of this question should convey.
+
+    The correct answer first, then the sentences of the stored explanation.
+    """
+    points = [expected_answer(question)]
+    points += curation.split_sentences(question.explanation or "")
+    return [point for point in points if point]
+
+
+def hint_candidates(question: Question) -> List[str]:
+    """Sentences a hint may be copied from: the explanation, then the source passage."""
+    source = (question.source_reference or {}).get("text") or ""
+    return curation.split_sentences(question.explanation or "") + curation.split_sentences(source)
+
+
+def fallback_hint(grade: dict) -> str:
+    """A hint from the grade itself, for when no sentence can be selected."""
+    if grade.get("missed_key_point", 0) >= 0.5:
+        return "Your answer leaves out the main point the question is after. What is it really asking?"
+    if grade.get("is_correct", 0) >= 0.5:
+        return "You are on the right track. Be more specific."
+    return "That is not it. Reread the question and think about which idea it depends on."
+
+
+def hint_for(question_text: str, expected: str, candidates: List[str], grade: dict, api_key: str) -> str:
+    """A selected hint, or one built from the grade. Touches no database state."""
+    return curation.select_hint(question_text, expected, candidates, api_key) or fallback_hint(grade)
+
+
+def explanation_to_response(question_text: str, points: List[str], explanation: str, api_key: str) -> dict:
+    """Review an explanation and shape the result. Touches no database state."""
+    review = curation.review_explanation(question_text, points, explanation, api_key)
+    if not review.checked:
+        raise HTTPException(status_code=503, detail="The review service is unavailable.")
+    return {
+        "quality": review.quality,
+        "passed": review.passed,
+        "sentences": review.sentences,
+        "points": review.points,
+        "points_covered": sum(point["covered"] for point in review.points),
+        "points_total": len(review.points),
+    }
+
+
 @router.post("/{question_id}/grade")
 def grade_written_answer(
     question_id: int, request: GradeAnswerRequest, db: Session = Depends(get_db)

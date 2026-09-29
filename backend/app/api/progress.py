@@ -15,7 +15,15 @@ from ..services.spaced_repetition import SM2Algorithm, ReviewResult
 from ..utils.cache import stats_cache
 from fastapi.concurrency import run_in_threadpool
 
-from .questions import expected_answer, grade_to_response, require_typesafe_key
+from .questions import (
+    expected_answer,
+    explanation_to_response,
+    grade_to_response,
+    hint_candidates,
+    hint_for,
+    key_points,
+    require_typesafe_key,
+)
 
 router = APIRouter()
 
@@ -26,6 +34,13 @@ class SubmitAnswerRequest(BaseModel):
     written_answer: Optional[str] = Field(default=None, min_length=1, max_length=10000)
     time_taken_seconds: float = Field(ge=0)
     manual_quality: Optional[int] = Field(default=None, ge=0, le=5)
+    # Written and explain modes only.
+    # explain: judge written_answer as an explanation of the idea, not an answer.
+    explain: bool = False
+    # retry_allowed: a failed first attempt returns feedback and records nothing.
+    retry_allowed: bool = False
+    # after_feedback: this is the retry, so a pass is capped at quality 3.
+    after_feedback: bool = False
 
 
 class ReviewSessionRequest(BaseModel):
@@ -78,13 +93,50 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         # commit below stay on it, so concurrent submissions for one question
         # cannot interleave between reading progress and writing it back.
         api_key = require_typesafe_key(db)
-        written_grade = await run_in_threadpool(
-            grade_to_response,
-            question.question_text,
-            expected_answer(question),
-            request.written_answer,
-            api_key,
-        )
+        expected = expected_answer(question)
+        if request.explain:
+            written_grade = await run_in_threadpool(
+                explanation_to_response,
+                question.question_text,
+                key_points(question),
+                request.written_answer,
+                api_key,
+            )
+        else:
+            written_grade = await run_in_threadpool(
+                grade_to_response,
+                question.question_text,
+                expected,
+                request.written_answer,
+                api_key,
+            )
+
+        # First attempt failed and a retry is allowed: give feedback that makes
+        # the learner do the work, reveal nothing, and record nothing yet.
+        if request.retry_allowed and not written_grade["passed"]:
+            if request.explain:
+                return {
+                    "retry": True,
+                    "feedback": {
+                        "sentences": written_grade["sentences"],
+                        "points_covered": written_grade["points_covered"],
+                        "points_total": written_grade["points_total"],
+                    },
+                }
+            hint = await run_in_threadpool(
+                hint_for,
+                question.question_text,
+                expected,
+                hint_candidates(question),
+                written_grade,
+                api_key,
+            )
+            return {"retry": True, "feedback": {"hint": hint}}
+
+        if request.after_feedback and written_grade["passed"]:
+            # Recalled only with help: SM-2's "correct, with serious difficulty".
+            written_grade["quality"] = min(written_grade["quality"], 3)
+        written_grade["expected_answer"] = expected
         is_correct = written_grade["passed"]
 
     # Get or create user progress
@@ -196,6 +248,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     new_awards = activity.check_awards(db)
 
     return {
+        "retry": False,
         "written_grade": written_grade,
         "correct": is_correct,
         "correct_answer": correct_option,

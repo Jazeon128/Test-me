@@ -92,7 +92,7 @@ export default function TagManager({
             }
         } catch (error) {
             console.error('Failed to create tag:', error)
-            alert(error.response?.data?.detail || 'Failed to create tag')
+            alert(error.message || 'Failed to create tag')
         }
     }
 

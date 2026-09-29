@@ -1,4 +1,7 @@
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -297,26 +300,92 @@ async def delete_ai_config(db: Session = Depends(get_db)):
     return {"success": True, "message": "AI configuration deleted"}
 
 
+#: A connection test sends one tiny prompt. It must be cheap and must not hang.
+TEST_PROMPT = "Reply with the single word OK."
+TEST_MAX_TOKENS = 16
+TEST_TIMEOUT_SECONDS = 20.0
+MAX_ERROR_CHARS = 200
+
+#: How each provider says the key is bad, seen in the error text.
+INVALID_KEY_MARKERS = (
+    "API_KEY_INVALID",  # Google, with HTTP 400
+    "API key not valid",  # Google
+    "invalid x-api-key",  # Anthropic
+    "Incorrect API key",  # OpenAI
+)
+
+
+def _status_of(error: Exception) -> Optional[int]:
+    """The HTTP status of a provider error, whichever SDK raised it.
+
+    Anthropic and OpenAI errors carry status_code. google-genai errors carry code.
+    """
+    for attribute in ("status_code", "code"):
+        value = getattr(error, attribute, None)
+        if isinstance(value, int):
+            return value
+    return None
+
+
+def describe_connection_failure(provider: str, model: str, error: Exception) -> str:
+    """Turn a provider error into something the user can act on."""
+    status = _status_of(error)
+    text = str(error)
+    # Google answers a bad key with 400 and API_KEY_INVALID, not 401, so the
+    # body is checked as well as the status.
+    if status in (401, 403) or any(marker in text for marker in INVALID_KEY_MARKERS):
+        return f"{provider} rejected the API key. Check it was copied in full and is still active."
+    if status == 404:
+        return f"{provider} does not recognise the model {model}. Choose another model."
+    if status == 429:
+        return f"The key works, but {provider} refused the call: rate limit or quota reached."
+    if status in (500, 502, 503, 504):
+        return f"The key works, but {provider} is overloaded or returned an error ({status}). Try again shortly."
+    if status is not None:
+        return f"{provider} returned HTTP {status}: {text[:MAX_ERROR_CHARS]}"
+    return f"Could not reach {provider}: {text[:MAX_ERROR_CHARS]}"
+
+
 @router.post("/ai-config/test")
 async def test_ai_config(db: Session = Depends(get_db)):
-    """Test current AI configuration by making a simple API call"""
-    from ..services.ai import QuestionGenerator
+    """Test the saved AI configuration by making one real, minimal call.
+
+    Building a client proves nothing, since clients accept any string as a key.
+    Only a reply from the provider shows the key, the model and the network
+    path all work.
+    """
+    from ..services.ai import QuestionGenerator, completion
 
     try:
         generator = QuestionGenerator(db=db)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail=f"AI provider is not configured: {error}")
 
-        # Simple test - try to initialize the client
-        if generator.client is None:
-            raise Exception("Failed to initialize AI client")
+    started = time.monotonic()
+    try:
+        await run_in_threadpool(
+            completion.complete,
+            generator.provider,
+            generator.model,
+            generator.client,
+            TEST_PROMPT,
+            max_tokens=TEST_MAX_TOKENS,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail=describe_connection_failure(generator.provider, generator.model, error),
+        )
 
-        return {
-            "success": True,
-            "provider": generator.provider,
-            "model": generator.model,
-            "message": f"Successfully connected to {generator.provider} using {generator.model}",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to connect to AI provider: {str(e)}")
+    latency_ms = int((time.monotonic() - started) * 1000)
+    return {
+        "success": True,
+        "provider": generator.provider,
+        "model": generator.model,
+        "latency_ms": latency_ms,
+        "message": f"Connected to {generator.provider} using {generator.model} ({latency_ms} ms).",
+    }
 
 
 @router.post("/ai-config/models/refresh")

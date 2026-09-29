@@ -4,6 +4,11 @@ import axios from 'axios'
 import { useTheme } from '../context/ThemeContext'
 import ModelSelector from '../components/ModelSelector'
 
+// The backend's error handler nests the reason under error.message. Plain
+// FastAPI responses use detail. Settings calls axios directly, so read both.
+const serverMessage = (error) =>
+  error.response?.data?.error?.message || error.response?.data?.detail
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('api')
   const [provider, setProvider] = useState('openai')
@@ -136,7 +141,7 @@ export default function Settings() {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.detail || 'Failed to save configuration'
+        text: serverMessage(error) || 'Failed to save configuration'
       })
     } finally {
       setSaving(false)
@@ -153,7 +158,7 @@ export default function Settings() {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.detail || 'Failed to test connection'
+        text: serverMessage(error) || 'Failed to test connection'
       })
     } finally {
       setTesting(false)

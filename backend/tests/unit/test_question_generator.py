@@ -125,10 +125,15 @@ class TestQuestionGeneratorInitialization:
 
             assert generator.provider == "gemini"
             assert generator.model == "gemini-3.8-flash"
-            # transport="rest" is required, not incidental: the default gRPC
-            # transport ignores the CA bundle env vars, so it cannot be used on
-            # a machine whose HTTPS is intercepted.
-            mock_genai.configure.assert_called_once_with(api_key="test-key", transport="rest")
+            mock_genai.Client.assert_called_once()
+            kwargs = mock_genai.Client.call_args.kwargs
+            assert kwargs["api_key"] == "test-key"
+            # The timeout is required, not incidental: without it a stalled TLS
+            # handshake hangs the generation job. google-genai wants milliseconds.
+            assert kwargs["http_options"].timeout == 180_000
+            # Retries are off by default in google-genai. The free tier's
+            # routine 503s would otherwise fail whole generation jobs.
+            assert kwargs["http_options"].retry_options.attempts == 4
 
     def test_init_no_api_key_raises_error(self):
         """Test that initialization fails without API key"""

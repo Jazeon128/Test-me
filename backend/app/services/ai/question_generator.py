@@ -5,7 +5,8 @@ import traceback
 from typing import List, Dict, Optional, Callable
 from anthropic import Anthropic
 from openai import OpenAI
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from sqlalchemy.orm import Session
 from ...config import settings
 from ...config import settings as config_settings
@@ -16,6 +17,15 @@ from ...utils.metrics import track_question_generation, track_ai_api_call, estim
 from ...exceptions import AIServiceError
 
 logger = get_logger(__name__)
+
+#: Per-request timeout for Gemini, in milliseconds as google-genai expects.
+GEMINI_TIMEOUT_MS = 180_000
+
+#: google-genai does not retry unless asked. The free tier returns 503 "high
+#: demand" routinely, and one of those would otherwise fail a whole generation
+#: job. 4 attempts, backing off 2, 4 and 8 s plus jitter. Measured 2026-09-29
+#: against an overloaded model, all 4 attempts took 58 s before giving up.
+GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=4, initial_delay=2.0, max_delay=20.0)
 
 
 def get_setting(db: Session, key: str) -> Optional[str]:
@@ -149,14 +159,19 @@ class QuestionGenerator:
             if not self.model:
                 self.model = "gpt-4o"
         elif self.provider == "gemini":
-            # REST, not the default gRPC. gRPC reads neither REQUESTS_CA_BUNDLE
-            # nor SSL_CERT_FILE, so on a machine whose TLS is intercepted (a
-            # corporate proxy, or antivirus doing HTTPS scanning) it fails the
-            # handshake and retries forever instead of raising.
-            genai.configure(api_key=api_key, transport="rest")
+            # The google-genai client talks HTTPS through httpx, which honours
+            # SSL_CERT_FILE, so a machine whose TLS is intercepted (a corporate
+            # proxy, or antivirus doing HTTPS scanning) works with its CA bundle.
+            # The timeout makes a stalled handshake fail instead of hanging the
+            # generation job. google-genai takes it in milliseconds.
+            self.client = genai.Client(
+                api_key=api_key,
+                http_options=genai_types.HttpOptions(
+                    timeout=GEMINI_TIMEOUT_MS, retry_options=GEMINI_RETRY
+                ),
+            )
             if not self.model:
                 self.model = "gemini-3.8-flash"
-            self.client = genai.GenerativeModel(self.model)
         else:
             raise AIServiceError(
                 message=f"Unknown AI provider: {self.provider}",
@@ -464,11 +479,18 @@ class QuestionGenerator:
                     output_tokens = response.usage.completion_tokens
 
             elif self.provider == "gemini":
-                generation_config = genai.types.GenerationConfig(
-                    max_output_tokens=8192,
-                    temperature=0.7,
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        max_output_tokens=8192,
+                        temperature=0.7,
+                        # No tools are sent, so function calling only adds a warning.
+                        automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(
+                            disable=True
+                        ),
+                    ),
                 )
-                response = self.client.generate_content(prompt, generation_config=generation_config)
                 content = response.text
                 # Extract token usage from response
                 if hasattr(response, "usage_metadata"):

@@ -434,9 +434,6 @@ class TestQuestionGeneratorProperties:
 
             elif provider == "gemini":
                 with patch("app.services.ai.question_generator.genai") as mock_genai:
-                    mock_model = Mock()
-                    mock_genai.GenerativeModel.return_value = mock_model
-
                     # Initialize the generator
                     generator = QuestionGenerator(db=mock_db)
 
@@ -446,13 +443,9 @@ class TestQuestionGeneratorProperties:
                         f"Expected: '{model_name}', Got: '{generator.model}'"
                     )
 
-                    # Verify Gemini was configured with correct API key
-                    mock_genai.configure.assert_called_once_with(
-                        api_key="test-api-key-12345", transport="rest"
-                    )
-
-                    # Verify GenerativeModel was initialized with exact model name
-                    mock_genai.GenerativeModel.assert_called_once_with(model_name)
+                    # Verify the Gemini client was created with the correct API key
+                    mock_genai.Client.assert_called_once()
+                    assert mock_genai.Client.call_args.kwargs["api_key"] == "test-api-key-12345"
 
     @given(
         provider=st.sampled_from(["anthropic", "openai", "gemini"]),
@@ -550,18 +543,21 @@ class TestQuestionGeneratorProperties:
 
             elif provider == "gemini":
                 with patch("app.services.ai.question_generator.genai") as mock_genai:
-                    mock_model = Mock()
                     mock_response = Mock()
                     mock_response.text = '[{"question": "Test?", "options": [{"option": "A", "text": "1"}, {"option": "B", "text": "2"}, {"option": "C", "text": "3"}, {"option": "D", "text": "4"}], "correct_answer": "A", "explanation": "Test"}]'
                     mock_response.usage_metadata = Mock(
                         prompt_token_count=100, candidates_token_count=50
                     )
-                    mock_model.generate_content.return_value = mock_response
-                    mock_genai.GenerativeModel.return_value = mock_model
+                    mock_client = mock_genai.Client.return_value
+                    mock_client.models.generate_content.return_value = mock_response
 
                     # Initialize generator and make API call
                     generator = QuestionGenerator(db=mock_db)
                     generator._generate_batch_questions(section, 1, "medium")
 
-                    # Verify GenerativeModel was initialized with exact model name
-                    mock_genai.GenerativeModel.assert_called_once_with(model_name)
+                    # Verify the exact model name reached the API call
+                    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+                    assert call_kwargs["model"] == model_name, (
+                        f"Model name passed to Gemini API should be exact. "
+                        f"Expected: '{model_name}', Got: '{call_kwargs['model']}'"
+                    )

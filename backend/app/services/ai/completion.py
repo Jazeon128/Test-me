@@ -64,15 +64,20 @@ def complete(
         )
 
     if provider == "gemini":
-        import google.generativeai as genai
+        from google.genai import types
 
-        response = client.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
+                # google-genai takes the timeout in milliseconds. Fields left
+                # unset here, such as the client's retry policy, still apply.
+                http_options=types.HttpOptions(timeout=int(timeout * 1000)),
+                # No tools are sent, so function calling only adds a warning.
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             ),
-            request_options={"timeout": timeout},
         )
         usage = getattr(response, "usage_metadata", None)
         return Completion(

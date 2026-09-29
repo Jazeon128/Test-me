@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,7 +68,15 @@ logger = get_logger(__name__)
 # Create upload directory if it doesn't exist
 os.makedirs(config_settings.UPLOAD_DIR, exist_ok=True)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Run startup work before serving. Replaces the deprecated on_event hook."""
+    await startup_event()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Test Me - AI-Powered Learning Platform",
     description="Upload documents, generate questions, and learn with spaced repetition",
     version="1.0.0",
@@ -93,7 +102,6 @@ app.add_exception_handler(SQLAlchemyError, database_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 
-@app.on_event("startup")
 async def startup_event():
     """
     Initialize database on startup

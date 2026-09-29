@@ -20,6 +20,22 @@ os.environ["DATABASE_URL"] = "sqlite:///" + os.path.join(_TEST_STATE, "test.db")
 os.environ["UPLOAD_DIR"] = os.path.join(_TEST_STATE, "uploads")
 os.makedirs(os.environ["UPLOAD_DIR"], exist_ok=True)
 
+# No test may reach a paid API. Environment variables outrank the .env file in
+# pydantic-settings, so blanking them here is what stops a real key in
+# backend/.env from being picked up.
+#
+# This is the same failure as the database one above, and it also really
+# happened: question verification runs inside generation, so the moment it was
+# added the generator property tests started billing real System One requests
+# and failing on their verdicts.
+for _credential in (
+    "TYPESAFE_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+):
+    os.environ[_credential] = ""
+
 from hypothesis import settings, HealthCheck  # noqa: E402,F401
 
 # Register Hypothesis profiles for different environments

@@ -3,8 +3,12 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from pydantic import BaseModel
 
+from ..config import settings as config_settings
 from ..db import get_db
 from ..models.question import Question, QuestionOption
+from ..models.settings import Settings as SettingsModel
+from ..models.tag import Tag
+from ..services.ai import curation
 
 router = APIRouter()
 
@@ -335,4 +339,164 @@ def format_question(question: Question) -> dict:
         "difficulty": question.difficulty,
         "source_reference": question.source_reference,
         "created_at": question.created_at,
+    }
+
+
+# ---------------------------------------------------------------------------
+# System One features: grading, tagging and duplicate detection.
+#
+# All three are judgments rather than generation, so they run on Jev and need no
+# LLM provider. Each returns a usable result when Jev is unavailable rather than
+# failing the request.
+# ---------------------------------------------------------------------------
+
+
+def _typesafe_key(db: Session) -> str:
+    """The TypeSafe key, from settings first and the environment second."""
+    row = db.query(SettingsModel).filter(SettingsModel.key == "typesafe_api_key").first()
+    if row and row.value:
+        return row.value
+    return getattr(config_settings, "TYPESAFE_API_KEY", "") or ""
+
+
+class GradeAnswerRequest(BaseModel):
+    """A written answer to grade against the expected one."""
+
+    answer: str
+
+
+def expected_answer(question: Question) -> str:
+    """The text of the correct option, which is what a written answer is graded against."""
+    return next((option.option_text for option in question.options if option.is_correct), "")
+
+
+def require_typesafe_key(db: Session) -> str:
+    """The TypeSafe key, or a 503 explaining that grading needs one."""
+    api_key = _typesafe_key(db)
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Grading needs a TypeSafe API key. Configure TYPESAFE_API_KEY on the backend.",
+        )
+    return api_key
+
+
+def grade_to_response(question_text: str, expected: str, answer: str, api_key: str) -> dict:
+    """Call the grader and shape its result. Touches no database state.
+
+    Kept free of the session so callers on the event loop can run it in a
+    thread without sharing the session across threads.
+    """
+    grade = curation.grade_answer(
+        question_text=question_text,
+        expected_answer=expected,
+        given_answer=answer,
+        api_key=api_key,
+    )
+
+    if not grade.checked:
+        raise HTTPException(status_code=503, detail="The grading service is unavailable.")
+
+    return {
+        "quality": grade.quality,
+        "passed": grade.passed,
+        "is_correct": round(grade.is_correct, 3),
+        "missed_key_point": round(grade.missed_key_point, 3),
+        "expected_answer": expected,
+    }
+
+
+@router.post("/{question_id}/grade")
+def grade_written_answer(
+    question_id: int, request: GradeAnswerRequest, db: Session = Depends(get_db)
+):
+    """Grade a free-text answer and return a quality SM-2 can consume.
+
+    The quality is a 0 to 5 Score rather than a yes/no, because the scheduler
+    wants degree: an answer that is right but vague should not be scheduled the
+    same as one that is right and precise.
+    """
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    api_key = require_typesafe_key(db)
+    return grade_to_response(
+        question.question_text, expected_answer(question), request.answer, api_key
+    )
+
+
+@router.get("/{question_id}/suggested-tags")
+def suggested_tags(question_id: int, db: Session = Depends(get_db)):
+    """Which of the existing tags apply to this question.
+
+    Only tags that already exist are offered, so the vocabulary stays controlled
+    instead of drifting with every generation.
+    """
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    available = [tag.name for tag in db.query(Tag).all()]
+    if not available:
+        return {"suggested": [], "reason": "No tags exist yet."}
+
+    api_key = _typesafe_key(db)
+    if not api_key:
+        return {"suggested": [], "reason": "No TypeSafe API key configured."}
+
+    suggested = curation.suggest_tags(
+        question={
+            "question_text": question.question_text,
+            "explanation": question.explanation,
+        },
+        available_tags=available,
+        api_key=api_key,
+    )
+
+    already = {tag.name for tag in question.tags}
+    return {"suggested": [name for name in suggested if name not in already]}
+
+
+class DuplicateCheckRequest(BaseModel):
+    """Question ids to compare against one another."""
+
+    question_ids: List[int]
+
+
+@router.post("/duplicates")
+def find_duplicate_questions(request: DuplicateCheckRequest, db: Session = Depends(get_db)):
+    """Find questions in the set that test the same thing as an earlier one.
+
+    The earlier question of each pair is kept. Nothing is deleted here: the
+    caller decides what to do with the pairs.
+    """
+    if len(request.question_ids) < 2:
+        return {"duplicates": []}
+
+    questions = (
+        db.query(Question).filter(Question.id.in_(request.question_ids)).all()
+    )
+    # Preserve the caller's order, since "keep the earlier one" depends on it.
+    by_id = {question.id: question for question in questions}
+    ordered = [by_id[qid] for qid in request.question_ids if qid in by_id]
+
+    api_key = _typesafe_key(db)
+    if not api_key:
+        return {"duplicates": [], "reason": "No TypeSafe API key configured."}
+
+    pairs = curation.find_duplicates(
+        questions=[{"question_text": question.question_text} for question in ordered],
+        api_key=api_key,
+    )
+
+    return {
+        "duplicates": [
+            {
+                "keep": ordered[pair.kept_index].id,
+                "duplicate": ordered[pair.duplicate_index].id,
+                "probability": round(pair.probability, 3),
+            }
+            for pair in pairs
+        ]
     }

@@ -6,9 +6,20 @@ from pydantic import BaseModel
 
 from app.db.database import get_db
 from app.models.question import Question
+from app.models.settings import Settings
 from app.models.test import Test as Deck
+from app.config import settings as config_settings
+from app.services.ai import rerank as rerank_service
 
 router = APIRouter()
+
+
+def _typesafe_key(db: Session) -> str:
+    """The TypeSafe key, from settings first and the environment second."""
+    row = db.query(Settings).filter(Settings.key == "typesafe_api_key").first()
+    if row and row.value:
+        return row.value
+    return getattr(config_settings, "TYPESAFE_API_KEY", "") or ""
 
 
 class SearchResult(BaseModel):
@@ -84,5 +95,17 @@ def search(
                 type="question", id=question.id, title=front_preview, subtitle=back_preview, url=url
             )
         )
+
+    # SQL found the candidates; Jev only orders them. Retrieval stays in the
+    # database so search keeps working with no key configured, and a judgment
+    # can never surface a result the query did not retrieve.
+    api_key = _typesafe_key(db)
+    if api_key and len(results) > 1:
+        ordered = rerank_service.rerank(
+            query=q,
+            candidates=[result.model_dump() for result in results],
+            api_key=api_key,
+        )
+        results = [SearchResult(**item) for item in ordered]
 
     return {"results": results}

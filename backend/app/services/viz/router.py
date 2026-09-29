@@ -13,23 +13,18 @@ What code keeps:
 What Jev supplies is the semantic judgment in the middle.
 """
 
-import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import requests
-
 from ...utils.logging import get_logger
+from .. import jev
 from . import templates
 
 logger = get_logger(__name__)
 
-API_URL = "https://api.typesafe.ai/v1/systemone"
-MODEL = "jev-latest"
-
-#: Jev takes 64k tokens per request, 32k of it state plus the longest question.
-#: The template descriptions are long, so keep the state well under that.
-MAX_STATE_CHARS = 48_000
+#: The template descriptions are long, so the state is kept well under the
+#: shared ceiling. Named here because build_state trims against it.
+MAX_STATE_CHARS = jev.MAX_STATE_CHARS
 
 #: Below this, the answer is not used. The canvas asks the person instead.
 #: Tune this against canvas_routing_log once there is real usage; it is a
@@ -40,8 +35,12 @@ CONFIDENCE_FLOOR = 0.6
 CANDIDATES_OFFERED = 3
 
 
-class RoutingUnavailable(RuntimeError):
-    """Jev could not be reached or is not configured."""
+class RoutingUnavailable(jev.JevUnavailable):
+    """Jev could not be reached or is not configured.
+
+    Kept as its own type so canvas code can catch routing failures specifically,
+    and derived from JevUnavailable so a caller that handles either still works.
+    """
 
 
 @dataclass
@@ -186,52 +185,33 @@ def route(
     timeout: float = 20.0,
 ) -> Routing:
     """Ask Jev which template to draw, and how."""
-    if not api_key:
-        raise RoutingUnavailable("No TypeSafe API key configured")
-
-    payload = {
-        "state": build_state(request_text, title, sections),
-        "model": MODEL,
-        "questions": _questions(),
-    }
-
-    started = time.time()
     try:
-        response = requests.post(
-            API_URL,
-            json=payload,
-            headers={"Authorization": f"Bearer {api_key}"},
+        answers = jev.ask(
+            state=build_state(request_text, title, sections),
+            questions=_questions(),
+            api_key=api_key,
             timeout=timeout,
+            label="canvas_routing",
         )
-        response.raise_for_status()
-    except requests.RequestException as exc:
+    except jev.JevUnavailable as exc:
         raise RoutingUnavailable(str(exc)) from exc
 
-    body = response.json()
-    answers = body.get("answers", {})
-    duration_ms = int((time.time() - started) * 1000)
-
-    template_answer = answers.get("template", {})
-    chosen = template_answer.get("choice")
-    probabilities = template_answer.get("probabilities", {}) or {}
-
-    granularity = answers.get("granularity", {})
-    granularity_index = int(round(granularity.get("score", 1)))
+    chosen = answers.choice("template")
 
     routing = Routing(
         template_id=None if chosen == templates.NO_MATCH else chosen,
-        confidence=float(template_answer.get("confidence", 0.0)),
-        probabilities={k: float(v) for k, v in probabilities.items()},
-        granularity_index=granularity_index,
-        orientation=answers.get("orientation", {}).get("choice", "horizontal"),
-        needs_grouping=float(answers.get("needs_grouping", {}).get("noul", 0)) >= 0.5,
+        confidence=answers.confidence("template"),
+        probabilities=answers.probabilities("template"),
+        granularity_index=int(round(answers.score("granularity", 1))),
+        orientation=answers.choice("orientation", "horizontal"),
+        needs_grouping=answers.noul("needs_grouping") >= 0.5,
         shape_signals={
-            "procedural": float(answers.get("is_procedural", {}).get("noul", 0)),
-            "causal": float(answers.get("is_causal", {}).get("noul", 0)),
-            "comparative": float(answers.get("is_comparative", {}).get("noul", 0)),
+            "procedural": answers.noul("is_procedural"),
+            "causal": answers.noul("is_causal"),
+            "comparative": answers.noul("is_comparative"),
         },
-        duration_ms=duration_ms,
-        input_tokens=int(body.get("usage", {}).get("input_tokens", 0)),
+        duration_ms=answers.duration_ms,
+        input_tokens=answers.input_tokens,
     )
 
     logger.info(
@@ -239,7 +219,7 @@ def route(
         template=routing.template_id,
         confidence=round(routing.confidence, 3),
         granularity=routing.granularity_index,
-        duration_ms=duration_ms,
+        duration_ms=routing.duration_ms,
         input_tokens=routing.input_tokens,
         confident=routing.is_confident,
     )

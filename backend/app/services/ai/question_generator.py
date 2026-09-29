@@ -8,7 +8,9 @@ from openai import OpenAI
 import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ...config import settings
+from ...config import settings as config_settings
 from ..parsers.base_parser import ParsedDocument, ParsedSection
+from . import sourcing, verify
 from ...utils.logging import get_logger
 from ...utils.metrics import track_question_generation, track_ai_api_call, estimate_cost
 from ...exceptions import AIServiceError
@@ -104,6 +106,14 @@ class QuestionGenerator:
     """
 
     def __init__(self, db: Optional[Session] = None):
+        # Questions discarded by verification during the last run, each carrying
+        # the reasons it was flagged. Read by the caller for reporting.
+        self.flagged_questions: List[Dict] = []
+
+        # Kept so the System One features can resolve their own key from
+        # settings, the same way the canvas router does.
+        self.db = db
+
         # Try to get settings from database first, fall back to env vars
         if db:
             self.provider = get_setting(db, "ai_provider") or settings.AI_PROVIDER
@@ -273,6 +283,7 @@ class QuestionGenerator:
             )
 
             if questions:
+                questions = self._verify_batch(section, questions)
                 all_questions.extend(questions)
                 logger.debug(
                     "section_processed_success",
@@ -315,18 +326,80 @@ class QuestionGenerator:
     def _select_sections(
         self, sections: List[ParsedSection], num_needed: int
     ) -> List[ParsedSection]:
-        """Select diverse sections from the document"""
+        """Choose the sections worth generating questions from.
+
+        Even spacing through a document picks whatever happens to sit at those
+        offsets, which in a real PDF is often a contents page, a copyright notice
+        or a reference list. Jev scores each section on what could be examined
+        from it and the best ones win.
+
+        Without a TypeSafe key, or if Jev cannot be reached, this falls back to
+        the original even spacing. Generation never depends on the judgment.
+        """
         if len(sections) <= num_needed:
             return sections
 
-        # Select evenly distributed sections
-        step = len(sections) / num_needed
-        selected = []
-        for i in range(num_needed):
-            idx = int(i * step)
-            selected.append(sections[idx])
+        api_key = self._typesafe_key()
+        if not api_key:
+            return sourcing._evenly_spaced(sections, num_needed)
 
-        return selected
+        payload = [
+            {"id": str(index), "heading": section.section or "", "text": section.text}
+            for index, section in enumerate(sections)
+        ]
+
+        chosen = sourcing.select_sections(payload, num_needed, api_key)
+        return [sections[int(item["id"])] for item in chosen]
+
+    def _verify_batch(self, section: ParsedSection, questions: List[Dict]) -> List[Dict]:
+        """Drop questions the source does not support.
+
+        A question whose keyed answer is wrong is worse than a missing question,
+        because the user studies it and learns the wrong thing with no way to
+        tell. So a flagged question is removed rather than shown with a warning.
+
+        Flagged questions are counted on the generator so the caller can report
+        how many were discarded, and so the flag rate can be measured against
+        real documents before anyone tunes the threshold.
+        """
+        api_key = self._typesafe_key()
+        if not api_key:
+            return questions
+
+        verdicts = verify.verify_batch(section.text, questions, api_key)
+        passed, flagged = verify.partition(questions, verdicts)
+
+        if flagged:
+            if not hasattr(self, "flagged_questions"):
+                self.flagged_questions = []
+            self.flagged_questions.extend(flagged)
+            logger.info(
+                "questions_flagged",
+                flagged=len(flagged),
+                kept=len(passed),
+                reasons=[reason for item in flagged for reason in item.get("flags", [])],
+            )
+
+        return passed
+
+    def _typesafe_key(self) -> str:
+        """The TypeSafe key, from settings first and the environment second.
+
+        Mirrors how the canvas router resolves it, so one configured key serves
+        every System One feature.
+
+        Only a real non-empty string counts. The lookup goes through whatever
+        session it was handed, and anything else it returns means no key rather
+        than a key-shaped object.
+        """
+        db = getattr(self, "db", None)
+        if db is not None:
+            stored = get_setting(db, "typesafe_api_key")
+            if isinstance(stored, str) and stored.strip():
+                return stored
+
+        configured = getattr(config_settings, "TYPESAFE_API_KEY", "")
+        return configured if isinstance(configured, str) else ""
 
     def _generate_batch_questions(
         self,

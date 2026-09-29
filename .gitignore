@@ -76,3 +76,7 @@ tmp/
 *.benchmarks/
 .benchmarks/
 .pytest_cache/
+
+# Secrets - never commit
+apikey figma.txt
+*.token

@@ -231,7 +231,7 @@ export default function Settings() {
           onClick={() => setActiveTab('api')}
           className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'api'
             ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
         >
           API Configuration
@@ -240,7 +240,7 @@ export default function Settings() {
           onClick={() => setActiveTab('general')}
           className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'general'
             ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
         >
           General
@@ -250,7 +250,7 @@ export default function Settings() {
       {activeTab === 'api' ? (
         <div className="space-y-6">
           {/* Configuration Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="glass-panel bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                 <Server className="h-5 w-5 text-primary-500" />
@@ -353,11 +353,11 @@ export default function Settings() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition font-medium shadow-sm shadow-primary-500/30"
+                  className="flex-1 basis-full sm:basis-auto bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition font-medium shadow-sm shadow-primary-500/30"
                 >
                   {saving ? 'Saving...' : 'Save Configuration'}
                 </button>
@@ -372,7 +372,7 @@ export default function Settings() {
                     </button>
                     <button
                       onClick={handleDelete}
-                      className="px-6 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition font-medium"
+                      className="px-6 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition font-medium"
                     >
                       Delete
                     </button>
@@ -386,8 +386,8 @@ export default function Settings() {
           {message && (
             <div 
               className={`rounded-lg p-4 border ${message.type === 'success'
-                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+                ? 'bg-green-50 dark:bg-green-900/30 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+                : 'bg-red-50 dark:bg-red-900/30 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
               }`}
               role="alert"
               aria-live="polite"
@@ -413,7 +413,7 @@ export default function Settings() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="glass-panel bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                 <Monitor className="h-5 w-5 text-primary-500" />
@@ -424,7 +424,7 @@ export default function Settings() {
                 <button
                   onClick={() => setTheme('light')}
                   className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'light'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
                     }`}
                 >
@@ -435,7 +435,7 @@ export default function Settings() {
                 <button
                   onClick={() => setTheme('dark')}
                   className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'dark'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
                     }`}
                 >
@@ -446,7 +446,7 @@ export default function Settings() {
                 <button
                   onClick={() => setTheme('system')}
                   className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${theme === 'system'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
                     }`}
                 >

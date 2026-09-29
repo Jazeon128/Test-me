@@ -180,12 +180,13 @@ export default function Upload() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-12">
-      <div className="mb-10 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500">
-          Upload Documents
+      <div className="mb-10">
+        <p className="eyebrow">Collect · Understand · Remember</p>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-400">
+          Upload documents
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Transform your study materials into interactive flashcards instantly.
+        <p className="page-intro mt-3 text-base">
+          Turn your material into something that stays with you.
           We support PDF, HTML, Markdown, DOCX, PPTX, and YouTube.
         </p>
       </div>
@@ -195,14 +196,14 @@ export default function Upload() {
         <div className="lg:col-span-4 space-y-6">
           {/* Deck Selection Card */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-              <Book className="h-5 w-5 text-primary-600" />
-              Target Deck
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+              <Book className="h-5 w-5 text-primary-600 dark:text-primary-300" />
+              Target deck
             </h2>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Deck
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select deck
               </label>
               <select
                 value={selectedDeck}
@@ -210,7 +211,7 @@ export default function Upload() {
                 className="input-field"
                 disabled={uploading || loadingDecks}
               >
-                <option value="new">➕ Create New Deck</option>
+                <option value="new">➕ Create new deck</option>
                 {decks.length > 0 && <option disabled>───────────────────</option>}
                 {decks.map((deck) => (
                   <option key={deck.id} value={deck.id}>
@@ -223,8 +224,8 @@ export default function Upload() {
             {selectedDeck === 'new' && (
               <div className="space-y-4 animate-fade-in">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Deck Name
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Deck name
                   </label>
                   <input
                     type="text"
@@ -236,7 +237,7 @@ export default function Upload() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description
                   </label>
                   <textarea
@@ -252,18 +253,18 @@ export default function Upload() {
             )}
 
             {selectedDeck !== 'new' && (
-              <div className="p-3 bg-primary-50 rounded-lg border border-primary-100 animate-fade-in">
+              <div className="p-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg border border-primary-100 animate-fade-in">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={regenerate}
                     onChange={(e) => setRegenerate(e.target.checked)}
-                    className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    className="mt-1 h-4 w-4 text-primary-600 dark:text-primary-300 focus:ring-primary-500 border-gray-300 rounded"
                     disabled={uploading}
                   />
                   <div>
-                    <span className="font-medium text-gray-900 text-sm">Regenerate Deck</span>
-                    <p className="text-xs text-gray-600 mt-0.5">
+                    <span className="font-medium text-gray-900 dark:text-white text-sm">Regenerate Deck</span>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                       Re-create all questions using new + old docs.
                     </p>
                   </div>
@@ -274,15 +275,15 @@ export default function Upload() {
 
           {/* Configuration Card */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-              <FileType className="h-5 w-5 text-primary-600" />
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+              <FileType className="h-5 w-5 text-primary-600 dark:text-primary-300" />
               Configuration
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Question Count
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Question count
                 </label>
                 <input
                   type="number"
@@ -310,7 +311,7 @@ export default function Upload() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Difficulty
                 </label>
                 <select
@@ -337,11 +338,11 @@ export default function Upload() {
               onClick={() => setActiveTab('file')}
               className={`pb-3 px-1 flex items-center gap-2 font-medium transition-colors relative ${activeTab === 'file'
                   ? 'text-primary-600 dark:text-primary-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <UploadIcon size={20} />
-              File Upload
+              File upload
               {activeTab === 'file' && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
               )}
@@ -350,7 +351,7 @@ export default function Upload() {
               onClick={() => setActiveTab('youtube')}
               className={`pb-3 px-1 flex items-center gap-2 font-medium transition-colors relative ${activeTab === 'youtube'
                   ? 'text-primary-600 dark:text-primary-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <Youtube size={20} />
@@ -364,11 +365,13 @@ export default function Upload() {
           {activeTab === 'file' ? (
             <div
               {...getRootProps()}
+              role="button"
+              aria-label="Choose files to upload"
               className={`
-                relative overflow-hidden rounded-2xl border-2 border-dashed p-6 md:p-12 text-center cursor-pointer transition-all duration-300
+                glass-panel upload-zone relative overflow-hidden rounded-2xl border-2 border-dashed p-6 md:p-12 text-center cursor-pointer transition-all duration-300
                 ${isDragActive
-                  ? 'border-primary-500 bg-primary-50/50 scale-[1.02]'
-                  : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50/50 bg-white'
+                  ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/30 scale-[1.02]'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 hover:bg-gray-50/50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
                 }
                 ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
               `}
@@ -379,27 +382,27 @@ export default function Upload() {
                   <div className="py-8">
                     <div className="relative">
                       <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary-600 mb-6"></div>
-                      <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-600">
+                      <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-600 dark:text-primary-300">
                         {uploadProgress}%
                       </div>
                     </div>
-                    <p className="text-xl font-medium text-gray-900">Uploading Documents</p>
-                    <p className="text-gray-500 mt-2">AI is preparing to analyze your content...</p>
+                    <p className="text-xl font-medium text-gray-900 dark:text-white">Uploading Documents</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">AI is preparing to analyze your content...</p>
                   </div>
                 ) : (
                   <>
-                    <div className={`p-6 rounded-full bg-primary-50 mb-6 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
-                      <UploadIcon className="h-12 w-12 text-primary-600" />
+                    <div className={`upload-orbit p-6 rounded-full mb-8 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
+                      <UploadIcon className="h-12 w-12 text-primary-600 dark:text-primary-300" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      {isDragActive ? 'Drop files now' : 'Click or drag files here'}
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                      {isDragActive ? 'Drop files now' : 'Drop your next discovery here'}
                     </h3>
-                    <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                      Support for PDF, HTML, Markdown, DOCX, and PPTX. Upload multiple files to create a comprehensive deck.
+                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                      Choose files or drop them here. Add one source or bring a whole topic together.
                     </p>
-                    <div className="flex gap-3 flex-wrap justify-center">
+                    <div className="material-types flex gap-3 flex-wrap justify-center">
                       {['PDF', 'HTML', 'MD', 'DOCX', 'PPTX'].map((type) => (
-                        <span key={type} className="px-4 py-1.5 bg-gray-100 rounded-full text-sm font-medium text-gray-600 border border-gray-200">
+                        <span key={type} className="px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-sm font-medium text-gray-600 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
                           {type}
                         </span>
                       ))}
@@ -409,7 +412,7 @@ export default function Upload() {
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-12">
+            <div className="glass-panel bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-12">
               <div className="max-w-xl mx-auto text-center">
                 <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
                   <Youtube className="w-6 h-6 text-red-600 dark:text-red-400" />
@@ -420,13 +423,13 @@ export default function Upload() {
                 <p className="text-gray-500 dark:text-gray-400 mb-6">
                   Paste a YouTube video URL to generate questions from its transcript.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <input
                     type="text"
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    className="min-w-0 flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                   />
                   <button
                     onClick={() => onDrop([])}
@@ -444,15 +447,15 @@ export default function Upload() {
           <div className="mt-8 space-y-6">
             {/* Success Message */}
             {result && !generating && (
-              <div className="card bg-success-50 border-success-200 animate-fade-in">
+              <div className="card bg-success-50 dark:bg-success-900/30 border-success-200 animate-fade-in">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-success-100 rounded-full">
+                  <div className="p-2 bg-success-100 dark:bg-success-900/30 rounded-full">
                     <CheckCircle className="h-6 w-6 text-success-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-success-900 text-lg">Upload Complete!</h3>
-                    <p className="text-success-800 mt-1">{result.message}</p>
-                    <p className="text-success-700 text-sm mt-2 font-medium">Redirecting to deck view...</p>
+                    <h3 className="font-bold text-success-900 dark:text-success-200 text-lg">Upload complete!</h3>
+                    <p className="text-success-800 dark:text-success-200 mt-1">{result.message}</p>
+                    <p className="text-success-700 dark:text-success-200 text-sm mt-2 font-medium">Redirecting to deck view...</p>
                   </div>
                 </div>
               </div>
@@ -462,24 +465,24 @@ export default function Upload() {
             {generating && generationStatus && (
               <div className="card border-primary-100 shadow-lg animate-slide-up">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-primary-100 rounded-full animate-pulse-slow">
-                    <Loader2 className="h-6 w-6 text-primary-600 animate-spin" />
+                  <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-full animate-pulse-slow">
+                    <Loader2 className="h-6 w-6 text-primary-600 dark:text-primary-300 animate-spin" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-lg">Generating Questions</h3>
-                    <p className="text-primary-600 font-medium">{generationStatus.current_step}</p>
-                    {/* Question Counter */}
+                    <h3 className="font-bold text-gray-900 dark:text-white text-lg">Generating questions</h3>
+                    <p className="text-primary-600 dark:text-primary-300 font-medium">{generationStatus.current_step}</p>
+                    {/* Question counter */}
                     {generationStatus.current_question > 0 && generationStatus.total_questions > 0 && (
-                      <p className="text-gray-600 text-sm mt-1">
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
                         Generating question {generationStatus.current_question} of {generationStatus.total_questions}
                       </p>
                     )}
                   </div>
-                  <span className="text-2xl font-bold text-primary-600">{generationStatus.progress}%</span>
+                  <span className="text-2xl font-bold text-primary-600 dark:text-primary-300">{generationStatus.progress}%</span>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="w-full bg-gray-100 rounded-full h-3 mb-8 overflow-hidden">
+                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-8 overflow-hidden">
                   <div
                     className="bg-primary-600 h-3 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${generationStatus.progress}%` }}
@@ -488,17 +491,17 @@ export default function Upload() {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                    <div className="text-gray-500 text-sm mb-1">Documents</div>
-                    <div className="text-2xl font-bold text-gray-900">{generationStatus.total_documents}</div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center border border-gray-100">
+                    <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Documents</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{generationStatus.total_documents}</div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                    <div className="text-gray-500 text-sm mb-1">Requested</div>
-                    <div className="text-2xl font-bold text-gray-900">{generationStatus.total_questions_requested}</div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center border border-gray-100">
+                    <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Requested</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{generationStatus.total_questions_requested}</div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                    <div className="text-gray-500 text-sm mb-1">Generated</div>
-                    <div className="text-2xl font-bold text-primary-600">{generationStatus.total_questions_generated}</div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center border border-gray-100">
+                    <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Generated</div>
+                    <div className="text-2xl font-bold text-primary-600 dark:text-primary-300">{generationStatus.total_questions_generated}</div>
                   </div>
                 </div>
 
@@ -512,7 +515,7 @@ export default function Upload() {
                           className={`font-mono ${log.level === 'error' ? 'text-red-400' : 'text-gray-300'
                             }`}
                         >
-                          <span className="text-gray-500">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
+                          <span className="text-gray-500 dark:text-gray-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
                           {log.message}
                         </div>
                       ))}
@@ -524,14 +527,14 @@ export default function Upload() {
 
             {/* Error Message */}
             {error && (
-              <div className="card bg-red-50 border-red-200 animate-shake">
+              <div className="card bg-red-50 dark:bg-red-900/30 border-red-200 animate-shake">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-red-100 rounded-full">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
                     <AlertCircle className="h-6 w-6 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-red-900 text-lg">Upload Failed</h3>
-                    <p className="text-red-800 mt-1">{error}</p>
+                    <h3 className="font-bold text-red-900 dark:text-red-200 text-lg">Upload failed</h3>
+                    <p className="text-red-800 dark:text-red-200 mt-1">{error}</p>
                   </div>
                 </div>
               </div>

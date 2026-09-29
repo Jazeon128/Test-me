@@ -47,7 +47,7 @@ export default function Progress() {
       <div className="mb-8">
         <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">Your progress</h1>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+        <div className="glass-panel rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-6">
             <Mascot mood={activity?.mood} />
             <div className="flex gap-8 text-sm">
@@ -106,19 +106,19 @@ export default function Progress() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Mastery Progress */}
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-primary-600" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <Trophy className="h-6 w-6 text-primary-600 dark:text-primary-300" />
             Mastery Progress
           </h2>
           <div className="space-y-6">
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">Questions Mastered</span>
-                <span className="text-sm font-bold text-gray-900">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Questions Mastered</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
                   {stats?.questions_mastered || 0} / {stats?.total_questions_seen || 0}
                 </span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
                   className="bg-primary-600 h-full transition-all duration-1000 ease-out"
                   style={{ width: `${(stats?.mastery_rate || 0) * 100}%` }}
@@ -128,14 +128,14 @@ export default function Progress() {
 
             <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Mastery Rate</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Mastery Rate</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {Math.round((stats?.mastery_rate || 0) * 100)}%
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Avg. Easiness</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Avg. Easiness</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {(stats?.average_easiness_factor || 0).toFixed(2)}
                 </p>
               </div>
@@ -145,16 +145,16 @@ export default function Progress() {
 
         {/* Due for Review */}
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Clock className="h-6 w-6 text-primary-600" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <Clock className="h-6 w-6 text-primary-600 dark:text-primary-300" />
             Review Status
           </h2>
           <div className="space-y-6">
             <div className="text-center py-4">
-              <p className="text-6xl font-bold text-primary-600 mb-2 tracking-tight">
+              <p className="text-6xl font-bold text-primary-600 dark:text-primary-300 mb-2 tracking-tight">
                 {stats?.questions_due || 0}
               </p>
-              <p className="text-gray-500 font-medium">Questions Due for Review</p>
+              <p className="text-gray-500 dark:text-gray-400 font-medium">Questions Due for Review</p>
             </div>
 
             {stats?.questions_due > 0 ? (
@@ -165,8 +165,8 @@ export default function Progress() {
                 Start Review Session
               </button>
             ) : (
-              <div className="bg-success-50 border border-success-100 rounded-xl p-4 text-center">
-                <p className="text-success-800 font-bold flex items-center justify-center gap-2">
+              <div className="bg-success-50 dark:bg-success-900/30 border border-success-100 rounded-xl p-4 text-center">
+                <p className="text-success-800 dark:text-success-200 font-bold flex items-center justify-center gap-2">
                   <CheckCircle className="h-5 w-5" />
                   All caught up! Great job!
                 </p>
@@ -199,9 +199,9 @@ export default function Progress() {
 
 function StatCard({ icon, title, value, subtitle, color }) {
   const colorStyles = {
-    primary: 'bg-primary-100 text-primary-600',
-    success: 'bg-success-100 text-success-600',
-    warning: 'bg-orange-100 text-orange-600',
+    primary: 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-300',
+    success: 'bg-success-100 dark:bg-success-900/30 text-success-600',
+    warning: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600',
   }
 
   return (
@@ -210,9 +210,9 @@ function StatCard({ icon, title, value, subtitle, color }) {
         {icon}
       </div>
       <div className="mt-4">
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-4xl font-bold text-gray-900 mt-2 tracking-tight">{value}</p>
-        {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{title}</p>
+        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2 tracking-tight">{value}</p>
+        {subtitle && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
       </div>
     </div>
   )
@@ -227,7 +227,7 @@ function AwardCard({ award, earned }) {
       className={`rounded-lg border p-4 text-center ${
         earned
           ? 'border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-900/30'
-          : 'border-gray-200 bg-gray-50 opacity-60 dark:border-gray-700 dark:bg-gray-800'
+          : 'border-gray-200 bg-gray-50 dark:bg-gray-800 opacity-60 dark:border-gray-700 dark:bg-gray-800'
       }`}
     >
       <div className="mb-1 text-2xl" aria-hidden="true">

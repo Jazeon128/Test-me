@@ -63,7 +63,7 @@ export default function HeatMap({ days }) {
           {WEEKDAYS.map((label, index) => (
             <span
               key={index}
-              className="h-3 text-[10px] leading-3 text-gray-400 dark:text-gray-500"
+              className="h-3 text-[10px] leading-3 text-gray-500 dark:text-gray-400"
               style={{ width: 24 }}
             >
               {label}

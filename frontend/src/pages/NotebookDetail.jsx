@@ -42,7 +42,7 @@ export default function NotebookDetail() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600 dark:text-primary-300" />
       </div>
     )
   }
@@ -68,7 +68,7 @@ export default function NotebookDetail() {
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        className="mb-4 flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
       >
         <ArrowLeft size={18} />
         All notebooks
@@ -143,7 +143,7 @@ export default function NotebookDetail() {
               <button
                 type="button"
                 onClick={() => navigate(`/canvas?document=${document.id}`)}
-                className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:text-gray-300"
+                className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 transition hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:text-gray-300"
                 style={{ minHeight: 44 }}
               >
                 <Network size={15} />
@@ -242,7 +242,7 @@ function Panel({ empty, emptyTitle, emptyBody, children }) {
     )
   }
   return (
-    <div className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+    <div className="glass-panel divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
       {children}
     </div>
   )

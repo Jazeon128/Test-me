@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, FileText, Network, Layers, Loader2 } from 'lucide-react'
-import { notebooksAPI } from '../services/api'
+import { Plus, FileText, Network, Layers, Loader2, Flame, ArrowUpRight } from 'lucide-react'
+import { notebooksAPI, progressAPI } from '../services/api'
 
 /**
  * The home screen: one card per topic.
@@ -20,6 +20,7 @@ export default function Notebooks() {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState(ICONS[0])
   const [error, setError] = useState(null)
+  const [progress, setProgress] = useState({})
 
   const load = async () => {
     try {
@@ -32,8 +33,20 @@ export default function Notebooks() {
     }
   }
 
+  // Progress is a separate request so a slow or failing stats query still
+  // leaves the notebook list usable. The cards simply omit their progress row.
+  const loadProgress = async () => {
+    try {
+      const { data } = await progressAPI.getStatsByNotebook()
+      setProgress(Object.fromEntries(data.map((row) => [row.notebook_id, row])))
+    } catch {
+      setProgress({})
+    }
+  }
+
   useEffect(() => {
     load()
+    loadProgress()
   }, [])
 
   const create = async (event) => {
@@ -52,7 +65,7 @@ export default function Notebooks() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600 dark:text-primary-300" />
       </div>
     )
   }
@@ -61,15 +74,16 @@ export default function Notebooks() {
     <div className="mx-auto max-w-6xl px-4">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
+          <p className="eyebrow">Your study space</p>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notebooks</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            One per topic. Each holds its sources, its diagrams and its practice.
+            A place for every curiosity. Keep your sources, diagrams and practice together.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-white transition hover:bg-primary-700"
+          className="btn-primary flex items-center gap-2"
           style={{ minHeight: 44 }}
         >
           <Plus size={18} />
@@ -86,7 +100,7 @@ export default function Notebooks() {
       {creating && (
         <form
           onSubmit={create}
-          className="mb-6 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800"
+          className="glass-panel mb-6 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800"
         >
           <label
             htmlFor="notebook-name"
@@ -162,13 +176,14 @@ export default function Notebooks() {
               key={notebook.id}
               type="button"
               onClick={() => navigate(`/notebooks/${notebook.id}`)}
-              className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 text-left transition hover:border-primary-400 dark:border-gray-700 dark:bg-gray-800"
-              style={{ minHeight: 148 }}
+              className="glass-panel notebook-card flex flex-col gap-3 text-left"
+              
             >
-              <span className="text-3xl" aria-hidden="true">
+              <ArrowUpRight size={19} className="notebook-arrow" aria-hidden="true" />
+              <span className="notebook-icon text-3xl" aria-hidden="true">
                 {notebook.icon || '📘'}
               </span>
-              <span className="font-semibold text-gray-900 dark:text-white">{notebook.name}</span>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">{notebook.name}</span>
               {notebook.description && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {notebook.description}
@@ -185,10 +200,74 @@ export default function Notebooks() {
                   <Layers size={13} /> {notebook.decks} decks
                 </span>
               </span>
+
+              <NotebookProgress stats={progress[notebook.id]} />
             </button>
           ))}
         </div>
       )}
     </div>
   )
+}
+
+/**
+ * The progress strip on a notebook card.
+ *
+ * Answers "where do I stand on this subject" at a glance. Overall figures
+ * across every notebook stay on the Progress page.
+ */
+function NotebookProgress({ stats }) {
+  // No stats row yet, or a notebook holding no questions: show nothing rather
+  // than a row of zeroes that reads like a failure.
+  if (!stats || stats.total_questions === 0) return null
+
+  const masteryPercent = Math.round(stats.mastery_rate * 100)
+
+  return (
+    <span className="mt-3 block border-t border-gray-100 pt-3 dark:border-gray-700">
+      <span className="flex items-center justify-between text-xs">
+        <span className="text-gray-600 dark:text-gray-400">
+          {stats.questions_mastered} of {stats.total_questions} mastered
+        </span>
+        <span className="font-semibold tabular-nums text-gray-900 dark:text-white">
+          {masteryPercent}%
+        </span>
+      </span>
+
+      <span
+        className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+        role="progressbar"
+        aria-valuenow={masteryPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${masteryPercent}% mastered`}
+      >
+        <span
+          className="block h-full rounded-full bg-primary-600 transition-[width] duration-500"
+          style={{ width: `${masteryPercent}%` }}
+        />
+      </span>
+
+      <span className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+        {stats.questions_due > 0 ? (
+          <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+            <Flame size={13} /> {stats.questions_due} due
+          </span>
+        ) : (
+          <span className="text-gray-500 dark:text-gray-400">Nothing due</span>
+        )}
+        <span className="text-gray-500 dark:text-gray-400">{describeLastStudied(stats.last_studied)}</span>
+      </span>
+    </span>
+  )
+}
+
+function describeLastStudied(value) {
+  if (!value) return 'Not started'
+
+  const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000)
+  if (days <= 0) return 'Studied today'
+  if (days === 1) return 'Studied yesterday'
+  if (days < 30) return `Studied ${days} days ago`
+  return 'Studied over a month ago'
 }

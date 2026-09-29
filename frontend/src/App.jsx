@@ -1,7 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
 import Notebooks from './pages/Notebooks'
 import NotebookDetail from './pages/NotebookDetail'
 import Upload from './pages/Upload'
@@ -23,7 +22,7 @@ function App() {
   const [isCheckingWelcome, setIsCheckingWelcome] = useState(true)
 
   useEffect(() => {
-    // Check if this is the first run (only in Electron)
+    // Browser completion stores no credentials, only the welcome preference.
     const checkFirstRun = async () => {
       if (window.electronAPI) {
         try {
@@ -34,6 +33,12 @@ function App() {
           }
         } catch (error) {
           console.error('Failed to check welcome status:', error)
+        }
+      } else {
+        try {
+          setShowWelcome(localStorage.getItem('test-me.welcomeCompleted') !== 'true')
+        } catch {
+          setShowWelcome(true)
         }
       }
       setIsCheckingWelcome(false)
@@ -64,7 +69,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Notebooks />} />
           <Route path="/notebooks/:notebookId" element={<NotebookDetail />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/decks" element={<Decks />} />
           <Route path="/decks/:deckId" element={<DeckDetails />} />
@@ -88,6 +92,11 @@ function App() {
           />
           <Route path="/progress" element={<Progress />} />
           <Route path="/settings" element={<Settings />} />
+
+          {/* Unknown paths land on the notebook list rather than an empty
+              shell. Covers /dashboard, which used to be a second home
+              screen and may still be bookmarked. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
     </ThemeProvider>

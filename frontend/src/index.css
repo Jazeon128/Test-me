@@ -1,9 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .input-field {
+    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400;
+  }
+
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800;
+  }
+}
 
 @layer base {
   body {
@@ -17,4 +26,123 @@
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Shared glass surfaces. Opaque fallbacks keep the UI usable without blur. */
+:root {
+  color-scheme: light;
+  --shell: #eef0f8;
+  --surface: rgba(255, 255, 255, .72);
+  --surface-solid: #f8f9fd;
+  --surface-border: rgba(255, 255, 255, .9);
+  --ink: #20243c;
+  --muted: #626a83;
+  --field: rgba(255, 255, 255, .64);
+  --line: rgba(94, 105, 150, .17);
+  --accent: #6254d9;
+  --surface-shadow: 0 12px 40px -24px rgba(50, 41, 108, .3), inset 0 1px 0 rgba(255,255,255,.75);
+}
+
+.dark {
+  color-scheme: dark;
+  --shell: #101322;
+  --surface: rgba(32, 37, 60, .58);
+  --surface-solid: #20253c;
+  --surface-border: rgba(204, 210, 255, .13);
+  --ink: #f0f1fb;
+  --muted: #b0b7cf;
+  --field: rgba(13, 18, 36, .42);
+  --line: rgba(193, 202, 255, .15);
+  --accent: #b0a8ff;
+  --surface-shadow: 0 16px 40px -24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+body { background: var(--shell); color: var(--ink); }
+.app-shell { min-height: 100vh; isolation: isolate; position: relative; }
+.ambient-light {
+  position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(ellipse at 8% 6%, #c5c3fa 0%, transparent 46%),
+    radial-gradient(ellipse at 95% 30%, #c7e7ea 0%, transparent 44%),
+    radial-gradient(ellipse at 50% 98%, #e4d6f3 0%, transparent 50%), var(--shell);
+}
+.dark .ambient-light {
+  background: radial-gradient(ellipse at 5% 0%, #30294f 0%, transparent 48%),
+    radial-gradient(ellipse at 100% 35%, #163c48 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 100%, #262540 0%, transparent 50%), var(--shell);
+}
+.app-header { position: sticky; top: 0; z-index: 40; padding: 20px 24px 0; }
+.glass-nav, .app-shell .glass-panel, .app-shell .card {
+  background: var(--surface-solid);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+  border-radius: 24px;
+}
+@supports (backdrop-filter: blur(1px)) {
+  .glass-nav, .app-shell .glass-panel, .app-shell .card { background: var(--surface); backdrop-filter: blur(24px) saturate(125%); }
+}
+.glass-nav { max-width: 1232px; margin: auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-radius: 22px; }
+.brand { display: flex; align-items: center; gap: 11px; font-size: 19px; font-weight: 700; letter-spacing: -.6px; color: var(--ink); }
+.brand-symbol { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; color: white; background: linear-gradient(145deg, #a49cf1, #6554d8); box-shadow: inset 0 1px 1px #ffffff80, 0 5px 16px #6254d92b; }
+.brand-caption { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; letter-spacing: .2px; color: var(--muted); }
+.nav-links, .nav-actions { align-items: center; gap: 5px; }
+.nav-actions { display: flex; }
+.nav-link { display: flex; align-items: center; gap: 8px; padding: 11px 15px; border-radius: 13px; font-size: 13px; font-weight: 600; color: var(--muted); transition: background .18s, color .18s; }
+.nav-link:hover, .icon-button:hover { background: var(--field); color: var(--ink); }
+.nav-link.is-active { color: var(--accent); background: var(--field); box-shadow: inset 0 0 0 1px var(--line), 0 3px 9px #51467908; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 42px; min-height: 42px; border-radius: 13px; color: var(--muted); transition: background .18s; }
+.nav-settings { display: none; }
+@media (min-width: 640px) { .nav-settings { display: inline-flex; } }
+@media (min-width: 1024px) { .mobile-menu-toggle { display: none; } }
+.app-content { max-width: 1232px; margin: auto; padding: 52px 24px 64px; min-height: calc(100vh - 160px); }
+.app-content h1 { color: var(--ink); font-size: clamp(1.9rem, 3vw, 2.65rem); line-height: 1.16; letter-spacing: -.045em; background: none; }
+.app-content h2, .app-content h3 { letter-spacing: -.025em; }
+.app-footer { max-width: 1184px; margin: auto; padding: 22px 0 30px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 12px; }
+.app-footer > :first-child { font-weight: 700; }
+.eyebrow { color: var(--accent); text-transform: uppercase; font-size: 10px; font-weight: 700; letter-spacing: .2em; margin-bottom: 14px; }
+.page-intro { max-width: 590px; line-height: 1.7; color: var(--muted); }
+.app-shell .input-field { background: var(--field); border: 1px solid var(--line); color: var(--ink); border-radius: 12px; min-height: 44px; box-shadow: inset 0 1px 3px #11182704; }
+.app-content :is(input[type="text"], input[type="password"], input[type="number"], input[type="url"], textarea, select) { background: var(--field); border-color: var(--line); color: var(--ink); border-radius: 12px; }
+.input-field::placeholder { color: var(--muted); opacity: .85; }
+select option { background: var(--surface-solid); color: var(--ink); }
+.btn-primary, .btn-secondary { align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 600; transition: transform .18s, box-shadow .18s, background .18s; }
+.btn-primary { background: linear-gradient(135deg, #7969e6, #5b4cca); color: #fff; border: 1px solid #ffffff26; box-shadow: inset 0 1px 0 #ffffff26, 0 6px 16px #6254d92b; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px #6254d940; }
+.btn-secondary { background: var(--field); color: var(--ink); border: 1px solid var(--line); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-solid); }
+button:disabled { cursor: not-allowed; }
+:where(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.mobile-navigation { width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
+.skip-link { position: fixed; top: -100px; left: 24px; z-index: 100; background: var(--surface-solid); color: var(--ink); padding: 14px 20px; border-radius: 12px; }
+.skip-link:focus { top: 12px; }
+.notebook-card { position: relative; min-height: 240px; padding: 26px; transition: transform .2s, box-shadow .2s; }
+.notebook-card:hover { transform: translateY(-4px); box-shadow: var(--surface-shadow), 0 12px 26px -16px #6254d955; }
+.notebook-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 17px; background: var(--field); border: 1px solid var(--surface-border); margin-bottom: 10px; }
+.notebook-arrow { position: absolute; top: 30px; right: 26px; color: var(--muted); transition: transform .2s; }
+.notebook-card:hover .notebook-arrow { transform: translate(2px, -2px); }
+.upload-zone { min-height: 350px; display: grid; place-items: center; border-style: dashed; border-color: var(--line); }
+.upload-zone:hover { border-color: var(--accent); }
+.upload-orbit { background: var(--field); border: 1px solid var(--surface-border); box-shadow: 0 0 0 12px #9486e908, 0 0 0 24px #9486e904; }
+.material-types { font-family: ui-monospace, monospace; letter-spacing: .05em; }
+
+/* Tailwind's gray-400 and gray-500 were picked for opaque white cards. On the
+   tinted glass they fall below 4.5:1, so light mode maps them onto the muted
+   token. Dark mode keeps its own dark: variants. */
+:root:not(.dark) .app-shell :is(.text-gray-400, .text-gray-500) { color: var(--muted); }
+:root:not(.dark) .app-shell .text-amber-600 { color: #b45309; }
+
+@media (max-width: 639px) {
+  .app-header { padding: 12px 12px 0; }
+  .glass-nav { padding: 10px; gap: 6px; border-radius: 18px; }
+  .brand-caption { display: none; }
+  .brand { font-size: 17px; gap: 8px; }
+  .brand-symbol { width: 36px; height: 36px; border-radius: 12px; }
+  .nav-actions { gap: 0; }
+  .app-content { padding: 34px 12px 40px; }
+  .app-footer { margin: 0 24px; font-size: 10px; }
+  .glass-panel, .card { border-radius: 20px; }
+  .notebook-card { min-height: 215px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .notebook-card:hover, .btn-primary:hover:not(:disabled) { transform: none; }
 }

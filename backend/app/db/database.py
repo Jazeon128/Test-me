@@ -5,7 +5,7 @@ from ..config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -28,11 +28,11 @@ def init_db() -> None:
     """
     from ..models import Base
     from sqlalchemy import inspect
-    
+
     # Check if tables already exist (fast operation)
     inspector = inspect(engine)
     existing_tables = inspector.get_table_names()
-    
+
     # Only create tables if database is empty or missing tables
     if not existing_tables or len(existing_tables) == 0:
         # Full table creation (only on first run)

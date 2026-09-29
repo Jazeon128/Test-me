@@ -88,7 +88,7 @@ class TestParsedSection:
             section="Introduction",
             paragraph=1,
             start_char=0,
-            end_char=11
+            end_char=11,
         )
 
         assert section.text == "Sample text"
@@ -115,17 +115,14 @@ class TestParsedDocument:
 
     def test_creation_full(self):
         """Test creating ParsedDocument with all fields"""
-        sections = [
-            ParsedSection(text="Section 1"),
-            ParsedSection(text="Section 2")
-        ]
+        sections = [ParsedSection(text="Section 1"), ParsedSection(text="Section 2")]
 
         doc = ParsedDocument(
             full_text="Full document text",
             sections=sections,
             title="Test Document",
             num_pages=5,
-            metadata={"author": "Test"}
+            metadata={"author": "Test"},
         )
 
         assert doc.full_text == "Full document text"
@@ -136,10 +133,7 @@ class TestParsedDocument:
 
     def test_metadata_auto_initialization(self):
         """Test that metadata is auto-initialized to empty dict"""
-        doc = ParsedDocument(
-            full_text="test",
-            sections=[]
-        )
+        doc = ParsedDocument(full_text="test", sections=[])
 
         assert doc.metadata == {}
 
@@ -226,7 +220,9 @@ class TestMarkdownParser:
             assert section.start_char >= 0
             assert section.end_char >= section.start_char
             # Text should match the offset range
-            assert len(section.text) <= (section.end_char - section.start_char) + 100  # Some tolerance
+            assert (
+                len(section.text) <= (section.end_char - section.start_char) + 100
+            )  # Some tolerance
 
     def test_clean_text_method(self):
         """Test the text cleaning utility method"""
@@ -295,7 +291,9 @@ class TestHTMLParser:
 
         # Check section names
         section_names = [s.section for s in result.sections if s.section]
-        assert any("Main Heading" in str(name) or "First Section" in str(name) for name in section_names)
+        assert any(
+            "Main Heading" in str(name) or "First Section" in str(name) for name in section_names
+        )
 
     def test_parse_html_formatting_cleaned(self, temp_html_file):
         """Test that HTML tags are removed"""

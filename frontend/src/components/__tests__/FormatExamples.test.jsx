@@ -14,9 +14,9 @@ describe('FormatExamples', () => {
       render(<FormatExamples provider="anthropic" />)
       
       expect(screen.getByText('Format Examples for Anthropic')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-5-sonnet-20241022')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-5-haiku-20241022')).toBeInTheDocument()
-      expect(screen.getByText('claude-3-opus-20240229')).toBeInTheDocument()
+      expect(screen.getByText('claude-sonnet-5')).toBeInTheDocument()
+      expect(screen.getByText('claude-opus-5')).toBeInTheDocument()
+      expect(screen.getByText('claude-haiku-4-5')).toBeInTheDocument()
     })
 
     it('should display correct documentation link for Anthropic', () => {
@@ -56,9 +56,9 @@ describe('FormatExamples', () => {
       render(<FormatExamples provider="gemini" />)
       
       expect(screen.getByText('Format Examples for Gemini')).toBeInTheDocument()
-      expect(screen.getByText('gemini-2.5-flash')).toBeInTheDocument()
-      expect(screen.getByText('gemini-3-pro-preview')).toBeInTheDocument()
-      expect(screen.getByText('gemini-2.5-pro')).toBeInTheDocument()
+      expect(screen.getByText('gemini-3.8-flash')).toBeInTheDocument()
+      expect(screen.getByText('gemini-3.5-flash-lite')).toBeInTheDocument()
+      expect(screen.getByText('gemini-3.1-pro-preview')).toBeInTheDocument()
     })
 
     it('should display correct documentation link for Gemini', () => {
@@ -66,7 +66,7 @@ describe('FormatExamples', () => {
       
       const link = screen.getByRole('link', { name: /View Gemini model documentation/i })
       expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('href', 'https://ai.google.dev/gemini-api/docs/models/gemini')
+      expect(link).toHaveAttribute('href', 'https://ai.google.dev/gemini-api/docs/models')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })

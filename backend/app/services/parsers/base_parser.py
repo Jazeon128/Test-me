@@ -33,12 +33,12 @@ class ParsedDocument:
 class BaseParser(ABC):
     """
     Base class for document parsers.
-    
+
     This abstract base class defines the interface that all document parsers must implement.
     Parsers are responsible for extracting text content from various document formats
     (PDF, DOCX, HTML, Markdown, etc.) and structuring it into sections with reference
     information for question generation.
-    
+
     Parser Responsibilities:
     ------------------------
     1. Extract text content from the document
@@ -46,14 +46,14 @@ class BaseParser(ABC):
     3. Preserve reference information (page numbers, section titles, character positions)
     4. Clean and normalize text (remove excessive whitespace, special characters)
     5. Extract metadata (title, page count, etc.)
-    
+
     Section Division Strategy:
     --------------------------
     Parsers should divide documents into sections that are:
     - Self-contained: Each section should have enough context for question generation
     - Appropriately sized: Typically 200-1000 characters per section
     - Logically organized: Follow document structure (chapters, sections, pages)
-    
+
     Supported Document Types:
     -------------------------
     - PDF: Uses PyPDF2 or pdfplumber for text extraction
@@ -62,22 +62,22 @@ class BaseParser(ABC):
     - Markdown: Uses regex parsing for markdown files
     - PPTX: Uses python-pptx for PowerPoint presentations
     - YouTube: Uses youtube-transcript-api for video transcripts
-    
+
     Example Implementation:
     -----------------------
     ```python
     from app.services.parsers.base_parser import BaseParser, ParsedDocument, ParsedSection
-    
+
     class CustomParser(BaseParser):
         def parse(self, file_path: str) -> ParsedDocument:
             # Read file content
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Create sections
             sections = []
             paragraphs = content.split('\\n\\n')
-            
+
             for i, para in enumerate(paragraphs):
                 section = ParsedSection(
                     text=self._clean_text(para),
@@ -86,14 +86,14 @@ class BaseParser(ABC):
                     end_char=content.index(para) + len(para)
                 )
                 sections.append(section)
-            
+
             return ParsedDocument(
                 full_text=content,
                 sections=sections,
                 title="Custom Document"
             )
     ```
-    
+
     Notes:
     ------
     - Parsers should handle encoding issues gracefully
@@ -105,7 +105,7 @@ class BaseParser(ABC):
     def parse(self, file_path: str) -> ParsedDocument:
         """
         Parse a document and return structured content.
-        
+
         This method must be implemented by all parser subclasses. It should:
         1. Read the document from the file path
         2. Extract all text content
@@ -124,40 +124,39 @@ class BaseParser(ABC):
             - title: Document title (if available)
             - num_pages: Page count (for paginated documents)
             - metadata: Additional document metadata
-            
+
         Raises:
             FileNotFoundError: If the file doesn't exist
             PermissionError: If the file can't be read
             ValueError: If the file format is invalid or corrupted
-            
+
         Example:
             >>> parser = PDFParser()
             >>> doc = parser.parse("study_guide.pdf")
             >>> print(f"Extracted {len(doc.sections)} sections")
             >>> print(f"Total text length: {len(doc.full_text)} characters")
         """
-        pass
 
     def _clean_text(self, text: str) -> str:
         """
         Clean and normalize text content.
-        
+
         This utility method removes excessive whitespace and normalizes text formatting.
         It's used internally by parsers to ensure consistent text quality.
-        
+
         Cleaning Operations:
         --------------------
         - Collapses multiple spaces into single spaces
         - Removes leading and trailing whitespace
         - Normalizes line breaks
         - Preserves sentence structure
-        
+
         Args:
             text: Raw text string to clean
-            
+
         Returns:
             Cleaned and normalized text string
-            
+
         Example:
             >>> parser = PDFParser()
             >>> raw = "Hello    world\\n\\n\\n   How are you?  "

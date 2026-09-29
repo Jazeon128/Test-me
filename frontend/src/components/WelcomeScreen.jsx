@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BookOpen, Key, Upload, Zap, ArrowRight } from 'lucide-react'
 import SettingsDialog from './SettingsDialog'
+import { useNavigate } from 'react-router-dom'
 
 /**
  * WelcomeScreen Component
@@ -8,6 +9,7 @@ import SettingsDialog from './SettingsDialog'
  * Implements Requirements 4.4: Welcome screen with API key configuration prompt
  */
 export default function WelcomeScreen({ onComplete }) {
+  const navigate = useNavigate()
   const [showSettings, setShowSettings] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -103,12 +105,21 @@ export default function WelcomeScreen({ onComplete }) {
           </div>
           <div className="mt-6">
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => {
+                if (window.electronAPI) setShowSettings(true)
+                else {
+                  handleComplete()
+                  navigate('/settings')
+                }
+              }}
               className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-lg shadow-primary-500/30 transition-all font-medium"
             >
               <Key size={20} />
               Configure API Key Now
             </button>
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              You can skip setup and study imported decks without an API key.
+            </p>
           </div>
         </div>
       ),
@@ -131,6 +142,12 @@ export default function WelcomeScreen({ onComplete }) {
     // Mark welcome as completed in settings
     if (window.electronAPI) {
       window.electronAPI.setSetting('welcomeCompleted', true)
+    } else {
+      try {
+        localStorage.setItem('test-me.welcomeCompleted', 'true')
+      } catch {
+        // Setup remains usable when browser storage is disabled.
+      }
     }
     onComplete()
   }

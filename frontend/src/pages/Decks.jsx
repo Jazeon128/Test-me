@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decksAPI, testsAPI } from '../services/api'
-import { BookOpen, Trash2, Download, Play, Edit2, Plus, FileText, X, Upload } from 'lucide-react'
+import { BookOpen, Trash2, Download, Plus, FileText, X, Upload } from 'lucide-react'
 
 export default function Decks() {
   const navigate = useNavigate()
@@ -144,14 +144,15 @@ export default function Decks() {
     <div className="max-w-6xl mx-auto px-4 pb-12">
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500">
-            Question Decks
+          <p className="eyebrow">Build your knowledge</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500">
+            Your decks
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-gray-600 dark:text-gray-300">
             Manage your collections and export to Anki or CSV.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary flex items-center gap-2"
@@ -164,32 +165,32 @@ export default function Decks() {
             className="btn-secondary flex items-center gap-2"
           >
             <Plus size={20} />
-            New Deck
+            New deck
           </button>
           <button
             onClick={() => navigate('/upload')}
             className="btn-primary flex items-center gap-2"
           >
             <Plus size={20} />
-            Upload Documents
+            Add material
           </button>
         </div>
       </div>
 
       {decks.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <div className="bg-primary-50 p-4 rounded-full inline-flex mb-4">
+        <div className="glass-panel text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <div className="bg-primary-50 dark:bg-primary-900/30 p-4 rounded-full inline-flex mb-4">
             <BookOpen className="h-10 w-10 text-primary-400" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No decks yet</h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No decks yet</h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
             Get started by uploading documents to automatically generate flashcards, or create an empty deck manually.
           </p>
           <button
             onClick={() => navigate('/upload')}
             className="btn-primary"
           >
-            Upload Documents
+            Add material
           </button>
         </div>
       ) : (
@@ -197,19 +198,19 @@ export default function Decks() {
           {decks.map((deck) => (
             <div key={deck.id} className="card group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-primary-50 rounded-xl group-hover:bg-primary-100 transition-colors">
-                  <BookOpen className="h-8 w-8 text-primary-600" />
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/30 rounded-xl group-hover:bg-primary-100 transition-colors">
+                  <BookOpen className="h-8 w-8 text-primary-600 dark:text-primary-300" />
                 </div>
-                <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-gray-600">
+                <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-semibold text-gray-600 dark:text-gray-300">
                   {deck.num_questions} cards
                 </span>
               </div>
 
-              <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 truncate">
                 {deck.name}
               </h3>
               {deck.description && (
-                <p className="text-sm text-gray-500 mb-6 line-clamp-2 flex-grow">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2 flex-grow">
                   {deck.description}
                 </p>
               )}
@@ -228,21 +229,21 @@ export default function Decks() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleExportAnki(deck.id, deck.name)}
-                      className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
                       title="Export to Anki (.apkg)"
                     >
                       <Download size={18} />
                     </button>
                     <button
                       onClick={() => handleExportAnkiCSV(deck.id, deck.name)}
-                      className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
                       title="Export to Anki (All-In-One CSV)"
                     >
                       <FileText size={18} />
                     </button>
                     <button
                       onClick={() => handleExportCSV(deck.id, deck.name)}
-                      className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
                       title="Export to Standard CSV"
                     >
                       <FileText size={18} className="opacity-50" />
@@ -267,9 +268,9 @@ export default function Decks() {
       {/* Create Deck Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
+          <div className="glass-panel bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New Deck</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New deck</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
@@ -328,7 +329,7 @@ export default function Decks() {
       {/* Import Deck Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
+          <div className="glass-panel bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Import Deck</h2>
               <button

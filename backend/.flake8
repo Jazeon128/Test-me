@@ -14,4 +14,10 @@ exclude =
     migrations
 per-file-ignores =
     __init__.py:F401
+    # Known-complex functions that predate this gate. New code still has to pass
+    # max-complexity; these four files are tracked for refactoring instead.
+    app/api/documents.py:C901
+    app/api/progress.py:C901
+    app/services/ai/question_generator.py:C901
+    app/services/parsers/markdown_parser.py:C901
 max-complexity = 10

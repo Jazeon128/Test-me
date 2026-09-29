@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, Enum
+from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey
+from sqlalchemy.orm import relationship
+
 from .base import Base, TimestampMixin
 import enum
 
@@ -18,6 +20,7 @@ class Document(Base, TimestampMixin):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=True, index=True)
     filename = Column(String(255), nullable=False)
     original_filename = Column(String(255), nullable=False)
     file_type: Column = Column(Enum(DocumentType), nullable=False)
@@ -31,6 +34,8 @@ class Document(Base, TimestampMixin):
     # Metadata
     title = Column(String(512), nullable=True)
     num_pages = Column(Integer, nullable=True)  # For PDFs and DOCX
+
+    notebook = relationship("Notebook", back_populates="documents")
 
     def __repr__(self):
         return f"<Document {self.id}: {self.original_filename}>"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { tagsAPI } from '../services/api'
-import { Tag, Plus, X, Trash2 } from 'lucide-react'
+import { Tag, Plus, X } from 'lucide-react'
 
 const PRESET_COLORS = [
     { name: 'blue', value: '#3B82F6', light: '#DBEAFE', text: '#1E40AF' },
@@ -35,6 +35,7 @@ export const TagBadge = ({ tag, onClick, onRemove, size = 'md' }) => {
                         onRemove()
                     }}
                     className="hover:bg-black/10 rounded-full p-0.5"
+                    aria-label={`Remove ${tag.name}`}
                 >
                     <X size={size === 'sm' ? 12 : 14} />
                 </button>
@@ -91,7 +92,7 @@ export default function TagManager({
             }
         } catch (error) {
             console.error('Failed to create tag:', error)
-            alert(error.response?.data?.detail || 'Failed to create tag')
+            alert(error.message || 'Failed to create tag')
         }
     }
 

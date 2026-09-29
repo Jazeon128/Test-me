@@ -1,8 +1,10 @@
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional
 
 from ..db import get_db
 from ..models.settings import Settings
@@ -34,10 +36,38 @@ class AIModel(BaseModel):
     description: Optional[str] = None
 
 
-# Last updated: 2025-12-05
+# Last updated: 2026-09-26
 # To update: Call POST /api/settings/ai-config/models/refresh or manually update this list
 AVAILABLE_MODELS = [
     # Anthropic - https://www.anthropic.com/api
+    AIModel(
+        id="claude-sonnet-5",
+        name="Claude Sonnet 5",
+        provider="anthropic",
+        context_window=1000000,
+        input_price=2.00,
+        output_price=10.00,
+        description="The default. Strong reasoning at a moderate price",
+    ),
+    AIModel(
+        id="claude-opus-5",
+        name="Claude Opus 5",
+        provider="anthropic",
+        context_window=1000000,
+        input_price=5.00,
+        output_price=25.00,
+        description="Most capable, for the hardest material",
+    ),
+    AIModel(
+        id="claude-haiku-4-5",
+        name="Claude Haiku 4.5",
+        provider="anthropic",
+        context_window=200000,
+        input_price=1.00,
+        output_price=5.00,
+        description="Fastest and cheapest, for straightforward material",
+    ),
+    # Kept so a saved configuration naming an older model still resolves.
     AIModel(
         id="claude-3-5-sonnet-20241022",
         name="Claude 3.5 Sonnet",
@@ -45,7 +75,7 @@ AVAILABLE_MODELS = [
         context_window=200000,
         input_price=3.00,
         output_price=15.00,
-        description="Most intelligent model, best for complex reasoning"
+        description="Superseded by Claude Sonnet 5",
     ),
     AIModel(
         id="claude-3-5-haiku-20241022",
@@ -54,7 +84,7 @@ AVAILABLE_MODELS = [
         context_window=200000,
         input_price=0.80,
         output_price=4.00,
-        description="Fastest model with improved intelligence"
+        description="Fastest model with improved intelligence",
     ),
     AIModel(
         id="claude-3-haiku-20240307",
@@ -63,7 +93,7 @@ AVAILABLE_MODELS = [
         context_window=200000,
         input_price=0.25,
         output_price=1.25,
-        description="Legacy fast model"
+        description="Legacy fast model",
     ),
     # OpenAI - https://openai.com/api/pricing/
     AIModel(
@@ -73,7 +103,7 @@ AVAILABLE_MODELS = [
         context_window=128000,
         input_price=2.50,
         output_price=10.00,
-        description="Flagship model, high intelligence"
+        description="Flagship model, high intelligence",
     ),
     AIModel(
         id="gpt-4o-mini",
@@ -82,7 +112,7 @@ AVAILABLE_MODELS = [
         context_window=128000,
         input_price=0.15,
         output_price=0.60,
-        description="Cost-effective small model"
+        description="Cost-effective small model",
     ),
     AIModel(
         id="gpt-4-turbo",
@@ -91,9 +121,41 @@ AVAILABLE_MODELS = [
         context_window=128000,
         input_price=10.00,
         output_price=30.00,
-        description="Previous generation flagship"
+        description="Previous generation flagship",
     ),
-    # Google Gemini - https://ai.google.dev/pricing
+    # Google Gemini - https://ai.google.dev/gemini-api/docs/pricing
+    # Prices are the paid tier. All three below are also available on Google's
+    # free tier, where input and output are free of charge and your content is
+    # used to improve Google's products.
+    AIModel(
+        id="gemini-3.8-flash",
+        name="Gemini 3.8 Flash",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.75,
+        output_price=3.75,
+        description="The default. Free tier available",
+    ),
+    AIModel(
+        id="gemini-3.5-flash-lite",
+        name="Gemini 3.5 Flash-Lite",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.30,
+        output_price=2.50,
+        description="Fastest and cheapest, for routine material. Free tier available",
+    ),
+    AIModel(
+        id="gemini-3.1-pro-preview",
+        name="Gemini 3.1 Pro (preview)",
+        provider="gemini",
+        context_window=1048576,
+        input_price=0.00,
+        output_price=0.00,
+        description="Preview: stricter rate limits, and may start billing",
+    ),
+    # Google now limits the 2.5 models to projects that already used them, so
+    # these are kept only so an existing saved configuration still resolves.
     AIModel(
         id="gemini-3-pro-preview",
         name="Gemini 3 Pro Preview",
@@ -101,7 +163,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Preview pricing TBD
         output_price=0.00,
-        description="Most intelligent model with multimodal understanding and agentic capabilities"
+        description="Superseded by Gemini 3.1 Pro",
     ),
     AIModel(
         id="gemini-2.5-flash",
@@ -110,7 +172,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Fast and intelligent, best for price-performance with thinking capabilities"
+        description="Legacy: restricted to projects that already used it",
     ),
     AIModel(
         id="gemini-2.5-flash-lite",
@@ -119,7 +181,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Fastest flash model optimized for cost-efficiency and high throughput"
+        description="Legacy: restricted to projects that already used it",
     ),
     AIModel(
         id="gemini-2.5-pro",
@@ -128,7 +190,7 @@ AVAILABLE_MODELS = [
         context_window=1048576,
         input_price=0.00,  # Pricing TBD
         output_price=0.00,
-        description="Advanced thinking model for complex reasoning in code, math, and STEM"
+        description="Legacy: restricted to projects that already used it",
     ),
 ]
 
@@ -162,7 +224,7 @@ async def get_ai_config(db: Session = Depends(get_db)):
     provider = get_setting(db, "ai_provider")
     api_key = get_setting(db, "api_key")
     model = get_setting(db, "ai_model")
-    
+
     # Check if model is custom (not in predefined list)
     is_custom = False
     if model:
@@ -173,7 +235,7 @@ async def get_ai_config(db: Session = Depends(get_db)):
         model=model,
         api_key_configured=bool(api_key),
         api_key_preview=api_key[:8] + "..." if api_key and len(api_key) > 8 else None,
-        is_custom_model=is_custom
+        is_custom_model=is_custom,
     )
 
 
@@ -184,43 +246,36 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
     # Validate provider
     if config.provider not in ["anthropic", "openai", "gemini"]:
         raise HTTPException(
-            status_code=400,
-            detail="Invalid provider. Must be 'anthropic', 'openai', or 'gemini'"
+            status_code=400, detail="Invalid provider. Must be 'anthropic', 'openai', or 'gemini'"
         )
 
     # Validate API key format
     if not config.api_key or len(config.api_key) < 10:
         raise HTTPException(
-            status_code=400,
-            detail="Invalid API key. Key must be at least 10 characters"
+            status_code=400, detail="Invalid API key. Key must be at least 10 characters"
         )
 
     # Validate key format based on provider
     if config.provider == "anthropic" and not config.api_key.startswith("sk-ant-"):
         raise HTTPException(
-            status_code=400,
-            detail="Invalid Anthropic API key. Must start with 'sk-ant-'"
+            status_code=400, detail="Invalid Anthropic API key. Must start with 'sk-ant-'"
         )
     elif config.provider == "openai" and not config.api_key.startswith("sk-"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid OpenAI API key. Must start with 'sk-'"
-        )
-    elif config.provider == "gemini" and not config.api_key.startswith("AIza"):
-        # Gemini keys usually start with AIza, but let's be lenient if it changes
-        pass
+        raise HTTPException(status_code=400, detail="Invalid OpenAI API key. Must start with 'sk-'")
+    # Gemini keys are deliberately not prefix-checked. Google has issued at
+    # least two formats (AIza..., AQ....), so a prefix rule would reject valid
+    # keys the next time the format changes.
 
     # Validate model name (accept any non-empty string)
     if config.model:
         model_trimmed = config.model.strip()
         if not model_trimmed:
             raise HTTPException(
-                status_code=400,
-                detail="Model name cannot be empty or whitespace only"
+                status_code=400, detail="Model name cannot be empty or whitespace only"
             )
         # Store the trimmed model name exactly as provided
         set_setting(db, "ai_model", model_trimmed)
-    
+
     # Save settings
     set_setting(db, "ai_provider", config.provider)
     set_setting(db, "api_key", config.api_key)
@@ -230,7 +285,7 @@ async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
         "provider": config.provider,
         "model": config.model.strip() if config.model else None,
         "api_key_preview": config.api_key[:8] + "...",
-        "message": "AI configuration saved successfully"
+        "message": "AI configuration saved successfully",
     }
 
 
@@ -242,46 +297,106 @@ async def delete_ai_config(db: Session = Depends(get_db)):
     db.query(Settings).filter(Settings.key.in_(["ai_provider", "api_key", "ai_model"])).delete()
     db.commit()
 
-    return {
-        "success": True,
-        "message": "AI configuration deleted"
-    }
+    return {"success": True, "message": "AI configuration deleted"}
+
+
+#: A connection test sends one tiny prompt. It must be cheap and must not hang.
+TEST_PROMPT = "Reply with the single word OK."
+TEST_MAX_TOKENS = 16
+TEST_TIMEOUT_SECONDS = 20.0
+MAX_ERROR_CHARS = 200
+
+#: How each provider says the key is bad, seen in the error text.
+INVALID_KEY_MARKERS = (
+    "API_KEY_INVALID",  # Google, with HTTP 400
+    "API key not valid",  # Google
+    "invalid x-api-key",  # Anthropic
+    "Incorrect API key",  # OpenAI
+)
+
+
+def _status_of(error: Exception) -> Optional[int]:
+    """The HTTP status of a provider error, whichever SDK raised it.
+
+    Anthropic and OpenAI errors carry status_code. google-genai errors carry code.
+    """
+    for attribute in ("status_code", "code"):
+        value = getattr(error, attribute, None)
+        if isinstance(value, int):
+            return value
+    return None
+
+
+def describe_connection_failure(provider: str, model: str, error: Exception) -> str:
+    """Turn a provider error into something the user can act on."""
+    status = _status_of(error)
+    text = str(error)
+    # Google answers a bad key with 400 and API_KEY_INVALID, not 401, so the
+    # body is checked as well as the status.
+    if status in (401, 403) or any(marker in text for marker in INVALID_KEY_MARKERS):
+        return f"{provider} rejected the API key. Check it was copied in full and is still active."
+    if status == 404:
+        return f"{provider} does not recognise the model {model}. Choose another model."
+    if status == 429:
+        return f"The key works, but {provider} refused the call: rate limit or quota reached."
+    if status in (500, 502, 503, 504):
+        return f"The key works, but {provider} is overloaded or returned an error ({status}). Try again shortly."
+    if status is not None:
+        return f"{provider} returned HTTP {status}: {text[:MAX_ERROR_CHARS]}"
+    return f"Could not reach {provider}: {text[:MAX_ERROR_CHARS]}"
 
 
 @router.post("/ai-config/test")
 async def test_ai_config(db: Session = Depends(get_db)):
-    """Test current AI configuration by making a simple API call"""
-    from ..services.ai import QuestionGenerator
+    """Test the saved AI configuration by making one real, minimal call.
+
+    Building a client proves nothing, since clients accept any string as a key.
+    Only a reply from the provider shows the key, the model and the network
+    path all work.
+    """
+    from ..services.ai import QuestionGenerator, completion
 
     try:
         generator = QuestionGenerator(db=db)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail=f"AI provider is not configured: {error}")
 
-        # Simple test - try to initialize the client
-        if generator.client is None:
-            raise Exception("Failed to initialize AI client")
-
-        return {
-            "success": True,
-            "provider": generator.provider,
-            "model": generator.model,
-            "message": f"Successfully connected to {generator.provider} using {generator.model}"
-        }
-    except Exception as e:
+    started = time.monotonic()
+    try:
+        await run_in_threadpool(
+            completion.complete,
+            generator.provider,
+            generator.model,
+            generator.client,
+            TEST_PROMPT,
+            max_tokens=TEST_MAX_TOKENS,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except Exception as error:
         raise HTTPException(
             status_code=400,
-            detail=f"Failed to connect to AI provider: {str(e)}"
+            detail=describe_connection_failure(generator.provider, generator.model, error),
         )
+
+    latency_ms = int((time.monotonic() - started) * 1000)
+    return {
+        "success": True,
+        "provider": generator.provider,
+        "model": generator.model,
+        "latency_ms": latency_ms,
+        "message": f"Connected to {generator.provider} using {generator.model} ({latency_ms} ms).",
+    }
 
 
 @router.post("/ai-config/models/refresh")
 async def refresh_models():
     """
     Manually refresh the AI models list.
-    
+
     This endpoint allows administrators to trigger a manual update of the available
     AI models. Currently, this returns instructions for updating the models, as
     providers don't offer public APIs for model discovery.
-    
+
     To update models:
     1. Check provider documentation:
        - Anthropic: https://www.anthropic.com/api
@@ -309,9 +424,9 @@ async def refresh_models():
             "documentation_links": {
                 "anthropic": "https://www.anthropic.com/api",
                 "openai": "https://openai.com/api/pricing/",
-                "gemini": "https://ai.google.dev/pricing"
-            }
-        }
+                "gemini": "https://ai.google.dev/pricing",
+            },
+        },
     }
 
 
@@ -330,5 +445,5 @@ async def get_models_info():
             "anthropic": len([m for m in AVAILABLE_MODELS if m.provider == "anthropic"]),
             "openai": len([m for m in AVAILABLE_MODELS if m.provider == "openai"]),
             "gemini": len([m for m in AVAILABLE_MODELS if m.provider == "gemini"]),
-        }
+        },
     }

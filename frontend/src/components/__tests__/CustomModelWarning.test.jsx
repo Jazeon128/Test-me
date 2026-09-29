@@ -43,18 +43,20 @@ describe('CustomModelWarning', () => {
   })
 
   describe('Accessibility - Requirement 3.3', () => {
-    it('should have role="alert" for screen readers', () => {
+    it('should have role="note" for screen readers', () => {
       const { container } = render(<CustomModelWarning provider="openai" />)
       
-      const alertElement = container.querySelector('[role="alert"]')
+      const alertElement = container.querySelector('[role="note"]')
       expect(alertElement).toBeInTheDocument()
     })
 
-    it('should have aria-live="polite" for dynamic updates', () => {
+    it('should not announce itself as an alert', () => {
       const { container } = render(<CustomModelWarning provider="openai" />)
       
-      const alertElement = container.querySelector('[aria-live="polite"]')
-      expect(alertElement).toBeInTheDocument()
+      // This notice is always present while custom mode is on, so announcing it
+      // as an alert would interrupt a screen reader on every render.
+      expect(container.querySelector('[role="alert"]')).toBeNull()
+      expect(container.querySelector('[aria-live]')).toBeNull()
     })
 
     it('should display warning icon', () => {
@@ -70,7 +72,7 @@ describe('CustomModelWarning', () => {
     it('should use amber/yellow color scheme (not red)', () => {
       const { container } = render(<CustomModelWarning provider="openai" />)
       
-      const warningDiv = container.querySelector('[role="alert"]')
+      const warningDiv = container.querySelector('[role="note"]')
       // Check for amber classes (subtle warning color)
       expect(warningDiv.className).toMatch(/amber/)
       expect(warningDiv.className).not.toMatch(/red/)
@@ -79,7 +81,7 @@ describe('CustomModelWarning', () => {
     it('should have appropriate padding and spacing', () => {
       const { container } = render(<CustomModelWarning provider="openai" />)
       
-      const warningDiv = container.querySelector('[role="alert"]')
+      const warningDiv = container.querySelector('[role="note"]')
       expect(warningDiv.className).toMatch(/p-3/)
       expect(warningDiv.className).toMatch(/rounded-lg/)
     })

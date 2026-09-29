@@ -11,17 +11,22 @@ class GenerationStatus(Base):
     id = Column(Integer, primary_key=True, index=True)
     job_id = Column(String(100), unique=True, index=True, nullable=False)
     deck_id = Column(Integer, nullable=True)
-    status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    # pending, awaiting_confirmation, processing, completed, failed, cancelled
+    status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100
     current_step = Column(String(200), default="")
     logs = Column(JSON, default=list)  # List of log messages with timestamps
     error_message = Column(Text, nullable=True)
 
+    # What to generate once the user confirms a source that failed pre-flight.
+    # Set only while status is awaiting_confirmation.
+    pending_request = Column(JSON, nullable=True)
+
     # Metadata
     total_documents = Column(Integer, default=0)
     total_questions_requested = Column(Integer, default=0)
     total_questions_generated = Column(Integer, default=0)
-    
+
     # Progress tracking fields
     current_question = Column(Integer, default=0)
     total_questions = Column(Integer, default=0)
@@ -34,13 +39,14 @@ class GenerationStatus(Base):
     def add_log(self, message: str, level: str = "info") -> None:
         """Add a log message with timestamp"""
         import datetime
+
         if self.logs is None:
             self.logs = []
 
         log_entry = {
             "timestamp": datetime.datetime.now().isoformat(),
             "level": level,
-            "message": message
+            "message": message,
         }
         self.logs.append(log_entry)
 

@@ -16,9 +16,10 @@ const UpdateNotification = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if electronAPI is available
-    if (!window.electronAPI) {
-      console.warn('electronAPI not available');
+    // Check that electronAPI exposes the update channel. Presence of the object
+    // is not enough: an older preload, or a build without the auto-updater, has
+    // no onUpdateEvent, and calling it would crash the app at mount.
+    if (typeof window.electronAPI?.onUpdateEvent !== 'function') {
       return;
     }
 
@@ -60,7 +61,7 @@ const UpdateNotification = () => {
 
     // Cleanup
     return () => {
-      if (window.electronAPI) {
+      if (typeof window.electronAPI?.removeUpdateListener === 'function') {
         window.electronAPI.removeUpdateListener('available', handleUpdateAvailable);
         window.electronAPI.removeUpdateListener('download-progress', handleDownloadProgress);
         window.electronAPI.removeUpdateListener('downloaded', handleUpdateDownloaded);

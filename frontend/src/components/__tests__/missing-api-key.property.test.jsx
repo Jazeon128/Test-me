@@ -9,9 +9,25 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from '../../App'
+
+/**
+ * Advance the welcome wizard to the AI-provider step.
+ *
+ * WelcomeScreen is a multi-step wizard, so the provider guidance is not on the
+ * first screen. These tests assert that guidance, and have to walk to it.
+ */
+const goToProviderStep = async () => {
+  await waitFor(() => {
+    expect(screen.getByText('Welcome to Test Me')).toBeInTheDocument()
+  }, { timeout: 3000 })
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  await waitFor(() => {
+    expect(screen.getByText(/Configure Your AI Provider/)).toBeInTheDocument()
+  })
+}
 
 describe('Property 13: Missing API key handling', () => {
   beforeEach(() => {
@@ -52,15 +68,8 @@ describe('Property 13: Missing API key handling', () => {
       </BrowserRouter>
     )
 
-    // Wait for welcome screen to appear
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Test Me')).toBeInTheDocument()
-    }, { timeout: 3000 })
-
-    // Verify API key configuration is mentioned
-    await waitFor(() => {
-      expect(screen.getByText(/Configure Your AI Provider/)).toBeInTheDocument()
-    })
+    // Walk to the provider step and verify API key configuration is offered
+    await goToProviderStep()
   })
 
   it('should not display welcome screen when API keys are configured', async () => {
@@ -133,16 +142,12 @@ describe('Property 13: Missing API key handling', () => {
       </BrowserRouter>
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Test Me')).toBeInTheDocument()
-    })
+    await goToProviderStep()
 
     // Verify guidance for all supported providers is present
-    await waitFor(() => {
-      expect(screen.getByText('OpenAI')).toBeInTheDocument()
-      expect(screen.getByText('Anthropic')).toBeInTheDocument()
-      expect(screen.getByText('Google')).toBeInTheDocument()
-    })
+    expect(screen.getByText('OpenAI')).toBeInTheDocument()
+    expect(screen.getByText('Anthropic')).toBeInTheDocument()
+    expect(screen.getByText('Google')).toBeInTheDocument()
 
     // Verify links to get API keys are provided
     const links = screen.getAllByText(/Get .* API key/)
@@ -167,14 +172,10 @@ describe('Property 13: Missing API key handling', () => {
       </BrowserRouter>
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Test Me')).toBeInTheDocument()
-    })
+    await goToProviderStep()
 
     // Verify there's a button to configure API keys
-    await waitFor(() => {
-      expect(screen.getByText('Configure API Key Now')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Configure API Key Now')).toBeInTheDocument()
   })
 
   it('should allow user to skip API key configuration', async () => {

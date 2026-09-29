@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, Boolean, JSON
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, Boolean, JSON, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .base import Base, TimestampMixin
@@ -10,6 +10,13 @@ class UserProgress(Base, TimestampMixin):
     """
 
     __tablename__ = "user_progress"
+
+    # Declared on the model, not only in the migration: init_db() builds tables
+    # with create_all(), so an index that lives only in Alembic never reaches a
+    # fresh database. Serves the due-review query in sm2_algorithm.
+    __table_args__ = (
+        Index("idx_user_progress_question_review", "question_id", "next_review_date"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)

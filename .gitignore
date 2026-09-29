@@ -45,10 +45,10 @@ Thumbs.db
 
 # Uploads
 uploads/
-*.pdf
-*.docx
-*.html
-*.htm
+uploads/*.pdf
+uploads/*.docx
+uploads/*.html
+uploads/*.htm
 
 # Node
 node_modules/
@@ -68,3 +68,15 @@ logs/
 # Temp
 temp/
 tmp/
+
+# Test artifacts
+.hypothesis/
+.coverage
+.coverage.*
+*.benchmarks/
+.benchmarks/
+.pytest_cache/
+
+# Secrets - never commit
+apikey figma.txt
+*.token

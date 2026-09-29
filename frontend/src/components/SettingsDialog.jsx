@@ -13,7 +13,7 @@ export default function SettingsDialog({ isOpen, onClose }) {
   const [isSaving, setIsSaving] = useState(false)
   const [validationError, setValidationError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [currentSettings, setCurrentSettings] = useState(null)
+  const [, setCurrentSettings] = useState(null)
 
   // Load current settings when dialog opens
   useEffect(() => {

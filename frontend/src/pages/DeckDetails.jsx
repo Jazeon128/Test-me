@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
-import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter } from 'lucide-react'
+import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network, Tag } from 'lucide-react'
 import TagManager, { TagBadge } from '../components/TagManager'
+import QuestionTagEditor from '../components/QuestionTagEditor'
 
 export default function DeckDetails() {
     const { deckId } = useParams()
@@ -14,6 +15,10 @@ export default function DeckDetails() {
     // Tag filtering
     const [filterTags, setFilterTags] = useState([])
     const [showFilters, setShowFilters] = useState(false)
+
+    // Per-card tag editing
+    const [editingTagsFor, setEditingTagsFor] = useState(null)
+    const [allTags, setAllTags] = useState([])
 
     // New Question State
     const [newQuestion, setNewQuestion] = useState({
@@ -29,11 +34,7 @@ export default function DeckDetails() {
         tags: []
     })
 
-    useEffect(() => {
-        loadDeck()
-    }, [deckId])
-
-    const loadDeck = async () => {
+    const loadDeck = useCallback(async () => {
         try {
             const response = await decksAPI.get(deckId)
             setDeck(response.data)
@@ -44,7 +45,11 @@ export default function DeckDetails() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [deckId, navigate])
+
+    useEffect(() => {
+        loadDeck()
+    }, [loadDeck])
 
     const handleAddQuestion = async () => {
         // Validate
@@ -91,6 +96,28 @@ export default function DeckDetails() {
             console.error('Failed to create question:', error)
             alert('Failed to create question')
         }
+    }
+
+    const toggleTagEditor = async (questionId) => {
+        if (editingTagsFor === questionId) {
+            setEditingTagsFor(null)
+            return
+        }
+        setEditingTagsFor(questionId)
+        // Reload each time: tags may have been created in the filter panel.
+        try {
+            const response = await tagsAPI.list()
+            setAllTags(response.data)
+        } catch (error) {
+            console.error('Failed to load tags:', error)
+        }
+    }
+
+    const setQuestionTags = (questionId, tags) => {
+        setDeck(current => ({
+            ...current,
+            questions: current.questions.map(q => q.id === questionId ? { ...q, tags } : q),
+        }))
     }
 
     const handleDeleteQuestion = async (questionId) => {
@@ -149,7 +176,7 @@ export default function DeckDetails() {
             <div className="mb-8">
                 <button
                     onClick={() => navigate('/decks')}
-                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                    className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 mb-4"
                 >
                     <ArrowLeft size={20} className="mr-2" />
                     Back to Decks
@@ -157,9 +184,9 @@ export default function DeckDetails() {
 
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{deck.name}</h1>
-                        <p className="mt-2 text-gray-600">{deck.description}</p>
-                        <p className="mt-1 text-sm text-gray-500">{deck.num_questions} questions</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{deck.name}</h1>
+                        <p className="mt-2 text-gray-600 dark:text-gray-300">{deck.description}</p>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{deck.num_questions} questions</p>
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
                         <button
@@ -178,18 +205,38 @@ export default function DeckDetails() {
                         </button>
                     </div>
                 </div>
+
+                {deck.documents?.length > 0 && (
+                    <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Explain a source on a canvas
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {deck.documents.map((document) => (
+                                <button
+                                    key={document.id}
+                                    onClick={() => navigate(`/canvas?document=${document.id}`)}
+                                    className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 transition hover:border-primary-500 hover:text-primary-700 dark:border-gray-600 dark:text-gray-300"
+                                >
+                                    <Network size={16} />
+                                    {document.title || document.filename}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Questions List */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="glass-panel bg-white rounded-lg shadow overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 dark:bg-gray-800">
                     <div className="flex justify-between items-center">
-                        <h2 className="font-semibold text-gray-700">Cards / Questions</h2>
+                        <h2 className="font-semibold text-gray-700 dark:text-gray-200">Cards / Questions</h2>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition ${filterTags.length > 0 || showFilters
-                                ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
-                                : 'text-gray-600 hover:bg-gray-100'
+                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 hover:bg-primary-200'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100'
                                 }`}
                         >
                             <Filter size={16} />
@@ -221,20 +268,20 @@ export default function DeckDetails() {
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                                            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full font-medium">
                                                 #{index + 1}
                                             </span>
-                                            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                                question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-                                                    'bg-yellow-100 text-yellow-700'
+                                            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${question.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200' :
+                                                question.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200' :
+                                                    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-200'
                                                 }`}>
                                                 {question.difficulty}
                                             </span>
                                         </div>
-                                        <p className="text-gray-900 font-medium mb-2">{question.question_text}</p>
+                                        <p className="text-gray-900 dark:text-white font-medium mb-2">{question.question_text}</p>
 
                                         {/* Tag Badges */}
-                                        {question.tags && question.tags.length > 0 && (
+                                        {editingTagsFor !== question.id && question.tags && question.tags.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {question.tags.map(tag => (
                                                     <TagBadge
@@ -255,19 +302,39 @@ export default function DeckDetails() {
                                             </div>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteQuestion(question.id)}
-                                        className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition p-2"
-                                        title="Delete Question"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => toggleTagEditor(question.id)}
+                                            aria-expanded={editingTagsFor === question.id}
+                                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition ${editingTagsFor === question.id
+                                                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200'
+                                                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                                        >
+                                            <Tag size={16} aria-hidden="true" />
+                                            Tags
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteQuestion(question.id)}
+                                            className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition p-2"
+                                            title="Delete Question"
+                                            aria-label="Delete question"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
+                                {editingTagsFor === question.id && (
+                                    <QuestionTagEditor
+                                        question={question}
+                                        allTags={allTags}
+                                        onChange={(tags) => setQuestionTags(question.id, tags)}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="p-12 text-center text-gray-500">
+                    <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                         No questions in this deck yet. Add one manually or upload a document!
                     </div>
                 )}
@@ -276,9 +343,9 @@ export default function DeckDetails() {
             {/* Add Question Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="glass-panel bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-900">Add New Card</h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Card</h2>
                             <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
                             </button>
@@ -287,7 +354,7 @@ export default function DeckDetails() {
                         <div className="p-6 space-y-6">
                             {/* Question Text */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Question</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Question</label>
                                 <textarea
                                     value={newQuestion.question_text}
                                     onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
@@ -299,7 +366,7 @@ export default function DeckDetails() {
 
                             {/* Options */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Options (Select correct answer)</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Options (Select correct answer)</label>
                                 <div className="space-y-3">
                                     {newQuestion.options.map((option, idx) => (
                                         <div key={idx} className="flex items-center gap-3">
@@ -308,14 +375,14 @@ export default function DeckDetails() {
                                                 name="correct_option"
                                                 checked={option.is_correct}
                                                 onChange={() => updateOption(idx, 'is_correct', true)}
-                                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                                                className="h-4 w-4 text-primary-600 dark:text-primary-300 focus:ring-primary-500 border-gray-300"
                                             />
-                                            <span className="font-mono text-gray-500 w-6">{String.fromCharCode(65 + idx)}.</span>
+                                            <span className="font-mono text-gray-500 dark:text-gray-400 w-6">{String.fromCharCode(65 + idx)}.</span>
                                             <input
                                                 type="text"
                                                 value={option.text}
                                                 onChange={(e) => updateOption(idx, 'text', e.target.value)}
-                                                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${option.is_correct ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                                                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${option.is_correct ? 'border-green-300 bg-green-50 dark:bg-green-900/30' : 'border-gray-300'
                                                     }`}
                                                 placeholder={`Option ${String.fromCharCode(65 + idx)}`}
                                             />
@@ -326,7 +393,7 @@ export default function DeckDetails() {
 
                             {/* Explanation */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Explanation</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Explanation</label>
                                 <textarea
                                     value={newQuestion.explanation}
                                     onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
@@ -338,7 +405,7 @@ export default function DeckDetails() {
 
                             {/* Difficulty */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Difficulty</label>
                                 <select
                                     value={newQuestion.difficulty}
                                     onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
@@ -352,7 +419,7 @@ export default function DeckDetails() {
 
                             {/* Tags */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Tags</label>
                                 <TagManager
                                     selectedTags={newQuestion.tags}
                                     onTagsChange={(tags) => setNewQuestion({ ...newQuestion, tags })}
@@ -364,7 +431,7 @@ export default function DeckDetails() {
                         <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
                             <button
                                 onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                                className="px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 rounded-lg transition"
                             >
                                 Cancel
                             </button>

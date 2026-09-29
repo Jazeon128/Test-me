@@ -8,7 +8,7 @@
  * error message with suggested actions.
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useApiError } from '../useApiError';
 

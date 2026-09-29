@@ -241,13 +241,13 @@ describe('ModelSelector', () => {
     it('should display format examples for Anthropic provider', () => {
       render(<ModelSelector {...defaultProps} isCustom={true} provider="anthropic" />)
       
-      expect(screen.getByText('claude-3-5-sonnet-20241022')).toBeInTheDocument()
+      expect(screen.getByText('claude-sonnet-5')).toBeInTheDocument()
     })
 
     it('should display format examples for Gemini provider', () => {
       render(<ModelSelector {...defaultProps} isCustom={true} provider="gemini" />)
       
-      expect(screen.getByText('gemini-2.5-flash')).toBeInTheDocument()
+      expect(screen.getByText('gemini-3.8-flash')).toBeInTheDocument()
     })
 
     it('should display documentation link in custom mode', () => {
@@ -284,11 +284,13 @@ describe('ModelSelector', () => {
       expect(screen.getByText(/without validation/i)).toBeInTheDocument()
     })
 
-    it('should have accessible warning with role="alert"', () => {
+    it('should expose the custom-model notice to screen readers', () => {
       const { container } = render(<ModelSelector {...defaultProps} isCustom={true} provider="openai" />)
-      
-      const alerts = container.querySelectorAll('[role="alert"]')
-      expect(alerts.length).toBeGreaterThan(0)
+
+      // role="note", not "alert": the notice is always present in custom mode, so
+      // role="alert" is reserved for the validation error below the input.
+      expect(container.querySelectorAll('[role="note"]').length).toBeGreaterThan(0)
+      expect(container.querySelectorAll('[role="alert"]').length).toBe(0)
     })
   })
 })

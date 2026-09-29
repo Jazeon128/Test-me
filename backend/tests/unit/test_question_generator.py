@@ -16,11 +16,11 @@ def mock_anthropic_response():
             {"option": "A", "text": "A programming language"},
             {"option": "B", "text": "A snake"},
             {"option": "C", "text": "A framework"},
-            {"option": "D", "text": "A database"}
+            {"option": "D", "text": "A database"},
         ],
         "correct_answer": "A",
         "explanation": "Python is a high-level programming language.",
-        "difficulty": "medium"
+        "difficulty": "medium",
     }
 
 
@@ -33,29 +33,29 @@ def mock_parsed_doc():
             page=1,
             section="Introduction",
             start_char=0,
-            end_char=88
+            end_char=88,
         ),
         ParsedSection(
             text="Python supports multiple programming paradigms including object-oriented and functional programming.",
             page=1,
             section="Features",
             start_char=89,
-            end_char=190
+            end_char=190,
         ),
         ParsedSection(
             text="Django is a popular web framework for Python applications.",
             page=2,
             section="Frameworks",
             start_char=191,
-            end_char=250
-        )
+            end_char=250,
+        ),
     ]
 
     return ParsedDocument(
         full_text=" ".join([s.text for s in sections]),
         sections=sections,
         title="Python Programming",
-        metadata={"parser": "test"}
+        metadata={"parser": "test"},
     )
 
 
@@ -85,10 +85,10 @@ class TestGetSetting:
 class TestQuestionGeneratorInitialization:
     """Tests for QuestionGenerator initialization"""
 
-    @patch('app.services.ai.question_generator.Anthropic')
+    @patch("app.services.ai.question_generator.Anthropic")
     def test_init_anthropic_provider(self, mock_anthropic):
         """Test initialization with Anthropic provider"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -96,13 +96,13 @@ class TestQuestionGeneratorInitialization:
             generator = QuestionGenerator()
 
             assert generator.provider == "anthropic"
-            assert generator.model == "claude-3-5-sonnet-20241022"
+            assert generator.model == "claude-sonnet-5"
             mock_anthropic.assert_called_once_with(api_key="test-key")
 
-    @patch('app.services.ai.question_generator.OpenAI')
+    @patch("app.services.ai.question_generator.OpenAI")
     def test_init_openai_provider(self, mock_openai):
         """Test initialization with OpenAI provider"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "openai"
             mock_settings.OPENAI_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -113,10 +113,10 @@ class TestQuestionGeneratorInitialization:
             assert generator.model == "gpt-4o"
             mock_openai.assert_called_once_with(api_key="test-key")
 
-    @patch('app.services.ai.question_generator.genai')
+    @patch("app.services.ai.question_generator.genai")
     def test_init_gemini_provider(self, mock_genai):
         """Test initialization with Gemini provider"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "gemini"
             mock_settings.GEMINI_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -124,14 +124,22 @@ class TestQuestionGeneratorInitialization:
             generator = QuestionGenerator()
 
             assert generator.provider == "gemini"
-            assert generator.model == "gemini-2.0-flash-exp"
-            mock_genai.configure.assert_called_once_with(api_key="test-key")
+            assert generator.model == "gemini-3.8-flash"
+            mock_genai.Client.assert_called_once()
+            kwargs = mock_genai.Client.call_args.kwargs
+            assert kwargs["api_key"] == "test-key"
+            # The timeout is required, not incidental: without it a stalled TLS
+            # handshake hangs the generation job. google-genai wants milliseconds.
+            assert kwargs["http_options"].timeout == 180_000
+            # Retries are off by default in google-genai. The free tier's
+            # routine 503s would otherwise fail whole generation jobs.
+            assert kwargs["http_options"].retry_options.attempts == 4
 
     def test_init_no_api_key_raises_error(self):
         """Test that initialization fails without API key"""
         from app.exceptions import AIServiceError
-        
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = None
             mock_settings.OPENAI_API_KEY = None
@@ -144,8 +152,8 @@ class TestQuestionGeneratorInitialization:
     def test_init_unknown_provider_raises_error(self):
         """Test that initialization fails with unknown provider"""
         from app.exceptions import AIServiceError
-        
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "unknown_provider"
             mock_settings.ANTHROPIC_API_KEY = None
             mock_settings.OPENAI_API_KEY = None
@@ -160,36 +168,32 @@ class TestQuestionGeneratorInitialization:
 class TestSectionSelection:
     """Tests for section selection logic"""
 
-    @patch('app.services.ai.question_generator.Anthropic')
+    @patch("app.services.ai.question_generator.Anthropic")
     def test_select_sections_fewer_than_needed(self, mock_anthropic):
         """Test selecting sections when we have fewer sections than needed"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
 
             generator = QuestionGenerator()
 
-            sections = [
-                ParsedSection(text=f"Section {i}") for i in range(3)
-            ]
+            sections = [ParsedSection(text=f"Section {i}") for i in range(3)]
 
             selected = generator._select_sections(sections, 5)
             assert len(selected) == 3  # All sections returned
 
-    @patch('app.services.ai.question_generator.Anthropic')
+    @patch("app.services.ai.question_generator.Anthropic")
     def test_select_sections_evenly_distributed(self, mock_anthropic):
         """Test that sections are evenly distributed"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
 
             generator = QuestionGenerator()
 
-            sections = [
-                ParsedSection(text=f"Section {i}") for i in range(10)
-            ]
+            sections = [ParsedSection(text=f"Section {i}") for i in range(10)]
 
             selected = generator._select_sections(sections, 5)
             assert len(selected) == 5
@@ -199,10 +203,10 @@ class TestSectionSelection:
             # Should be approximately: 0, 2, 4, 6, 8
             assert indices[0] < indices[1] < indices[2] < indices[3] < indices[4]
 
-    @patch('app.services.ai.question_generator.Anthropic')
+    @patch("app.services.ai.question_generator.Anthropic")
     def test_select_sections_exact_match(self, mock_anthropic):
         """Test selecting exact number of sections needed"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -229,10 +233,12 @@ class TestSectionSelection:
 class TestQuestionGeneration:
     """Tests for full question generation"""
 
-    @patch('app.services.ai.question_generator.Anthropic')
-    def test_generate_questions_basic(self, mock_anthropic, mock_parsed_doc, mock_anthropic_response):
+    @patch("app.services.ai.question_generator.Anthropic")
+    def test_generate_questions_basic(
+        self, mock_anthropic, mock_parsed_doc, mock_anthropic_response
+    ):
         """Test generating questions from document"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -246,9 +252,7 @@ class TestQuestionGeneration:
 
             generator = QuestionGenerator()
             questions = generator.generate_questions(
-                parsed_doc=mock_parsed_doc,
-                num_questions=2,
-                difficulty="medium"
+                parsed_doc=mock_parsed_doc, num_questions=2, difficulty="medium"
             )
 
             assert len(questions) <= 2
@@ -256,10 +260,12 @@ class TestQuestionGeneration:
                 assert "question" in questions[0]
                 assert "reference" in questions[0]
 
-    @patch('app.services.ai.question_generator.Anthropic')
-    def test_generate_questions_respects_limit(self, mock_anthropic, mock_parsed_doc, mock_anthropic_response):
+    @patch("app.services.ai.question_generator.Anthropic")
+    def test_generate_questions_respects_limit(
+        self, mock_anthropic, mock_parsed_doc, mock_anthropic_response
+    ):
         """Test that question generation respects the limit"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -272,18 +278,18 @@ class TestQuestionGeneration:
 
             generator = QuestionGenerator()
             questions = generator.generate_questions(
-                parsed_doc=mock_parsed_doc,
-                num_questions=1,
-                difficulty="easy"
+                parsed_doc=mock_parsed_doc, num_questions=1, difficulty="easy"
             )
 
             # Should return at most 1 question
             assert len(questions) <= 1
 
-    @patch('app.services.ai.question_generator.Anthropic')
-    def test_generate_questions_adds_reference_info(self, mock_anthropic, mock_parsed_doc, mock_anthropic_response):
+    @patch("app.services.ai.question_generator.Anthropic")
+    def test_generate_questions_adds_reference_info(
+        self, mock_anthropic, mock_parsed_doc, mock_anthropic_response
+    ):
         """Test that reference information is added to questions"""
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -295,10 +301,7 @@ class TestQuestionGeneration:
             mock_anthropic.return_value = mock_client
 
             generator = QuestionGenerator()
-            questions = generator.generate_questions(
-                parsed_doc=mock_parsed_doc,
-                num_questions=1
-            )
+            questions = generator.generate_questions(parsed_doc=mock_parsed_doc, num_questions=1)
 
             if len(questions) > 0:
                 assert "reference" in questions[0]
@@ -306,12 +309,12 @@ class TestQuestionGeneration:
                 assert "text" in ref
                 assert "page" in ref or "section" in ref
 
-    @patch('app.services.ai.question_generator.Anthropic')
+    @patch("app.services.ai.question_generator.Anthropic")
     def test_generate_questions_handles_api_error(self, mock_anthropic, mock_parsed_doc):
         """Test graceful handling of API errors"""
         from app.exceptions import AIServiceError
-        
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -321,22 +324,21 @@ class TestQuestionGeneration:
             mock_anthropic.return_value = mock_client
 
             generator = QuestionGenerator()
-            
+
             # Should raise AIServiceError for API failures
             with pytest.raises(AIServiceError, match="AI service request failed"):
-                generator.generate_questions(
-                    parsed_doc=mock_parsed_doc,
-                    num_questions=1
-                )
+                generator.generate_questions(parsed_doc=mock_parsed_doc, num_questions=1)
 
-    @patch('app.services.ai.question_generator.Anthropic')
-    def test_generate_questions_without_callback(self, mock_anthropic, mock_parsed_doc, mock_anthropic_response):
+    @patch("app.services.ai.question_generator.Anthropic")
+    def test_generate_questions_without_callback(
+        self, mock_anthropic, mock_parsed_doc, mock_anthropic_response
+    ):
         """
         Test that generation works without callback (None)
-        
+
         Validates: Requirements 4.5
         """
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -349,7 +351,7 @@ class TestQuestionGeneration:
             mock_anthropic.return_value = mock_client
 
             generator = QuestionGenerator()
-            
+
             # Generate questions without providing a callback (should default to None)
             questions = generator.generate_questions(
                 parsed_doc=mock_parsed_doc,
@@ -363,15 +365,17 @@ class TestQuestionGeneration:
             if len(questions) > 0:
                 assert "question" in questions[0]
                 assert "reference" in questions[0]
-                
-    @patch('app.services.ai.question_generator.Anthropic')
-    def test_generate_questions_with_explicit_none_callback(self, mock_anthropic, mock_parsed_doc, mock_anthropic_response):
+
+    @patch("app.services.ai.question_generator.Anthropic")
+    def test_generate_questions_with_explicit_none_callback(
+        self, mock_anthropic, mock_parsed_doc, mock_anthropic_response
+    ):
         """
         Test that generation works with explicitly None callback
-        
+
         Validates: Requirements 4.5
         """
-        with patch('app.services.ai.question_generator.settings') as mock_settings:
+        with patch("app.services.ai.question_generator.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
             mock_settings.AI_MODEL = ""
@@ -384,13 +388,13 @@ class TestQuestionGeneration:
             mock_anthropic.return_value = mock_client
 
             generator = QuestionGenerator()
-            
+
             # Generate questions with explicitly None callback
             questions = generator.generate_questions(
                 parsed_doc=mock_parsed_doc,
                 num_questions=2,
                 difficulty="medium",
-                progress_callback=None  # Explicitly pass None
+                progress_callback=None,  # Explicitly pass None
             )
 
             # Should complete successfully without errors

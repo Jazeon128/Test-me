@@ -13,4 +13,4 @@ from .deck import Deck, DeckQuestion
 Test = Deck
 TestQuestion = DeckQuestion
 
-__all__ = ['Test', 'TestQuestion', 'Deck', 'DeckQuestion']
+__all__ = ["Test", "TestQuestion", "Deck", "DeckQuestion"]

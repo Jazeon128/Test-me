@@ -12,9 +12,9 @@ export default function FormatExamples({ provider }) {
   const formatData = {
     anthropic: {
       examples: [
-        'claude-3-5-sonnet-20241022',
-        'claude-3-5-haiku-20241022',
-        'claude-3-opus-20240229'
+        'claude-sonnet-5',
+        'claude-opus-5',
+        'claude-haiku-4-5'
       ],
       documentationUrl: 'https://docs.anthropic.com/en/docs/about-claude/models'
     },
@@ -28,11 +28,11 @@ export default function FormatExamples({ provider }) {
     },
     gemini: {
       examples: [
-        'gemini-2.5-flash',
-        'gemini-3-pro-preview',
-        'gemini-2.5-pro'
+        'gemini-3.8-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-pro-preview'
       ],
-      documentationUrl: 'https://ai.google.dev/gemini-api/docs/models/gemini'
+      documentationUrl: 'https://ai.google.dev/gemini-api/docs/models'
     }
   }
 

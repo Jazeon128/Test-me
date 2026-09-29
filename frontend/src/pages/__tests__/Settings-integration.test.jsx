@@ -110,7 +110,7 @@ describe('Settings - ModelSelector Integration', () => {
   })
 
   describe('Switching to custom mode - Requirement 1.2', () => {
-    it.skip('should switch from predefined to custom input', async () => {
+    it('should switch from predefined to custom input', async () => {
       renderSettings()
       await waitForLoaded()
 
@@ -170,7 +170,7 @@ describe('Settings - ModelSelector Integration', () => {
   })
 
   describe('Loading existing custom model - Requirement 1.5', () => {
-    it.skip('should detect and display custom model on load', async () => {
+    it('should detect and display custom model on load', async () => {
       // Mock config with custom model
       axios.get.mockImplementation((url) => {
         if (url === '/api/settings/ai-config/models') {

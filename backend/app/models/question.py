@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean, JSON, Index
 from sqlalchemy.orm import relationship
 from .base import Base, TimestampMixin
 
@@ -7,6 +7,11 @@ class Question(Base, TimestampMixin):
     """Represents a generated multiple-choice question"""
 
     __tablename__ = "questions"
+
+    # Declared on the model, not only in the migration: init_db() builds tables
+    # with create_all(), so an index that lives only in Alembic never reaches a
+    # fresh database. Serves the per-document, per-difficulty question query.
+    __table_args__ = (Index("idx_questions_document_difficulty", "document_id", "difficulty"),)
 
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
@@ -21,7 +26,9 @@ class Question(Base, TimestampMixin):
 
     # Relationships
     document = relationship("Document", backref="questions")
-    options = relationship("QuestionOption", back_populates="question", cascade="all, delete-orphan")
+    options = relationship(
+        "QuestionOption", back_populates="question", cascade="all, delete-orphan"
+    )
     tags = relationship("Tag", secondary="question_tags", back_populates="questions")
 
     def __repr__(self) -> str:

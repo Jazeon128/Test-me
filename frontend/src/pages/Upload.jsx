@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
-import { Upload as UploadIcon, CheckCircle, AlertCircle, Loader2, Book, FileType, Youtube } from 'lucide-react'
+import { Upload as UploadIcon, CheckCircle, AlertCircle, AlertTriangle, Loader2, Book, FileType, Youtube } from 'lucide-react'
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -28,20 +28,26 @@ export default function Upload() {
   const [, setJobId] = useState(null)
   const [generationStatus, setGenerationStatus] = useState(null)
   const [generationLogs, setGenerationLogs] = useState([])
-  const [statusCheckInterval, setStatusCheckInterval] = useState(null)
+  const pollRef = useRef(null)
+  // An upload whose sources failed pre-flight, waiting for Generate anyway or Cancel.
+  const [pendingJob, setPendingJob] = useState(null)
+  const [answeringJob, setAnsweringJob] = useState(false)
+  // Sources that pre-flight could not check. Generation still runs for them.
+  const [uncheckedSources, setUncheckedSources] = useState([])
 
   useEffect(() => {
     loadDecks()
   }, [])
 
   // Cleanup status polling on unmount
-  useEffect(() => {
-    return () => {
-      if (statusCheckInterval) {
-        clearInterval(statusCheckInterval)
-      }
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
     }
-  }, [statusCheckInterval])
+  }
+
+  useEffect(() => stopPolling, [])
 
   // Check generation status
   const checkStatus = async (currentJobId) => {
@@ -53,7 +59,7 @@ export default function Upload() {
       setGenerationLogs(status.logs || [])
 
       if (status.status === 'completed') {
-        clearInterval(statusCheckInterval)
+        stopPolling()
         setGenerating(false)
         setResult({
           ...result,
@@ -68,7 +74,7 @@ export default function Upload() {
           navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${status.deck_id}`)
         }, 2000)
       } else if (status.status === 'failed') {
-        clearInterval(statusCheckInterval)
+        stopPolling()
         setGenerating(false)
         setError(status.error_message || 'Generation failed')
       }
@@ -134,6 +140,8 @@ export default function Upload() {
     setUploading(true)
     setError(null)
     setResult(null)
+    setPendingJob(null)
+    setUncheckedSources([])
 
     try {
       const response = await documentsAPI.upload(formData, (progressEvent) => {
@@ -142,26 +150,59 @@ export default function Upload() {
       })
 
       setUploading(false)
+
+      if (response.data.status === 'needs_confirmation') {
+        setPendingJob(response.data)
+        return
+      }
+
       setResult(response.data)
-
-      // Start generation tracking
-      const newJobId = response.data.job_id
-      setJobId(newJobId)
-      setGenerating(true)
-      setGenerationLogs([])
-      setGenerationStatus(null)
-
-      // Start polling for status (500ms for smooth progress updates)
-      const interval = setInterval(() => {
-        checkStatus(newJobId)
-      }, 500)
-      setStatusCheckInterval(interval)
-
-      // Check immediately
-      checkStatus(newJobId)
+      setUncheckedSources((response.data.preflight || []).filter(item => !item.checked))
+      startTracking(response.data.job_id)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to upload document')
+      // The API interceptor rejects with the server's reason in message.
+      setError(err.message || 'Failed to upload document')
       setUploading(false)
+    }
+  }
+
+  const startTracking = (newJobId) => {
+    setJobId(newJobId)
+    setGenerating(true)
+    setGenerationLogs([])
+    setGenerationStatus(null)
+
+    // Poll every 500ms for smooth progress updates
+    stopPolling()
+    pollRef.current = setInterval(() => checkStatus(newJobId), 500)
+    checkStatus(newJobId)
+  }
+
+  const confirmPendingJob = async () => {
+    setAnsweringJob(true)
+    setError(null)
+    try {
+      const response = await documentsAPI.confirmGeneration(pendingJob.job_id)
+      setResult({ ...pendingJob, ...response.data })
+      setPendingJob(null)
+      startTracking(pendingJob.job_id)
+    } catch (err) {
+      setError(err.message || 'Could not start generation')
+    } finally {
+      setAnsweringJob(false)
+    }
+  }
+
+  const cancelPendingJob = async () => {
+    setAnsweringJob(true)
+    setError(null)
+    try {
+      await documentsAPI.cancelGeneration(pendingJob.job_id)
+      setPendingJob(null)
+    } catch (err) {
+      setError(err.message || 'Could not cancel the upload')
+    } finally {
+      setAnsweringJob(false)
     }
   }
 
@@ -445,6 +486,57 @@ export default function Upload() {
 
           {/* Status Cards */}
           <div className="mt-8 space-y-6">
+            {/* Pre-flight: a source looks unteachable, so nothing is generated until the user decides */}
+            {pendingJob && (
+              <div className="card border-amber-300 dark:border-amber-700" role="alertdialog" aria-labelledby="preflight-title">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                    <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-300" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 id="preflight-title" className="font-bold text-gray-900 dark:text-white text-lg">
+                      This may not have anything to study
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1">
+                      Nothing has been generated yet. Generating from a source with no examinable facts
+                      tends to produce questions about filler.
+                    </p>
+                    <ul className="mt-4 space-y-2">
+                      {pendingJob.preflight.map(item => (
+                        <li key={item.document_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm">
+                          <span className="font-medium text-gray-900 dark:text-white break-all">{item.filename}</span>
+                          <span className={item.worth_generating ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}>
+                            {!item.checked
+                              ? 'Not checked'
+                              : item.worth_generating
+                                ? 'Looks teachable'
+                                : `Little to study (${Math.round(item.is_teachable * 100)}% teachable)`}
+                            {item.checked && item.is_transcript >= 0.7 && ' · reads like a transcript'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button type="button" onClick={confirmPendingJob} disabled={answeringJob} className="btn-primary inline-flex">
+                        Generate anyway
+                      </button>
+                      <button type="button" onClick={cancelPendingJob} disabled={answeringJob} className="btn-secondary inline-flex">
+                        Cancel upload
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pre-flight could not run for these sources. Generation continues regardless. */}
+            {uncheckedSources.length > 0 && (
+              <p className="text-sm text-gray-600 dark:text-gray-300" role="status">
+                Could not check {uncheckedSources.map(item => item.filename).join(', ')} before generating.
+                Generation is going ahead anyway.
+              </p>
+            )}
+
             {/* Success Message */}
             {result && !generating && (
               <div className="card bg-success-50 dark:bg-success-900/30 border-success-200 animate-fade-in">

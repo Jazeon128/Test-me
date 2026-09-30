@@ -1,3 +1,4 @@
+import Spinner from './Spinner'
 import { useState, useEffect } from 'react'
 import { X, Info, ExternalLink, Monitor, Cpu, HardDrive } from 'lucide-react'
 
@@ -66,7 +67,7 @@ export default function AboutDialog({ isOpen, onClose }) {
         <div className="p-6 space-y-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <Spinner aria-label="Loading application information" className="h-12 w-12" />
             </div>
           ) : (
             <>

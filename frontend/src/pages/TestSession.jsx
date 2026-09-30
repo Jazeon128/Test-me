@@ -1,3 +1,4 @@
+import Spinner from '../components/Spinner'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { progressAPI } from '../services/api'
@@ -154,7 +155,7 @@ export default function TestSession() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <Spinner aria-label="Loading test session" className="h-12 w-12" />
       </div>
     )
   }

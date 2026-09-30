@@ -1,3 +1,4 @@
+import Spinner from '../components/Spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
@@ -164,7 +165,7 @@ export default function DeckDetails() {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                <Spinner aria-label="Loading deck" className="h-12 w-12" />
             </div>
         )
     }

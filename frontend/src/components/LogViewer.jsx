@@ -1,3 +1,4 @@
+import Spinner from './Spinner'
 import { useState, useEffect, useRef } from 'react'
 import { X, Download, Filter, Search, AlertCircle, Info, AlertTriangle, XCircle } from 'lucide-react'
 
@@ -189,7 +190,7 @@ export default function LogViewer({ isOpen, onClose }) {
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <Spinner aria-label="Loading logs" className="h-12 w-12 mx-auto mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">Loading logs...</p>
               </div>
             </div>

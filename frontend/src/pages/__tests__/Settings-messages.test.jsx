@@ -76,7 +76,7 @@ describe('Settings - Message Display', () => {
 
       // Wait for component to load
       await waitFor(() => {
-        expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument()
+        expect(screen.queryByRole('status', { name: /loading settings/i })).not.toBeInTheDocument()
       })
 
       // Simulate save (would need to fill form and click save in real test)
@@ -131,7 +131,7 @@ describe('Settings - Message Display', () => {
       renderSettings()
 
       await waitFor(() => {
-        expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument()
+        expect(screen.queryByRole('status', { name: /loading settings/i })).not.toBeInTheDocument()
       })
 
       // After save, message should have role="alert"

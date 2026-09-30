@@ -1,3 +1,4 @@
+import Spinner from './Spinner'
 import { useState, useEffect } from 'react'
 import { tagsAPI } from '../services/api'
 import { Tag, Plus, X } from 'lucide-react'
@@ -127,7 +128,7 @@ export default function TagManager({
     if (loading) {
         return (
             <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                <Spinner aria-label="Loading tags" className="h-6 w-6" />
             </div>
         )
     }

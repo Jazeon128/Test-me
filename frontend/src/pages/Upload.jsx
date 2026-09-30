@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
+import Spinner from '../components/Spinner'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
 import { Upload as UploadIcon, CheckCircle, AlertCircle, AlertTriangle, Loader2, Book, FileType, Youtube } from 'lucide-react'
 
@@ -424,7 +425,7 @@ export default function Upload() {
                 {uploading ? (
                   <div className="py-8">
                     <div className="relative">
-                      <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary-600 mb-6"></div>
+                      <Spinner aria-label="Generating questions" className="h-20 w-20 mb-6" />
                       <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary-600 dark:text-primary-300">
                         {uploadProgress}%
                       </div>

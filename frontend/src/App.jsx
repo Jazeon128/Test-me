@@ -1,3 +1,4 @@
+import Spinner from './components/Spinner'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
@@ -55,7 +56,7 @@ function App() {
     return (
       <ThemeProvider>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <Spinner aria-label="Loading application" className="h-12 w-12" />
         </div>
       </ThemeProvider>
     )
@@ -106,7 +107,7 @@ function App() {
 function CanvasLoading() {
   return (
     <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
+      <Spinner aria-label="Loading canvas" className="h-8 w-8" />
     </div>
   )
 }

@@ -28,7 +28,7 @@ const renderSettings = () => {
 // Helper to wait for loading to complete
 const waitForLoaded = async () => {
   await waitFor(() => {
-    expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: /loading settings/i })).not.toBeInTheDocument()
   }, { timeout: 3000 })
 }
 

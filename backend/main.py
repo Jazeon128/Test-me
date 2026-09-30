@@ -3,7 +3,7 @@ import sys
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -11,7 +11,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.config import settings as config_settings
 
-from app.db import init_db
+from sqlalchemy.orm import Session
+from app.db import get_db, init_db
 from app.api import (
     documents,
     questions,
@@ -69,6 +70,7 @@ logger = get_logger(__name__)
 
 # Create upload directory if it doesn't exist
 os.makedirs(config_settings.UPLOAD_DIR, exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -191,29 +193,36 @@ async def startup_event():
 
 
 @app.get("/")
-async def root():
+async def root(db: Session = Depends(get_db)):
     return {
         "message": "Test Me API",
         "version": "1.0.0",
         "docs": "/docs",
-        "ai_configured": bool(
-            config_settings.ANTHROPIC_API_KEY
-            or config_settings.OPENAI_API_KEY
-            or config_settings.GEMINI_API_KEY
-        ),
+        "ai_configured": ai_status(db)["ai_configured"],
     }
 
 
+def ai_status(db):
+    """The generation provider and whether any provider key is available.
+
+    Keys live in the OS credential store, then backend/.env, then a legacy
+    database row, so reading only the environment missed stored keys.
+    """
+    from app.api.settings import get_setting
+    from app.services import secrets
+
+    provider = (get_setting(db, "generation_provider") or get_setting(db, "ai_provider")
+                or config_settings.AI_PROVIDER)
+    configured = any(secrets.secret_status(name, db=db)["configured"]
+                     for name in ("anthropic", "openai", "gemini", "openrouter"))
+    return {"ai_provider": provider, "ai_configured": configured}
+
+
 @app.get("/health")
-async def health_check():
+async def health_check(db: Session = Depends(get_db)):
     return {
         "status": "healthy",
-        "ai_provider": config_settings.AI_PROVIDER,
-        "ai_configured": bool(
-            config_settings.ANTHROPIC_API_KEY
-            or config_settings.OPENAI_API_KEY
-            or config_settings.GEMINI_API_KEY
-        ),
+        **ai_status(db),
     }
 
 

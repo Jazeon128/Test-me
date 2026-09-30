@@ -84,9 +84,9 @@ class Settings(BaseSettings):
                 f"AI_PROVIDER must be one of: anthropic, openai, gemini, openrouter. Got: {self.AI_PROVIDER}"
             )
 
-        # A missing API key is a warning, not an error. The key is normally stored
-        # in the settings table and entered through the Settings screen, so the app
-        # must start without one: that is how a new user reaches the screen at all.
+        # A missing API key is a warning, not an error. Keys entered in Settings
+        # go to the OS credential store, and backend/.env is the alternative, so
+        # the app must start without one: that is how a new user reaches Settings.
         provider_key_map = {
             "anthropic": self.ANTHROPIC_API_KEY,
             "openai": self.OPENAI_API_KEY,
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         if not provider_key_map.get(self.AI_PROVIDER):
             warnings.append(
                 f"No {self.AI_PROVIDER.upper()}_API_KEY in the environment. "
-                "Question generation will use the key stored in Settings."
+                "Question generation will use a key saved in Settings (OS credential store)."
             )
 
         # Validate SECRET_KEY in production

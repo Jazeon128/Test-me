@@ -146,3 +146,15 @@ button:disabled { cursor: not-allowed; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .notebook-card:hover, .btn-primary:hover:not(:disabled) { transform: none; }
 }
+
+/* Only notebooks fill the available content width. */
+.app-content:has(.notebook-workspace) { max-width: none; }
+.notebook-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.workspace-panel, .workspace-centre { min-width: 0; padding: 16px; border: 1px solid var(--border-color, #d1d5db); border-radius: 12px; }
+.workspace-panel button { min-height: 44px; }
+.workspace-panel button:disabled { opacity: 0.5; }
+.workspace-rail { width: 44px; padding: 0; }
+.workspace-rail > button { width: 44px; }
+@media (min-width: 1024px) {
+  .notebook-workspace { grid-template-columns: var(--sources-width) minmax(0, 1fr) var(--studio-width); }
+}

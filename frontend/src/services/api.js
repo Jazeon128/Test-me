@@ -252,6 +252,9 @@ export const notebooksAPI = {
   list: () => api.get('/notebooks/'),
   create: (body) => api.post('/notebooks/', body),
   get: (id) => api.get(`/notebooks/${id}`),
+  workspace: (id) => api.get(`/notebooks/${id}/workspace`),
+  addSources: (id, formData) => api.post(`/notebooks/${id}/sources`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  generate: (id, body) => api.post(`/notebooks/${id}/generate`, body),
   update: (id, body) => api.patch(`/notebooks/${id}`, body),
   remove: (id) => api.delete(`/notebooks/${id}`),
 }

@@ -51,6 +51,7 @@ async def generate_artifact(
     db.add(deck)
     db.flush()
     job = GenerationStatus(job_id=str(uuid.uuid4()), status="pending", notebook_id=notebook_id,
+                           deck_created=True,
                            source_ids=deck.source_ids, kind=request.kind, deck_id=deck.id,
                            result_id=deck.id, total_documents=sum(s["num_questions"] > 0 for s in split),
                            total_questions_requested=request.num_questions)

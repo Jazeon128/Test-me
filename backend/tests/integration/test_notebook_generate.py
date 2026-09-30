@@ -156,3 +156,83 @@ def test_unknown_notebook(client, selected):
     _, sources, calls = selected
     assert client.post("/api/notebooks/999999/generate", json=request(sources)).status_code == 404
     assert not calls
+
+
+def test_failed_generation_removes_new_empty_deck(client, db_session, selected, monkeypatch):
+    from app.exceptions import AIServiceError
+    attempts = []
+
+    class ExhaustedGenerator:
+        def __init__(self, **kwargs):
+            pass
+
+        def generate_questions(self, *args, **kwargs):
+            if attempts:
+                running = db_session.query(GenerationStatus).one()
+                db_session.refresh(running)
+                assert running.status == "processing"
+                assert db_session.get(Deck, running.deck_id) is not None
+            attempts.append(True)
+            raise AIServiceError(message="The free-tier quota is used up (429).", provider="gemini")
+
+    monkeypatch.setattr(documents, "QuestionGenerator", ExhaustedGenerator)
+    notebook, sources, _ = selected
+    response = client.post(f"/api/notebooks/{notebook.id}/generate", json=request(sources))
+    assert response.status_code == 202
+    db_session.expire_all()
+    job = db_session.query(GenerationStatus).one()
+    assert job.status == "failed"
+    assert "quota is used up" in job.error_message
+    assert job.logs
+    assert job.deck_created is True
+    assert len(attempts) == 3
+    assert db_session.get(Deck, response.json()["deck_id"]) is None
+    assert job.deck_id is None
+    assert job.result_id is None
+    assert client.get(f"/api/notebooks/{notebook.id}/workspace").json()["artifacts"]["decks"] == []
+
+
+@pytest.mark.parametrize("material", ["question", "held_back"])
+def test_failed_generation_keeps_deck_with_saved_material(client, db_session, selected, monkeypatch, material):
+    from app.exceptions import AIServiceError
+    from app.models.question import Question
+    from app.models.flagged_question import FlaggedQuestion
+
+    notebook, sources, _ = selected
+    saved = []
+
+    class FailedGenerator:
+        def __init__(self, **kwargs):
+            pass
+
+        def generate_questions(self, *args, **kwargs):
+            # Save material from another source before this job reaches failed.
+            if not saved:
+                deck = db_session.query(Deck).one()
+                if material == "question":
+                    question = Question(document_id=sources[2].id, question_text="Other source", difficulty="easy")
+                    db_session.add(question)
+                    db_session.flush()
+                    deck.questions = [question]
+                else:
+                    db_session.add(FlaggedQuestion(deck_id=deck.id, document_id=sources[2].id,
+                                                   payload={}, reasons=[], status="pending"))
+                db_session.commit()
+                saved.append(deck.id)
+            raise AIServiceError(message="The free-tier quota is used up (429).", provider="gemini")
+
+    monkeypatch.setattr(documents, "QuestionGenerator", FailedGenerator)
+    response = client.post(f"/api/notebooks/{notebook.id}/generate", json=request(sources))
+    assert response.status_code == 202
+    db_session.expire_all()
+    job = db_session.query(GenerationStatus).one()
+    deck = db_session.get(Deck, response.json()["deck_id"])
+    assert job.status == "failed"
+    assert job.deck_created is True
+    assert deck is not None
+    assert job.deck_id == job.result_id == deck.id
+    if material == "question":
+        assert len(deck.questions) == 1
+        assert deck.questions[0].document_id == sources[2].id
+    else:
+        assert db_session.query(FlaggedQuestion).filter_by(deck_id=deck.id, status="pending").count() == 1

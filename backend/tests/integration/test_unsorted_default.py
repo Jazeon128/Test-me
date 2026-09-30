@@ -133,3 +133,52 @@ def test_migration_creates_unsorted_and_keeps_assignment_on_downgrade(db_session
             for table in ("decks", "documents"):
                 assert connection.execute(text(f"SELECT notebook_id FROM {table}")).scalar_one() == notebook_id
             migration.upgrade()
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("confirmed", [False, True])
+def test_failed_legacy_upload_deletes_only_new_empty_deck(
+    client, db_session, fake_generation, monkeypatch, existing, confirmed,
+):
+    from app.exceptions import AIServiceError
+
+    class FailedGenerator:
+        def __init__(self, **kwargs):
+            pass
+
+        def generate_questions(self, *args, **kwargs):
+            raise AIServiceError(message="The free-tier quota is used up (429).", provider="gemini")
+
+    monkeypatch.setattr(documents, "QuestionGenerator", FailedGenerator)
+    data = {}
+    if existing:
+        data["deck_id"] = client.post("/api/decks/", json=dict(name="Existing")).json()["id"]
+    if confirmed:
+        monkeypatch.setattr(documents, "_typesafe_key", lambda db: "fake-key")
+        monkeypatch.setattr(documents, "assess_sources", lambda sources, key: [dict(
+            document_id=source["id"], filename=source["filename"], checked=True,
+            worth_generating=False, is_teachable=0.1, is_transcript=0.1,
+        ) for source in sources])
+        response = client.post("/api/documents/upload", data=dict(num_questions=1, **data), files={
+            "files": ("topic.md", b"# Topic\n\nLearn these useful facts about the topic.", "text/markdown"),
+        })
+    else:
+        response = upload(client, **data)
+    assert response.status_code == 200
+    result = response.json()
+    if confirmed:
+        assert result["status"] == "needs_confirmation"
+        assert client.post(f"/api/documents/jobs/{result['job_id']}/confirm").status_code == 200
+    db_session.expire_all()
+    job = db_session.query(GenerationStatus).one()
+    assert job.deck_created is (not existing)
+    assert job.status == "failed"
+    assert "quota is used up" in job.error_message
+    assert job.logs
+    if existing:
+        assert db_session.get(Deck, result["deck_id"]) is not None
+        assert job.deck_id == job.result_id == result["deck_id"]
+    else:
+        assert db_session.get(Deck, result["deck_id"]) is None
+        assert job.deck_id is None
+        assert job.result_id is None

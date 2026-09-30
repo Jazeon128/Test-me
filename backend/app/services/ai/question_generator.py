@@ -43,6 +43,14 @@ GEMINI_TIMEOUT_MS = 180_000
 GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=1)
 
 
+def gemini_retry_delay(error, attempt):
+    text = f"{error} {getattr(error, 'details', '')}"
+    match = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+(?:\.\d+)?)s", text)
+    if match:
+        return min(60.0, float(match.group(1)))
+    return min(20.0, 2 ** attempt + random.uniform(0, 1))
+
+
 def explain_provider_error(message: str) -> str:
     """Turn a raw provider error into a sentence a user can act on."""
     if "RESOURCE_EXHAUSTED" in message or message.startswith("429"):
@@ -151,6 +159,7 @@ class QuestionGenerator:
         # the reasons it was flagged. Read by the caller for reporting.
         self.flagged_questions: List[Dict] = []
         self.failed_batches: List[Dict] = []
+        self.provider_quota_exhausted = False
 
         # Kept so the System One features can resolve their own key from
         # settings, the same way the canvas router does.
@@ -243,6 +252,7 @@ class QuestionGenerator:
         start_time = time.time()
         self.failed_batches = []
         self.flagged_questions = []
+        self.provider_quota_exhausted = False
 
         try:
             if not any(section.text.strip() for section in parsed_doc.sections):
@@ -313,6 +323,8 @@ class QuestionGenerator:
         max_batch_size = 10 if num_questions >= 20 else 5
 
         for i, section in enumerate(selected_sections, 1):
+            if self.provider_quota_exhausted:
+                break
             if len(all_questions) >= num_questions:
                 break
 
@@ -417,10 +429,18 @@ class QuestionGenerator:
                 )
             except Exception as error:
                 status = getattr(error, "code", None) or getattr(error, "status_code", None)
+                if status == 429 and "PerDay" in str(error):
+                    self.provider_quota_exhausted = True
+                    raise
                 if status not in {429, 500, 502, 503, 504} or attempt == 4:
                     raise
-                self._report_step(f"Gemini is busy, retrying (attempt {attempt + 1} of 4)")
-                time.sleep(min(20.0, 2 ** attempt + random.uniform(0, 1)))
+                if status == 429:
+                    delay = gemini_retry_delay(error, attempt)
+                    self._report_step(f"Gemini rate limit, retrying in {delay:g} s (attempt {attempt + 1} of 4)")
+                else:
+                    delay = min(20.0, 2 ** attempt + random.uniform(0, 1))
+                    self._report_step(f"Gemini is busy, retrying (attempt {attempt + 1} of 4)")
+                time.sleep(delay)
 
     def _select_sections(
         self, sections: List[ParsedSection], num_needed: int

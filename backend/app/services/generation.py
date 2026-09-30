@@ -6,6 +6,9 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from ..models.document import Document
+from ..models.deck import Deck, DeckQuestion
+from ..models.flagged_question import FlaggedQuestion
+from ..utils.cache import invalidate_stats_cache
 from .source_names import display_name
 
 
@@ -17,6 +20,26 @@ class GenerateRequest(BaseModel):
     custom_prompt: Optional[str] = None
     deck_name: Optional[str] = None
     allow_unteachable: bool = False
+
+
+def remove_failed_empty_deck(db, job):
+    """Remove only this failed job's new deck if no study material was saved."""
+    if job.status != "failed" or not job.deck_created or job.deck_id is None:
+        return
+    if db.query(DeckQuestion).filter_by(deck_id=job.deck_id).first() is not None:
+        return
+    if db.query(FlaggedQuestion).filter_by(deck_id=job.deck_id, status="pending").first() is not None:
+        return
+    deck = db.get(Deck, job.deck_id)
+    if deck is not None:
+        # Keep reviewed rows without leaving their foreign key pointing at a
+        # deleted deck. Pending rows above always preserve the deck.
+        db.query(FlaggedQuestion).filter_by(deck_id=deck.id).update({"deck_id": None})
+        db.delete(deck)
+    job.deck_id = None
+    job.result_id = None
+    job.add_log("Removed the empty deck created by this failed job")
+    invalidate_stats_cache()
 
 
 def question_split(counts, total):

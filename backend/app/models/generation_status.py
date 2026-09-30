@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.mutable import MutableList
@@ -18,6 +18,7 @@ class GenerationStatus(Base):
     source_ids = Column(JSON, nullable=True)
     kind = Column(String(20), nullable=True)
     result_id = Column(Integer, nullable=True)
+    deck_created = Column(Boolean, nullable=False, default=False, server_default="0")
     # pending, awaiting_confirmation, needs_choice, processing, completed, failed, cancelled
     status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100

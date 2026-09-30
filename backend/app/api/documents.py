@@ -31,6 +31,7 @@ from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
 from ..services.source_names import display_name
 from ..services.notebooks import resolve_notebook_id
+from ..services.generation import remove_failed_empty_deck
 from ..services.ingest import store_passages, passage_counts, source_fields
 from .questions import _typesafe_key
 from ..exceptions import (
@@ -194,6 +195,7 @@ async def upload_document(
         job_id=job_id,
         deck_id=deck.id,
         result_id=deck.id,
+        deck_created=deck_created,
         notebook_id=notebook_id,
         source_ids=source_ids,
         kind="regenerate" if regenerate and not deck_created else "quiz",
@@ -497,6 +499,8 @@ def process_document(
             step_started_at=datetime.now(),
             completed_at=case((terminal, datetime.now()), else_=None),
         ))
+        db.refresh(gen_status)
+        remove_failed_empty_deck(db, gen_status)
         db.commit()
         db.refresh(gen_status)
 
@@ -963,6 +967,7 @@ def regenerate_deck_questions(
             gen_status.completed_at = datetime.now()
             gen_status.total_questions_generated = 0
             add_log(message, level="error")
+            remove_failed_empty_deck(db, gen_status)
             db.commit()
     finally:
         db.close()

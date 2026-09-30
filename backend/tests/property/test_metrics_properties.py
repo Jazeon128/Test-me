@@ -107,7 +107,7 @@ def test_ai_usage_tracking_records_all_metrics(
     ), f"Output tokens should increment by {output_tokens} for {provider}/{model}"
 
     assert (
-        abs(final_cost - (initial_cost + expected_cost)) < 0.000001
+        abs(final_cost - (initial_cost + (expected_cost or 0))) < 0.000001
     ), f"Cost should increment by {expected_cost} for {provider}/{model}"
 
 
@@ -176,6 +176,11 @@ def test_cost_estimation_is_positive(provider, model, input_tokens, output_token
     """
     cost = estimate_cost(provider, model, input_tokens, output_tokens)
 
+    # A provider/model pair outside the pricing table has no estimate.
+    if cost is None:
+        assert estimate_cost(provider, model, input_tokens * 2, output_tokens * 2) is None
+        return
+
     # Cost should always be positive
     assert cost > 0, f"Cost should be positive for {provider}/{model}"
 
@@ -208,6 +213,10 @@ def test_output_tokens_cost_more_than_input(provider, model, input_tokens, outpu
 
     # Calculate cost with only output tokens (same count)
     output_only_cost = estimate_cost(provider, model, 0, input_tokens)
+
+    if input_only_cost is None:
+        assert output_only_cost is None
+        return
 
     # Output tokens should cost more
     assert (

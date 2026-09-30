@@ -384,7 +384,9 @@ class TestQuestionGeneratorProperties:
         mock_setting.value = model_name
 
         # Mock get_setting to return our test values
-        with patch("app.services.ai.question_generator.get_setting") as mock_get_setting:
+        with patch("app.services.ai.question_generator.get_setting") as mock_get_setting, patch(
+            "app.services.ai.question_generator.get_secret", return_value="test-api-key-12345"
+        ):
 
             def get_setting_side_effect(db, key):
                 if key == "ai_provider":
@@ -413,7 +415,7 @@ class TestQuestionGeneratorProperties:
                     )
 
                     # Verify Anthropic client was initialized with correct API key
-                    mock_anthropic.assert_called_once_with(api_key="test-api-key-12345")
+                    mock_anthropic.assert_called_once_with(api_key="test-api-key-12345", max_retries=0)
 
             elif provider == "openai":
                 with patch("app.services.ai.question_generator.OpenAI") as mock_openai:
@@ -430,7 +432,7 @@ class TestQuestionGeneratorProperties:
                     )
 
                     # Verify OpenAI client was initialized with correct API key
-                    mock_openai.assert_called_once_with(api_key="test-api-key-12345")
+                    mock_openai.assert_called_once_with(api_key="test-api-key-12345", max_retries=0)
 
             elif provider == "gemini":
                 with patch("app.services.ai.question_generator.genai") as mock_genai:
@@ -475,7 +477,9 @@ class TestQuestionGeneratorProperties:
         mock_db = Mock()
 
         # Mock get_setting to return our test values
-        with patch("app.services.ai.question_generator.get_setting") as mock_get_setting:
+        with patch("app.services.ai.question_generator.get_setting") as mock_get_setting, patch(
+            "app.services.ai.question_generator.get_secret", return_value="test-api-key-12345"
+        ):
 
             def get_setting_side_effect(db, key):
                 if key == "ai_provider":

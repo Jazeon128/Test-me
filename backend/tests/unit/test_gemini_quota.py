@@ -21,7 +21,7 @@ def generator(monkeypatch):
     instance._parse_batch_response = Mock(return_value=[{"question": "Question?"}])
     instance._verify_batch = Mock(side_effect=lambda section, questions: questions)
     monkeypatch.setattr(module.time, "sleep", Mock())
-    monkeypatch.setattr(module.random, "uniform", lambda *args: 0)
+    monkeypatch.setattr("app.services.ai.retry.random.uniform", lambda *args: 0)
     return instance
 
 

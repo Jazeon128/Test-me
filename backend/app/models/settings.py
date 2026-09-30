@@ -12,4 +12,4 @@ class Settings(Base, TimestampMixin):
     value = Column(String(1000), nullable=True)
 
     def __repr__(self):
-        return f"<Settings {self.key}={self.value[:20]}...>"
+        return f"<Settings {self.key}>"

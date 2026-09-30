@@ -159,3 +159,34 @@ def sample_user_progress(db_session, sample_question):
     db_session.commit()
     db_session.refresh(progress)
     return progress
+
+
+class MemoryKeyring:
+    """Test credentials only. Never consult the machine's credential store."""
+
+    def __init__(self):
+        self.values = {}
+
+    def get_password(self, service, name):
+        return self.values.get((service, name))
+
+    def set_password(self, service, name, value):
+        self.values[(service, name)] = value
+
+    def delete_password(self, service, name):
+        self.values.pop((service, name), None)
+
+
+@pytest.fixture(autouse=True)
+def memory_keyring(monkeypatch):
+    import keyring
+    from keyring.backend import KeyringBackend
+
+    class Backend(MemoryKeyring, KeyringBackend):
+        priority = 1
+
+    backend = Backend()
+    # Patch the cached backend rather than evaluating get_keyring(), which can
+    # initialize the real Windows Credential Manager.
+    monkeypatch.setattr(keyring.core, "_keyring_backend", backend)
+    return backend

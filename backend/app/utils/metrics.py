@@ -200,7 +200,7 @@ def track_ai_api_call(
         ai_estimated_cost.labels(provider=provider, model=model).inc(estimated_cost)
 
 
-def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: int) -> float:
+def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: int) -> Optional[float]:
     """
     Estimate the cost of an AI API call based on token usage
 
@@ -258,7 +258,9 @@ def estimate_cost(provider: str, model: str, input_tokens: int, output_tokens: i
 
     # Get pricing for the specific model
     provider_pricing = pricing.get(provider, {})
-    model_pricing = provider_pricing.get(model, {"input": 1.0, "output": 3.0})  # Default fallback
+    model_pricing = provider_pricing.get(model)
+    if model_pricing is None:
+        return None
 
     # Calculate cost (tokens / 1,000,000 * price per MTok)
     input_cost = (input_tokens / 1_000_000) * model_pricing["input"]

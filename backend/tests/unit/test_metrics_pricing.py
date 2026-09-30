@@ -37,46 +37,46 @@ class TestDeprecatedModelsRemoved:
     """Test suite to verify deprecated models are removed"""
 
     def test_gemini_2_0_flash_exp_removed(self):
-        """Test that gemini-2.0-flash-exp uses fallback pricing (not in pricing dict)"""
-        # Deprecated models should fall back to default pricing
+        """Test that gemini-2.0-flash-exp has no estimate (not in pricing dict)"""
+        # Deprecated models have no known pricing
         cost = estimate_cost("gemini", "gemini-2.0-flash-exp", 1_000_000, 1_000_000)
-        # Default fallback is 1.0 input + 3.0 output = 4.0 per million tokens
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        # Do not fabricate prices for unknown models
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_exp_1206_removed(self):
-        """Test that gemini-exp-1206 uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-exp-1206 has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-exp-1206", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_2_0_flash_thinking_exp_removed(self):
-        """Test that gemini-2.0-flash-thinking-exp-01-21 uses fallback pricing"""
+        """Test that gemini-2.0-flash-thinking-exp-01-21 has no estimate"""
         cost = estimate_cost("gemini", "gemini-2.0-flash-thinking-exp-01-21", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_1_5_pro_002_removed(self):
-        """Test that gemini-1.5-pro-002 uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-1.5-pro-002 has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-1.5-pro-002", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_1_5_flash_002_removed(self):
-        """Test that gemini-1.5-flash-002 uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-1.5-flash-002 has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-1.5-flash-002", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_1_5_flash_8b_removed(self):
-        """Test that gemini-1.5-flash-8b uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-1.5-flash-8b has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-1.5-flash-8b", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_1_5_pro_removed(self):
-        """Test that gemini-1.5-pro uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-1.5-pro has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-1.5-pro", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
     def test_gemini_1_5_flash_removed(self):
-        """Test that gemini-1.5-flash uses fallback pricing (not in pricing dict)"""
+        """Test that gemini-1.5-flash has no estimate (not in pricing dict)"""
         cost = estimate_cost("gemini", "gemini-1.5-flash", 1_000_000, 1_000_000)
-        assert cost == 4.0, "Deprecated model should use fallback pricing"
+        assert cost is None, "Deprecated model should have no cost estimate"
 
 
 class TestExistingModelsPricing:
@@ -124,14 +124,12 @@ class TestCostCalculation:
         assert cost_output_only == 15.0, "Output only should cost $15"
         assert cost_both == 18.0, "Both should cost $18"
 
-    def test_unknown_model_uses_fallback(self):
-        """Test that unknown models use fallback pricing"""
+    def test_unknown_model_has_no_estimate(self):
+        """Unknown models have no fabricated cost estimate."""
         cost = estimate_cost("gemini", "unknown-model-xyz", 1_000_000, 1_000_000)
-        expected = 1.0 + 3.0  # Default fallback: $1 input + $3 output
-        assert cost == expected, f"Unknown model should use fallback pricing of ${expected}"
+        assert cost is None, "Unknown model should have no cost estimate"
 
-    def test_unknown_provider_uses_fallback(self):
-        """Test that unknown providers use fallback pricing"""
+    def test_unknown_provider_has_no_estimate(self):
+        """Unknown providers have no fabricated cost estimate."""
         cost = estimate_cost("unknown-provider", "some-model", 1_000_000, 1_000_000)
-        expected = 1.0 + 3.0  # Default fallback
-        assert cost == expected, f"Unknown provider should use fallback pricing of ${expected}"
+        assert cost is None, "Unknown provider should have no cost estimate"

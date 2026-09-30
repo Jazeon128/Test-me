@@ -98,7 +98,7 @@ class TestQuestionGeneratorInitialization:
 
             assert generator.provider == "anthropic"
             assert generator.model == "claude-sonnet-5"
-            mock_anthropic.assert_called_once_with(api_key="test-key")
+            mock_anthropic.assert_called_once_with(api_key="test-key", max_retries=0)
 
     @patch("app.services.ai.question_generator.OpenAI")
     def test_init_openai_provider(self, mock_openai):
@@ -112,7 +112,7 @@ class TestQuestionGeneratorInitialization:
 
             assert generator.provider == "openai"
             assert generator.model == "gpt-4o"
-            mock_openai.assert_called_once_with(api_key="test-key")
+            mock_openai.assert_called_once_with(api_key="test-key", max_retries=0)
 
     @patch("app.services.ai.question_generator.genai")
     def test_init_gemini_provider(self, mock_genai):
@@ -333,9 +333,9 @@ class TestQuestionGeneration:
             generator = QuestionGenerator()
 
             # A failed batch is recorded. An entirely failed call still raises.
-            with pytest.raises(AIServiceError, match=r"Gemini failed on 1 of 1 section\(s\): API Error") as exc_info:
+            with pytest.raises(AIServiceError, match=r"Anthropic failed on 1 of 1 section\(s\): API Error") as exc_info:
                 generator.generate_questions(parsed_doc=mock_parsed_doc, num_questions=1)
-            assert exc_info.value.message == "Gemini failed on 1 of 1 section(s): API Error"
+            assert exc_info.value.message == "Anthropic failed on 1 of 1 section(s): API Error"
             assert generator.failed_batches == [{
                 "section_page": mock_parsed_doc.sections[0].page,
                 "error_type": "Exception",

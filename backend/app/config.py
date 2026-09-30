@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     AI_PROVIDER: str = "anthropic"  # "anthropic", "openai", or "gemini"
     AI_MODEL: str = ""  # Optional: specific model to use
 
@@ -78,9 +79,9 @@ class Settings(BaseSettings):
         warnings = []
 
         # Validate AI Provider configuration
-        if self.AI_PROVIDER not in ["anthropic", "openai", "gemini"]:
+        if self.AI_PROVIDER not in ["anthropic", "openai", "gemini", "openrouter"]:
             errors.append(
-                f"AI_PROVIDER must be one of: anthropic, openai, gemini. Got: {self.AI_PROVIDER}"
+                f"AI_PROVIDER must be one of: anthropic, openai, gemini, openrouter. Got: {self.AI_PROVIDER}"
             )
 
         # A missing API key is a warning, not an error. The key is normally stored
@@ -90,6 +91,7 @@ class Settings(BaseSettings):
             "anthropic": self.ANTHROPIC_API_KEY,
             "openai": self.OPENAI_API_KEY,
             "gemini": self.GEMINI_API_KEY,
+            "openrouter": self.OPENROUTER_API_KEY,
         }
         if not provider_key_map.get(self.AI_PROVIDER):
             warnings.append(

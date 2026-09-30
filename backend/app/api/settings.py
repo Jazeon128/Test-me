@@ -4,20 +4,25 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 
 from ..db import get_db
 from ..models.settings import Settings
 from ..services import jev, jev_usage
 from ..utils.redact import redact_secrets
-from ..services.typesafe_key import SETTING_KEY, typesafe_key, typesafe_key_source
+from ..services.typesafe_key import SETTING_KEY, typesafe_key
+from ..services import secrets
+from ..services.ai import openrouter_catalog
+from ..config import settings as config_settings
 
 router = APIRouter()
 
 
 class AIConfigRequest(BaseModel):
-    provider: str  # "anthropic", "openai", or "gemini"
-    api_key: str
+    provider: str  # "anthropic", "openai", "gemini", or "openrouter"
+    # Optional when the provider already has a key in the store or backend/.env.
+    api_key: Optional[str] = None
+    task: Literal["generation", "chat"] = "generation"
     model: Optional[str] = None
 
 
@@ -25,7 +30,12 @@ class AIConfigResponse(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     api_key_configured: bool = False
-    api_key_preview: Optional[str] = None  # First 8 chars for verification
+    key_configured: bool = False
+    key_source: Optional[str] = None
+    generation_provider: Optional[str] = None
+    generation_model: Optional[str] = None
+    chat_provider: Optional[str] = None
+    chat_model: Optional[str] = None
     is_custom_model: bool = False  # True if model is not in AVAILABLE_MODELS
 
 
@@ -228,11 +238,10 @@ def get_typesafe_usage(days: int = 30, db: Session = Depends(get_db)):
 
 @router.get("/typesafe")
 async def get_typesafe_config(db: Session = Depends(get_db)):
-    api_key = typesafe_key(db)
+    status = secrets.secret_status("typesafe", db=db)
     return {
-        "configured": bool(api_key),
-        "source": typesafe_key_source(db),
-        "preview": "…" + api_key[-4:] if api_key else None,
+        "configured": status["configured"], "source": status["source"],
+        "key_configured": status["configured"], "key_source": status["source"],
     }
 
 
@@ -244,12 +253,13 @@ async def save_typesafe_config(config: TypeSafeKeyRequest, db: Session = Depends
             status_code=400,
             detail="Invalid TypeSafe API key. Key must be at least 10 characters",
         )
-    set_setting(db, SETTING_KEY, api_key)
+    _save_secret("typesafe", api_key)
     return {**await get_typesafe_config(db), "message": "TypeSafe key saved"}
 
 
 @router.delete("/typesafe")
 async def delete_typesafe_config(db: Session = Depends(get_db)):
+    _delete_secret("typesafe")
     db.query(Settings).filter(Settings.key == SETTING_KEY).delete()
     db.commit()
     return {**await get_typesafe_config(db), "message": "TypeSafe key removed"}
@@ -306,86 +316,110 @@ async def get_available_models():
     return AVAILABLE_MODELS
 
 
+def _save_secret(name, value):
+    try:
+        secrets.set_secret(name, value)
+    except secrets.SecretStoreError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
+
+
+def _delete_secret(name):
+    try:
+        secrets.delete_secret(name)
+    except secrets.SecretStoreError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
+
+
+def _task_pair(db, task):
+    return (
+        get_setting(db, f"{task}_provider") or get_setting(db, "ai_provider")
+        or config_settings.AI_PROVIDER,
+        get_setting(db, f"{task}_model") or get_setting(db, "ai_model") or None,
+    )
+
+
 @router.get("/ai-config")
 async def get_ai_config(db: Session = Depends(get_db)):
-    """Get current AI configuration"""
-    provider = get_setting(db, "ai_provider")
-    api_key = get_setting(db, "api_key")
-    model = get_setting(db, "ai_model")
-
-    # Check if model is custom (not in predefined list)
-    is_custom = False
-    if model:
-        is_custom = model not in [m.id for m in AVAILABLE_MODELS]
-
+    """Return task configuration and credential status, never key characters."""
+    provider, model = _task_pair(db, "generation")
+    chat_provider, chat_model = _task_pair(db, "chat")
+    status = secrets.secret_status(provider, db=db)
     return AIConfigResponse(
-        provider=provider,
-        model=model,
-        api_key_configured=bool(api_key),
-        api_key_preview=api_key[:8] + "..." if api_key and len(api_key) > 8 else None,
-        is_custom_model=is_custom,
+        provider=provider, model=model,
+        api_key_configured=status["configured"],
+        key_configured=status["configured"], key_source=status["source"],
+        generation_provider=provider, generation_model=model,
+        chat_provider=chat_provider, chat_model=chat_model,
+        is_custom_model=bool(model and model not in [m.id for m in AVAILABLE_MODELS]),
     )
+
+
+def _validate_ai_config(config, db):
+    if config.provider not in secrets.NAMES - {"typesafe"}:
+        raise HTTPException(status_code=400, detail="Invalid provider. Must be anthropic, openai, gemini, or openrouter")
+    if config.model and not config.model.strip():
+        raise HTTPException(status_code=400, detail="Model name cannot be empty or whitespace only")
+    if not (config.api_key or "").strip():
+        if not secrets.secret_status(config.provider, db=db)["configured"]:
+            raise HTTPException(status_code=400, detail=f"No {config.provider} API key is saved yet. Enter one.")
+        return
+    if len(config.api_key.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Invalid API key. Key must be at least 10 characters")
+    if config.provider == "anthropic" and not config.api_key.startswith("sk-ant-"):
+        raise HTTPException(status_code=400, detail="Invalid Anthropic API key. Must start with 'sk-ant-'")
+    if config.provider == "openai" and not config.api_key.startswith("sk-"):
+        raise HTTPException(status_code=400, detail="Invalid OpenAI API key. Must start with 'sk-'")
+    if config.model and not config.model.strip():
+        raise HTTPException(status_code=400, detail="Model name cannot be empty or whitespace only")
 
 
 @router.post("/ai-config")
 async def set_ai_config(config: AIConfigRequest, db: Session = Depends(get_db)):
-    """Set AI configuration"""
-
-    # Validate provider
-    if config.provider not in ["anthropic", "openai", "gemini"]:
-        raise HTTPException(
-            status_code=400, detail="Invalid provider. Must be 'anthropic', 'openai', or 'gemini'"
-        )
-
-    # Validate API key format
-    if not config.api_key or len(config.api_key) < 10:
-        raise HTTPException(
-            status_code=400, detail="Invalid API key. Key must be at least 10 characters"
-        )
-
-    # Validate key format based on provider
-    if config.provider == "anthropic" and not config.api_key.startswith("sk-ant-"):
-        raise HTTPException(
-            status_code=400, detail="Invalid Anthropic API key. Must start with 'sk-ant-'"
-        )
-    elif config.provider == "openai" and not config.api_key.startswith("sk-"):
-        raise HTTPException(status_code=400, detail="Invalid OpenAI API key. Must start with 'sk-'")
-    # Gemini keys are deliberately not prefix-checked. Google has issued at
-    # least two formats (AIza..., AQ....), so a prefix rule would reject valid
-    # keys the next time the format changes.
-
-    # Validate model name (accept any non-empty string)
+    """Save task settings and put any submitted credential in the OS store."""
+    _validate_ai_config(config, db)
+    if (config.api_key or "").strip():
+        _save_secret(config.provider, config.api_key)
     if config.model:
-        model_trimmed = config.model.strip()
-        if not model_trimmed:
-            raise HTTPException(
-                status_code=400, detail="Model name cannot be empty or whitespace only"
-            )
-        # Store the trimmed model name exactly as provided
-        set_setting(db, "ai_model", model_trimmed)
-
-    # Save settings
-    set_setting(db, "ai_provider", config.provider)
-    set_setting(db, "api_key", config.api_key)
-
+        set_setting(db, f"{config.task}_model", config.model.strip())
+    set_setting(db, f"{config.task}_provider", config.provider)
+    # Maintain the legacy fields read by existing clients for generation only.
+    if config.task == "generation":
+        set_setting(db, "ai_provider", config.provider)
+        if config.model:
+            set_setting(db, "ai_model", config.model.strip())
+    status = secrets.secret_status(config.provider, db=db)
     return {
-        "success": True,
-        "provider": config.provider,
+        "success": True, "provider": config.provider,
         "model": config.model.strip() if config.model else None,
-        "api_key_preview": config.api_key[:8] + "...",
+        "key_configured": status["configured"], "key_source": status["source"],
         "message": "AI configuration saved successfully",
     }
 
 
 @router.delete("/ai-config")
 async def delete_ai_config(db: Session = Depends(get_db)):
-    """Delete AI configuration"""
-
-    # Delete settings
-    db.query(Settings).filter(Settings.key.in_(["ai_provider", "api_key", "ai_model"])).delete()
+    """Remove saved AI task configuration and credentials, retaining env fallback."""
+    for name in sorted(secrets.NAMES - {"typesafe"}):
+        _delete_secret(name)
+    keys = ["ai_provider", "api_key", "ai_model", "generation_provider",
+            "generation_model", "chat_provider", "chat_model"]
+    keys.extend(f"{name}_api_key" for name in secrets.NAMES - {"typesafe"})
+    db.query(Settings).filter(Settings.key.in_(keys)).delete()
     db.commit()
-
     return {"success": True, "message": "AI configuration deleted"}
+
+
+@router.get("/openrouter/models")
+async def get_openrouter_models(refresh: bool = False):
+    return await run_in_threadpool(openrouter_catalog.get_models, refresh=refresh)
+
+
+@router.get("/openrouter/key")
+async def get_openrouter_key(db: Session = Depends(get_db)):
+    api_key = secrets.get_secret("openrouter", db=db)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No OpenRouter API key is configured.")
+    return await run_in_threadpool(openrouter_catalog.get_key_info, api_key)
 
 
 #: A connection test sends one tiny prompt. It must be cheap and must not hang.
@@ -459,6 +493,7 @@ async def test_ai_config(db: Session = Depends(get_db)):
             TEST_PROMPT,
             max_tokens=TEST_MAX_TOKENS,
             timeout=TEST_TIMEOUT_SECONDS,
+            db=db, task="connection_test",
         )
     except Exception as error:
         raise HTTPException(

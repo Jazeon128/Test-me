@@ -33,6 +33,7 @@ for _credential in (
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
     "GEMINI_API_KEY",
+    "OPENROUTER_API_KEY",
 ):
     os.environ[_credential] = ""
 

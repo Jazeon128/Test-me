@@ -12,6 +12,7 @@ from .deck import Deck, DeckQuestion
 from .notebook import Notebook
 from .activity import Award, StudyDay
 from .jev_call import JevCall
+from .llm_call import LLMCall
 
 __all__ = [
     "Base",
@@ -33,4 +34,5 @@ __all__ = [
     "Award",
     "StudyDay",
     "JevCall",
+    "LLMCall",
 ]

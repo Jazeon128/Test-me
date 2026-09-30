@@ -29,19 +29,20 @@ def assert_safe(response):
 def test_unconfigured(client):
     response = client.get(URL)
     assert response.status_code == 200
-    assert assert_safe(response) == {"configured": False, "source": None, "preview": None}
+    assert assert_safe(response) == {"configured": False, "source": None, "key_configured": False, "key_source": None}
 
 
 def test_save_and_lookup(client, db_session):
     response = client.put(URL, json={"api_key": f"  {KEY}  "})
     assert response.status_code == 200
     assert assert_safe(response) == {
-        "configured": True, "source": "settings", "preview": "…2345",
+        "configured": True, "source": "keyring", "key_configured": True, "key_source": "keyring",
         "message": "TypeSafe key saved",
     }
     data = assert_safe(client.get(URL))
-    assert data == {"configured": True, "source": "settings", "preview": "…2345"}
-    assert KEY[:-4] not in data["preview"]
+    assert data == {"configured": True, "source": "keyring", "key_configured": True, "key_source": "keyring"}
+    assert "preview" not in data
+    assert KEY not in str(data)
     assert typesafe_key(db_session) == KEY
 
 
@@ -55,7 +56,7 @@ def test_short_key(client):
 
 def test_environment_fallback_and_delete(client, monkeypatch):
     monkeypatch.setattr(config_settings, "TYPESAFE_API_KEY", ENV_KEY)
-    expected = {"configured": True, "source": "environment", "preview": "…7890"}
+    expected = {"configured": True, "source": "env", "key_configured": True, "key_source": "env"}
     assert assert_safe(client.get(URL)) == expected
     assert_safe(client.put(URL, json={"api_key": KEY}))
     response = client.delete(URL)
@@ -69,7 +70,9 @@ def test_delete_without_environment(client):
     data = assert_safe(client.delete(URL))
     assert data["configured"] is False
     assert data["source"] is None
-    assert data["preview"] is None
+    assert data["key_configured"] is False
+    assert data["key_source"] is None
+    assert "preview" not in data
 
 
 def test_connection_without_key(client):

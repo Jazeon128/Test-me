@@ -1,5 +1,4 @@
 import json
-import random
 import re
 import time
 import traceback
@@ -10,8 +9,10 @@ from google import genai
 from google.genai import types as genai_types
 from sqlalchemy.orm import Session
 from ...config import settings
-from ...config import settings as config_settings
 from ..typesafe_key import typesafe_key
+from ..secrets import NAMES, get_secret
+from .retry import LABELS, RetryState, _call_with_retry
+from .ledger import record_call
 from ..parsers.base_parser import ParsedDocument, ParsedSection
 from . import sourcing, verify
 from ...utils.logging import get_logger
@@ -43,21 +44,16 @@ GEMINI_TIMEOUT_MS = 180_000
 GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=1)
 
 
-def gemini_retry_delay(error, attempt):
-    text = f"{error} {getattr(error, 'details', '')}"
-    match = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+(?:\.\d+)?)s", text)
-    if match:
-        return min(60.0, float(match.group(1)))
-    return min(20.0, 2 ** attempt + random.uniform(0, 1))
-
-
-def explain_provider_error(message: str) -> str:
+def explain_provider_error(message: str, provider: str = "gemini") -> str:
     """Turn a raw provider error into a sentence a user can act on."""
+    label = LABELS.get(provider, provider)
     if "RESOURCE_EXHAUSTED" in message or message.startswith("429"):
-        return ("The free-tier quota is used up (429). Wait for it to reset, "
+        return (f"{label}: the free-tier quota is used up (429). Wait for it to reset, "
                 "or add a paid key in Settings.")
+    if provider == "openrouter" and message.startswith("402"):
+        return "OpenRouter has insufficient credits (402). Add credits in OpenRouter."
     if "UNAVAILABLE" in message or message.startswith("503"):
-        return "The model is overloaded (503). Try again in a few minutes."
+        return f"{label} is overloaded (503). Try again in a few minutes."
     return message
 
 
@@ -165,24 +161,17 @@ class QuestionGenerator:
         # settings, the same way the canvas router does.
         self.db = db
 
-        # Try to get settings from database first, fall back to env vars
+        # Task settings fall back to the legacy pair and then the environment.
         if db:
-            self.provider = get_setting(db, "ai_provider") or settings.AI_PROVIDER
-            self.model = get_setting(db, "ai_model") or settings.AI_MODEL
-            api_key = get_setting(db, "api_key")
+            self.provider = (get_setting(db, "generation_provider")
+                             or get_setting(db, "ai_provider") or settings.AI_PROVIDER)
+            self.model = (get_setting(db, "generation_model")
+                          or get_setting(db, "ai_model") or settings.AI_MODEL)
         else:
             self.provider = settings.AI_PROVIDER
             self.model = settings.AI_MODEL
-            api_key = None
-
-        # Fall back to environment variables if no DB settings
-        if not api_key:
-            if self.provider == "anthropic":
-                api_key = settings.ANTHROPIC_API_KEY
-            elif self.provider == "openai":
-                api_key = settings.OPENAI_API_KEY
-            elif self.provider == "gemini":
-                api_key = settings.GEMINI_API_KEY
+        api_key = (get_secret(self.provider, db=db, config=settings)
+                   if self.provider in NAMES else "")
 
         if not api_key:
             raise AIServiceError(
@@ -193,13 +182,24 @@ class QuestionGenerator:
 
         self._api_key = api_key
         if self.provider == "anthropic":
-            self.client = Anthropic(api_key=api_key)
+            self.client = Anthropic(api_key=api_key, max_retries=0)
             if not self.model:
                 self.model = "claude-sonnet-5"
         elif self.provider == "openai":
-            self.client = OpenAI(api_key=api_key)
+            self.client = OpenAI(api_key=api_key, max_retries=0)
             if not self.model:
                 self.model = "gpt-4o"
+        elif self.provider == "openrouter":
+            self.client = OpenAI(
+                api_key=api_key, base_url="https://openrouter.ai/api/v1",
+                max_retries=0, timeout=180,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/Jazeon128/Test-me",
+                    "X-OpenRouter-Title": "Test Me",
+                },
+            )
+            if not self.model:
+                self.model = "openrouter/auto"
         elif self.provider == "gemini":
             # The google-genai client talks HTTPS through httpx, which honours
             # SSL_CERT_FILE, so a machine whose TLS is intercepted (a corporate
@@ -218,7 +218,7 @@ class QuestionGenerator:
             raise AIServiceError(
                 message=f"Unknown AI provider: {self.provider}",
                 provider=self.provider,
-                details={"supported_providers": ["anthropic", "openai", "gemini"]},
+                details={"supported_providers": ["anthropic", "openai", "gemini", "openrouter"]},
             )
 
     def generate_questions(
@@ -344,7 +344,7 @@ class QuestionGenerator:
                 questions_target=num_questions,
             )
 
-            self._report_step("Asking Gemini")
+            self._report_step(f"Asking {LABELS.get(self.provider, self.provider)}")
             questions = self._generate_batch_questions(
                 section,
                 batch_size,
@@ -379,9 +379,9 @@ class QuestionGenerator:
         final_questions = all_questions[:num_questions]
         if not final_questions and not self.flagged_questions and self.failed_batches:
             raise AIServiceError(
-                message=(f"Gemini failed on {len(self.failed_batches)} of "
+                message=(f"{LABELS.get(self.provider, self.provider)} failed on {len(self.failed_batches)} of "
                          f"{len(selected_sections)} section(s): "
-                         f"{explain_provider_error(self.failed_batches[-1]['message'])}"),
+                         f"{explain_provider_error(self.failed_batches[-1]['message'], self.provider)}"),
                 provider=self.provider,
             )
         elapsed_time = time.time() - start_time
@@ -413,34 +413,40 @@ class QuestionGenerator:
         if callback is not None:
             callback(step, self._sections_done, self._sections_total)
 
+    def _generation_call(self, call):
+        state = RetryState()
+        started = time.monotonic()
+        response = None
+        error = None
+        try:
+            response = _call_with_retry(
+                call, LABELS.get(self.provider, self.provider),
+                state=state, on_step=self._report_step,
+            )
+            return response
+        except Exception as exc:
+            error = exc
+            if state.quota_exhausted:
+                self.provider_quota_exhausted = True
+            raise
+        finally:
+            record_call(
+                db=getattr(self, "db", None), task="generation",
+                provider=self.provider, model=self.model, started=started,
+                attempts=state.attempts, response=response, error=error,
+                job_id=getattr(self, "job_id", None),
+            )
+
     def _gemini_generate(self, prompt: str):
-        for attempt in range(1, 5):
-            try:
-                return self.client.models.generate_content(
-                    model=self.model,
-                    contents=prompt,
-                    config=genai_types.GenerateContentConfig(
-                        max_output_tokens=8192,
-                        temperature=0.7,
-                        automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(
-                            disable=True
-                        ),
-                    ),
-                )
-            except Exception as error:
-                status = getattr(error, "code", None) or getattr(error, "status_code", None)
-                if status == 429 and "PerDay" in str(error):
-                    self.provider_quota_exhausted = True
-                    raise
-                if status not in {429, 500, 502, 503, 504} or attempt == 4:
-                    raise
-                if status == 429:
-                    delay = gemini_retry_delay(error, attempt)
-                    self._report_step(f"Gemini rate limit, retrying in {delay:g} s (attempt {attempt + 1} of 4)")
-                else:
-                    delay = min(20.0, 2 ** attempt + random.uniform(0, 1))
-                    self._report_step(f"Gemini is busy, retrying (attempt {attempt + 1} of 4)")
-                time.sleep(delay)
+        return self._generation_call(lambda: self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                max_output_tokens=8192,
+                temperature=0.7,
+                automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(disable=True),
+            ),
+        ))
 
     def _select_sections(
         self, sections: List[ParsedSection], num_needed: int
@@ -506,11 +512,7 @@ class QuestionGenerator:
 
         Only real non-empty strings count, including for mock sessions.
         """
-        db = getattr(self, "db", None)
-        if db is not None:
-            return typesafe_key(db)
-        configured = config_settings.TYPESAFE_API_KEY
-        return configured.strip() if isinstance(configured, str) else ""
+        return typesafe_key(getattr(self, "db", None))
 
     def _generate_batch_questions(
         self,
@@ -549,24 +551,24 @@ class QuestionGenerator:
             estimated_cost_value = None
 
             if self.provider == "anthropic":
-                response = self.client.messages.create(
+                response = self._generation_call(lambda: self.client.messages.create(
                     model=self.model,
                     max_tokens=8192,
                     messages=[{"role": "user", "content": prompt}],
-                )
+                ))
                 content = response.content[0].text
                 # Extract token usage from response
                 if hasattr(response, "usage"):
                     input_tokens = response.usage.input_tokens
                     output_tokens = response.usage.output_tokens
 
-            elif self.provider == "openai":
-                response = self.client.chat.completions.create(
+            elif self.provider in {"openai", "openrouter"}:
+                response = self._generation_call(lambda: self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7,
                     max_tokens=8192,
-                )
+                ))
                 content = response.choices[0].message.content
                 # Extract token usage from response
                 if hasattr(response, "usage"):

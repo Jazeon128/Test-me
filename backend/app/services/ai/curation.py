@@ -402,6 +402,7 @@ def review_explanation(
     explanation: str,
     api_key: str,
     timeout: float = jev.DEFAULT_TIMEOUT,
+    source: str = "",
 ) -> ExplanationReview:
     """Judge an explanation: its depth, its wrong and unclear sentences, and its gaps.
 
@@ -416,6 +417,8 @@ def review_explanation(
         "key_points": [{"index": i, "text": p} for i, p in enumerate(points)],
         "explanation": [{"index": i, "text": jev.trim(s, 600)} for i, s in enumerate(sentences)],
     }
+    if source:
+        state["source"] = jev.trim(source, 4000)
     questions_payload = {
         "quality": {
             "type": "score",
@@ -438,7 +441,10 @@ def review_explanation(
     for i in range(len(sentences)):
         questions_payload[f"wrong_{i}"] = {
             "type": "noul",
-            "instructions": f"Does `explanation[{i}].text` state something factually wrong?",
+            "instructions": (
+                f"Does `explanation[{i}].text` state something factually wrong?"
+                + (" Where `source` covers the point, judge against `source`." if source else "")
+            ),
             "criteria": {"true": "It contains an error", "false": "It is correct or harmless"},
         }
         questions_payload[f"unclear_{i}"] = {

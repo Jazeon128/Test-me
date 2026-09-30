@@ -19,6 +19,20 @@ from ...exceptions import AIServiceError
 
 logger = get_logger(__name__)
 
+PASSAGE_CHARS = 2000
+
+
+def passage_from(text: str) -> str:
+    """Keep a source passage, ending at a nearby sentence boundary if possible."""
+    if len(text) <= PASSAGE_CHARS:
+        return text
+    ends = [
+        match.start() + 1
+        for match in re.finditer(r"[.!?] |\n", text[:PASSAGE_CHARS])
+        if match.start() + 1 >= PASSAGE_CHARS - 400
+    ]
+    return text[:ends[-1] if ends else PASSAGE_CHARS]
+
 #: Per-request timeout for Gemini, in milliseconds as google-genai expects.
 GEMINI_TIMEOUT_MS = 180_000
 
@@ -529,6 +543,7 @@ class QuestionGenerator:
                 # Add reference information
                 q_data["reference"] = {
                     "text": section.text[:200] + "..." if len(section.text) > 200 else section.text,
+                    "passage": passage_from(section.text),
                     "page": section.page,
                     "section": section.section,
                     "paragraph": section.paragraph,

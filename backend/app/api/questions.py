@@ -407,9 +407,15 @@ def key_points(question: Question) -> List[str]:
     return [point for point in points if point]
 
 
+def source_passage(question: Question) -> str:
+    """The stored passage, or the short citation for older questions."""
+    reference = question.source_reference or {}
+    return reference.get("passage") or (reference.get("text") or "").removesuffix("...")
+
+
 def hint_candidates(question: Question) -> List[str]:
     """Sentences a hint may be copied from: the explanation, then the source passage."""
-    source = (question.source_reference or {}).get("text") or ""
+    source = source_passage(question)
     return curation.split_sentences(question.explanation or "") + curation.split_sentences(source)
 
 
@@ -427,9 +433,11 @@ def hint_for(question_text: str, expected: str, candidates: List[str], grade: di
     return curation.select_hint(question_text, expected, candidates, api_key) or fallback_hint(grade)
 
 
-def explanation_to_response(question_text: str, points: List[str], explanation: str, api_key: str) -> dict:
+def explanation_to_response(
+    question_text: str, points: List[str], explanation: str, api_key: str, source: str = ""
+) -> dict:
     """Review an explanation and shape the result. Touches no database state."""
-    review = curation.review_explanation(question_text, points, explanation, api_key)
+    review = curation.review_explanation(question_text, points, explanation, api_key, source=source)
     if not review.checked:
         raise HTTPException(status_code=503, detail="The review service is unavailable.")
     return {

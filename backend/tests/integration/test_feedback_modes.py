@@ -130,7 +130,8 @@ class TestExplainIt:
         _key(monkeypatch)
         seen = {}
 
-        def review(question_text, points, explanation, api_key):
+        def review(question_text, points, explanation, api_key, source=""):
+            assert source
             seen["points"] = points
             return dict(self.REVIEW, passed=True, quality=4)
 

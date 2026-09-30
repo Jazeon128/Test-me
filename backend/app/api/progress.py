@@ -23,6 +23,7 @@ from .questions import (
     hint_for,
     key_points,
     require_typesafe_key,
+    source_passage,
 )
 
 router = APIRouter()
@@ -101,6 +102,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
                 key_points(question),
                 request.written_answer,
                 api_key,
+                source_passage(question),
             )
         else:
             written_grade = await run_in_threadpool(

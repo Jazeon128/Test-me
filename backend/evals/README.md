@@ -2,18 +2,41 @@
 
 Run from `backend/` using the existing virtual environment.
 
+Copy `evals/pilot.local.example.json` to `evals/pilot.local.json` and replace the
+placeholder paths with your source folders. The public `pilot.json` names the
+local file and contains only set names and evaluation settings. The local file
+is gitignored. Loading the pilot fails clearly if the local file is missing.
+
 ```
 .venv/Scripts/python -m evals.run freeze --config evals/pilot.json
+.venv/Scripts/python -m evals.run freeze --config evals/pilot.json --no-screen
 .venv/Scripts/python -m evals.run generate --config evals/pilot.json --run pilot1 --dry-run
 .venv/Scripts/python -m evals.run generate --config evals/pilot.json --run pilot1
 .venv/Scripts/python -m evals.run check --run pilot1
 ```
 
-The last 2 commands make paid calls. Freeze reads source files without copying
+Screened freeze and the last 2 commands make paid calls. `--no-screen` freeze
+and generation dry-run make no API calls. Freeze reads source files without copying
 them. Manifests and run artifacts are ignored by Git. Every call keeps its raw
 response, generation passage, production-parser results, errors, usage and timing.
 Cells resume by model, passage and full prompt hash. Use a new run name when
 changing configuration. Practice-test CSV rows remain reference items.
+
+Default freeze requires the TypeSafe key from the application's secret resolver.
+It selects at most `screen_limit` representative groups per set with the seed
+and extension stratification. The default limit is 40. It scores the first 12000
+characters of parsed section text with the application's `assess_source`, pinned
+to `jev-1.13.0`. Only checked, worth-generating groups enter the final sample.
+Every screened group, including rejected and unchecked groups, is recorded in
+the manifest's `screened` list. `--no-screen` preserves the original sampling.
+
+Scores are cached by source SHA-256 in `evals/corpus/screen_cache.json`, including
+unchecked results. Repeated freezes reuse scores without paid calls. Screening
+uses `screen` phase entries in each set's `screen_ledger.jsonl`. The configured
+budget cap covers all screening ledgers together, separately from generation
+run ledgers. Reservations estimate input characters / 3.5 plus 1024 tokens for
+assessment instructions. Reported Jev input tokens replace that estimate.
+Rejected groups still consume screening cost. Budget refusals remain unchecked.
 
 Dry-run makes 0 network calls. Supply `catalog_prices` in a config as an object
 mapping model IDs to `prompt_per_million` and `completion_per_million` decimal

@@ -31,8 +31,9 @@ def estimate(prompt, model):
 
 
 class Budget:
-    def __init__(self, path, cap):
+    def __init__(self, path, cap, phase=None):
         self.path = path
+        self.phase = phase
         self.cap = price(cap)
         self.entries = {}
         for event in rows(path):
@@ -56,5 +57,8 @@ class Budget:
         self._record(identifier, amount, 'settle')
 
     def _record(self, identifier, amount, event):
-        append(self.path, {'id': identifier, 'amount': str(amount), 'event': event})
+        record = {'id': identifier, 'amount': str(amount), 'event': event}
+        if self.phase:
+            record['phase'] = self.phase
+        append(self.path, record)
         self.entries[identifier] = amount

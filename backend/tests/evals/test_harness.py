@@ -94,10 +94,10 @@ def test_freeze_determinism_and_parse_failure(tmp_path, config):
     (hidden / 'ignored.md').write_text('ignored', encoding='utf-8')
     config['sets'] = {'test': [str(source)]}
     output = tmp_path / 'frozen'
-    reports = corpus.freeze(config, output)
+    reports = corpus.freeze(config, output, no_screen=True)
     path = output / 'test' / 'manifest.json'
     first = path.read_bytes()
-    corpus.freeze(config, output)
+    corpus.freeze(config, output, no_screen=True)
     assert first == path.read_bytes()
     assert reports['test'] == {'files_found': 3, 'groups': 3, 'sampled_sources': 3,
                                'parse_failures': 1, 'reference_items': 1}

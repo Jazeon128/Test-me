@@ -1,11 +1,7 @@
 {
-  "sets": {
-    "pmle": ["D:\\Claude code projects\\PMLE", "C:\\Users\\Raymond Daniel\\Desktop\\Projects\\PMLE"],
-    "gcp_ace": ["C:\\Users\\Raymond Daniel\\Desktop\\GCP ACE"],
-    "aiops": ["C:\\Users\\Raymond Daniel\\Desktop\\Projects\\AIOPS"],
-    "pcep": ["C:\\Users\\Raymond Daniel\\Desktop\\Projects\\PCEP"],
-    "aip_c01": ["D:\\Vault\\aws-genai-dev-pro-aip-c01"]
-  },
+  "sets": ["pmle", "gcp_ace", "aiops", "pcep", "aip_c01"],
+  "local_config": "pilot.local.json",
+  "screen_limit": 40,
   "models": ["google/gemini-3.8-flash", "deepseek/deepseek-v4.1-flash", "qwen/qwen3.8-flash", "openai/gpt-6-luna"],
   "prompt_variants": ["production", "exam_scenario", "code_tracing"],
   "sources_per_set": 8,

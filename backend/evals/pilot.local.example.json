@@ -1,0 +1,23 @@
+{
+  "sets": {
+    "pmle": [
+      "C:\\path\\to\\PMLE"
+    ],
+    "gcp_ace": [
+      "C:\\path\\to\\GCP-ACE"
+    ],
+    "aiops": [
+      "C:\\path\\to\\AIOPS"
+    ],
+    "pcep": [
+      "C:\\path\\to\\PCEP"
+    ],
+    "aip_c01": [
+      "C:\\path\\to\\AIP-C01"
+    ]
+  },
+  "exclude": [
+    "*readme*.md",
+    "*instructions*.md"
+  ]
+}

@@ -88,3 +88,4 @@ apikey figma.txt
 backend/backups/
 backend/evals/corpus/
 backend/evals/runs/
+backend/evals/pilot.local.json

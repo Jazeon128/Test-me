@@ -12,9 +12,13 @@ def main():
     parser.add_argument('--config', default='evals/pilot.json')
     parser.add_argument('--run')
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--no-screen', action='store_true', help='Freeze without paid source screening')
     args = parser.parse_args()
     if args.command == 'freeze':
-        corpus.freeze(load(args.config))
+        try:
+            corpus.freeze(load(args.config), no_screen=args.no_screen)
+        except ValueError as error:
+            parser.error(str(error))
         return
     if not args.run:
         parser.error('--run is required')
@@ -22,7 +26,10 @@ def main():
     if args.command == 'check':
         checks.check(directory)
         return
-    config = load(args.config)
+    try:
+        config = load(args.config)
+    except ValueError as error:
+        parser.error(str(error))
     if args.dry_run:
         # Dry-run must never fetch the catalog. An optional saved public catalog
         # provides prices offline. Missing prices remain unknown, never invented.

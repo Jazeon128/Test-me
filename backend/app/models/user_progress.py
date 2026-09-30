@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, Boolean, JSON, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from datetime import datetime
 from .base import Base, TimestampMixin
 
@@ -47,7 +47,7 @@ class UserProgress(Base, TimestampMixin):
     attempt_history = Column(JSON, nullable=True)  # List of {date, correct, time_seconds, quality}
 
     # Relationships
-    question = relationship("Question", backref="user_progress")
+    question = relationship("Question", backref=backref("user_progress", cascade="all, delete-orphan"))
 
     def __repr__(self):
         return f"<UserProgress Q{self.question_id}: EF={self.easiness_factor:.2f}, Interval={self.interval}>"

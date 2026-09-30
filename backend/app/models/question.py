@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean, JSON, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from .base import Base, TimestampMixin
 
 
@@ -25,7 +25,7 @@ class Question(Base, TimestampMixin):
     difficulty = Column(String(20), default="medium")  # easy, medium, hard
 
     # Relationships
-    document = relationship("Document", backref="questions")
+    document = relationship("Document", backref=backref("questions", cascade="all, delete-orphan"))
     options = relationship(
         "QuestionOption", back_populates="question", cascade="all, delete-orphan"
     )

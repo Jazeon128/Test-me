@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from .base import Base, TimestampMixin
 
 
@@ -52,4 +52,4 @@ class DeckQuestion(Base):
 
     # Relationships
     deck = relationship("Deck", back_populates="deck_questions")
-    question = relationship("Question", backref="deck_questions")
+    question = relationship("Question", backref=backref("deck_questions", cascade="all, delete-orphan"))

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
 import os
 import hashlib
@@ -252,10 +253,11 @@ def schedule_generation(background_tasks: BackgroundTasks, request: dict, job_id
             request["difficulty"],
             request["custom_prompt"],
             job_id,
+            [doc["id"] for doc in documents],
         )
         return (
-            f"{len(documents)} document(s) uploaded. "
-            "Regenerating all questions in deck using combined material."
+            f"Regenerating all questions in the deck from {len(documents)} document(s). "
+            "Your existing questions are kept until the new ones are ready."
         )
 
     for doc in documents:
@@ -374,6 +376,37 @@ def cancel_generation(job_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"job_id": job_id, "status": "cancelled", "deck_removed": deck_removed}
+
+
+def _save_generated_question(db, q_data, document_id, deck) -> Question:
+    """Save a generated question and its children without committing."""
+    from ..models.deck import DeckQuestion
+
+    question = Question(
+        document_id=document_id,
+        question_text=q_data["question"],
+        explanation=q_data.get("explanation", ""),
+        source_reference=q_data.get("reference", {}),
+        difficulty=q_data.get("difficulty", "medium"),
+    )
+    db.add(question)
+    db.flush()
+
+    if deck is not None:
+        next_order = max((link.order for link in deck.deck_questions), default=-1) + 1
+        deck.deck_questions.append(
+            DeckQuestion(question_id=question.id, order=next_order)
+        )
+
+    correct_answer = str(q_data["correct_answer"]).strip().upper()
+    for order, option in enumerate(q_data["options"]):
+        db.add(QuestionOption(
+            question_id=question.id,
+            option_text=option["text"],
+            is_correct=str(option["option"]).strip().upper() == correct_answer,
+            order=order,
+        ))
+    return question
 
 
 def process_document(
@@ -553,34 +586,7 @@ def process_document(
 
         # Save questions to database
         for q_data in questions_data:
-            question = Question(
-                document_id=document_id,
-                question_text=q_data["question"],
-                explanation=q_data.get("explanation", ""),
-                source_reference=q_data.get("reference", {}),
-                difficulty=q_data.get("difficulty", "medium"),
-            )
-            db.add(question)
-            db.flush()  # Get question ID
-
-            # Add to deck if specified
-            if deck:
-                from ..models.deck import DeckQuestion
-
-                deck_question = DeckQuestion(
-                    deck_id=deck.id, question_id=question.id, order=len(deck.deck_questions)
-                )
-                deck.deck_questions.append(deck_question)
-
-            # Add options
-            for i, opt_data in enumerate(q_data["options"]):
-                option = QuestionOption(
-                    question_id=question.id,
-                    option_text=opt_data["text"],
-                    is_correct=(opt_data["option"] == q_data["correct_answer"]),
-                    order=i,
-                )
-                db.add(option)
+            _save_generated_question(db, q_data, document_id, deck)
 
         db.commit()
         logger.info(
@@ -682,138 +688,126 @@ def regenerate_deck_questions(
     difficulty: str,
     custom_prompt: str = None,
     job_id: str = None,
+    new_document_ids: Optional[List[int]] = None,
 ):
-    """Regenerate all questions in a deck from all its documents"""
+    """Generate every source before replacing the deck in one transaction."""
     from ..db import SessionLocal
 
     db = SessionLocal()
+    gen_status = None
+    existing_count = 0
+
+    def add_log(message: str, level: str = "info"):
+        gen_status.add_log(message, level=level)
+        flag_modified(gen_status, "logs")
 
     try:
-        logger.info(f"🔄 Regenerating deck {deck_id}")
-
-        # Get the deck
+        if job_id:
+            gen_status = db.query(GenerationStatus).filter(GenerationStatus.job_id == job_id).first()
         deck = db.query(Test).filter(Test.id == deck_id).first()
         if not deck:
-            logger.error(f"Deck {deck_id} not found")
-            return
+            raise ValueError(f"Deck {deck_id} not found")
 
-        # Get all documents linked to questions in this deck
-        document_ids = set()
-        for question in deck.questions:
-            document_ids.add(question.document_id)
-
-        documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
-        logger.info(f"Found {len(documents)} documents in deck")
-
-        # Delete all existing questions in the deck
-        logger.info(f"Deleting {len(deck.questions)} existing questions")
-        for question in deck.questions:
-            db.delete(question)
-        db.commit()
-
-        # Parse all documents and combine content
-        all_parsed_docs = []
-        combined_text = ""
-
-        parser_map = {
-            DocumentType.PDF: PDFParser(),
-            DocumentType.HTML: HTMLParser(),
-            DocumentType.MARKDOWN: MarkdownParser(),
-            DocumentType.DOCX: DOCXParser(),
-            DocumentType.PPTX: PowerPointParser(),
-            DocumentType.YOUTUBE: YouTubeParser(),
+        old_questions = list(deck.questions)
+        existing_count = len(old_questions)
+        document_ids = sorted({q.document_id for q in old_questions if q.document_id is not None})
+        for document_id in new_document_ids or []:
+            if document_id not in document_ids:
+                document_ids.append(document_id)
+        documents_by_id = {
+            doc.id: doc for doc in db.query(Document).filter(Document.id.in_(document_ids)).all()
         }
+        if len(documents_by_id) != len(document_ids):
+            raise ValueError("A source document was not found")
+        source_documents = [documents_by_id[document_id] for document_id in document_ids]
+        total_requested = num_questions_per_doc * len(source_documents)
 
-        for doc in documents:
-            parser = parser_map[doc.file_type]
-            parsed_doc = parser.parse(doc.file_path)
-            all_parsed_docs.append(parsed_doc)
-            combined_text += (
-                f"\n\n=== {doc.title or doc.original_filename} ===\n\n{parsed_doc.full_text}"
-            )
+        if gen_status:
+            gen_status.status = "processing"
+            gen_status.started_at = datetime.now()
+            gen_status.progress = 10
+            gen_status.current_step = "Parsing documents"
+            gen_status.total_documents = len(source_documents)
+            gen_status.total_questions_requested = total_requested
+            gen_status.total_questions = total_requested
+            gen_status.error_message = None
+            add_log(f"Regenerating deck from {len(source_documents)} document(s)")
+            db.commit()
 
-        logger.info(
-            f"Combined {len(all_parsed_docs)} documents, total {len(combined_text)} characters"
-        )
+        generated = []
+        generator = QuestionGenerator(db=db)
+        for index, document in enumerate(source_documents):
+            if gen_status:
+                gen_status.current_step = f"Parsing document {index + 1} of {len(source_documents)}"
+                add_log(f"Processing document: {document.original_filename}")
+                db.commit()
+            parsed_doc = _parser_for(document.file_type).parse(document.file_path)
 
-        # Analyze existing question styles if available (from database history)
-        example_questions = []
-        # Could query old questions here if we want to learn from previous style
+            def progress_callback(current: int, total: int):
+                if gen_status:
+                    gen_status.current_question = index * num_questions_per_doc + current
+                    gen_status.progress = 20 + int(
+                        60 * (index + current / max(total, 1)) / len(source_documents)
+                    )
+                    gen_status.current_step = (
+                        f"Generating question {current} of {total} for document {index + 1}"
+                    )
+                    db.commit()
 
-        # Generate new questions from combined material
-        total_questions = num_questions_per_doc * len(documents)
-        logger.info(f"🤖 Generating {total_questions} questions from combined material...")
-
-        try:
-            generator = QuestionGenerator(db=db)
-
-            # Create a combined parsed document
-            from ..services.parsers.base_parser import ParsedDocument
-
-            all_sections = []
-            for parsed in all_parsed_docs:
-                all_sections.extend(parsed.sections)
-
-            combined_doc = ParsedDocument(
-                full_text=combined_text,
-                sections=all_sections,
-                title=deck.name,
-                metadata={"regenerated": True, "source_docs": len(documents)},
-            )
-
+            if gen_status:
+                gen_status.current_step = f"Generating questions for document {index + 1}"
+                add_log(f"Starting AI question generation ({num_questions_per_doc} questions)")
+                db.commit()
             questions_data = generator.generate_questions(
-                combined_doc,
-                num_questions=total_questions,
+                parsed_doc,
+                num_questions=num_questions_per_doc,
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
-                example_questions=example_questions,
+                progress_callback=progress_callback,
             )
+            generated.extend((document.id, q_data) for q_data in questions_data)
+            if gen_status:
+                add_log(f"Generated {len(questions_data)} questions from {document.original_filename}")
+                db.commit()
 
-        except ValueError as e:
-            logger.error(f"❌ {str(e)}")
-            return
+        if not generated:
+            raise ValueError("No questions were generated")
 
-        logger.info(f"✅ Generated {len(questions_data)} questions from combined material")
+        if gen_status:
+            gen_status.progress = 90
+            gen_status.current_step = "Saving questions to database"
+            add_log(f"Successfully generated {len(generated)} questions")
+            db.commit()
 
-        # Save new questions
-        for q_data in questions_data:
-            # Associate with first document (or could be smarter about source)
-            question = Question(
-                document_id=documents[0].id if documents else None,
-                question_text=q_data["question"],
-                explanation=q_data.get("explanation", ""),
-                source_reference=q_data.get("reference", {}),
-                difficulty=q_data.get("difficulty", "medium"),
-            )
-            db.add(question)
-            db.flush()
+        # No commits or generation callbacks after deletion until replacement is complete.
+        for question in old_questions:
+            db.delete(question)
+        db.flush()
+        db.expire(deck, ["deck_questions"])
+        for document_id, q_data in generated:
+            _save_generated_question(db, q_data, document_id, deck)
 
-            # Add to deck
-            from ..models.deck import DeckQuestion
-
-            deck_question = DeckQuestion(
-                deck_id=deck.id, question_id=question.id, order=len(deck.deck_questions)
-            )
-            deck.deck_questions.append(deck_question)
-
-            # Add options
-            for i, opt_data in enumerate(q_data["options"]):
-                option = QuestionOption(
-                    question_id=question.id,
-                    option_text=opt_data["text"],
-                    is_correct=(opt_data["option"] == q_data["correct_answer"]),
-                    order=i,
-                )
-                db.add(option)
-
+        if gen_status:
+            gen_status.status = "completed"
+            gen_status.progress = 100
+            gen_status.current_step = "Complete"
+            gen_status.completed_at = datetime.now()
+            gen_status.total_questions_generated = len(generated)
+            add_log(f"Successfully saved {len(generated)} questions to database")
+            add_log("Generation completed successfully")
         db.commit()
-        logger.info(
-            f"✅ Successfully regenerated deck {deck_id} with {len(questions_data)} questions"
-        )
 
-    except Exception as e:
-        logger.error(f"❌ Error regenerating deck {deck_id}: {e}")
-        logger.error(traceback.format_exc())
+    except Exception as error:
         db.rollback()
+        message = f"{error}. The existing {existing_count} questions were kept."
+        logger.error("deck_regeneration_failed", deck_id=deck_id, error_message=message, exc_info=True)
+        if gen_status:
+            gen_status.status = "failed"
+            gen_status.error_message = message
+            gen_status.current_step = "Failed"
+            gen_status.completed_at = datetime.now()
+            gen_status.total_questions_generated = 0
+            add_log(message, level="error")
+            db.commit()
     finally:
         db.close()

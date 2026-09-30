@@ -12,6 +12,9 @@ from app.services.ai.retry import RetryState, _call_with_retry
 from .budget import Budget, BudgetStop, estimate
 from .config import append, digest, rows
 
+# A few upstream providers hang for about 500 s. The SDK default is 600 s.
+REQUEST_TIMEOUT = 120
+
 ADDITIONS = {
     'production': '',
     'exam_scenario': '\nADDITIONAL INSTRUCTIONS:\nAsk scenario-based questions in the style '
@@ -141,7 +144,8 @@ def generate(config, passages, directory, prices, client=None, dry=False):
             if client is None:
                 from app.services.secrets import get_secret
                 client = OpenAI(api_key=get_secret('openrouter'),
-                                base_url='https://openrouter.ai/api/v1', max_retries=0)
+                                base_url='https://openrouter.ai/api/v1', max_retries=0,
+                                timeout=REQUEST_TIMEOUT)
             record = generate_cell(cell, client, budget, model_price)
             append(directory / 'candidates.jsonl', record)
         except BudgetStop as error:

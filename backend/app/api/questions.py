@@ -13,6 +13,8 @@ from ..services.typesafe_key import typesafe_key as _typesafe_key
 
 router = APIRouter()
 
+FLASHCARD_PLACEHOLDER = "Flip to see answer"
+
 
 class QuestionOptionCreate(BaseModel):
     """Schema for creating a question option"""
@@ -361,8 +363,19 @@ class GradeAnswerRequest(BaseModel):
     answer: str
 
 
+def _has_flashcard_answer(question: Question) -> bool:
+    """Whether the single placeholder option has a stored back text."""
+    return (
+        len(question.options) == 1
+        and question.options[0].option_text == FLASHCARD_PLACEHOLDER
+        and bool(question.explanation)
+    )
+
+
 def expected_answer(question: Question) -> str:
-    """The text of the correct option, which is what a written answer is graded against."""
+    """The flashcard back or correct option used to grade a written answer."""
+    if _has_flashcard_answer(question):
+        return question.explanation
     return next((option.option_text for option in question.options if option.is_correct), "")
 
 
@@ -408,7 +421,8 @@ def key_points(question: Question) -> List[str]:
     The correct answer first, then the sentences of the stored explanation.
     """
     points = [expected_answer(question)]
-    points += curation.split_sentences(question.explanation or "")
+    if not _has_flashcard_answer(question):
+        points += curation.split_sentences(question.explanation or "")
     return [point for point in points if point]
 
 

@@ -9,6 +9,7 @@ from ..db import get_db
 from ..models.test import Test
 from ..models.flagged_question import FlaggedQuestion
 from ..utils.http_headers import content_disposition
+from .questions import FLASHCARD_PLACEHOLDER
 
 router = APIRouter()
 
@@ -202,7 +203,7 @@ async def import_csv(
         # Create a default option (since our model requires options for MCQs)
         # For flashcard mode, this might be ignored or used as the "reveal"
         option = QuestionOption(
-            question_id=question.id, option_text="Flip to see answer", is_correct=True, order=0
+            question_id=question.id, option_text=FLASHCARD_PLACEHOLDER, is_correct=True, order=0
         )
         db.add(option)
 

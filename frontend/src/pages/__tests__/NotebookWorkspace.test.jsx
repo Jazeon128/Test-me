@@ -92,7 +92,7 @@ describe('Notebook workspace', () => {
       status: 409, data: { detail: 'Low teachability', unteachable: [{ id: 2, display_name: 'Notes.md', is_teachable: 0.2 }] },
     } } })
     mount(); await loaded(); click('Flashcards'); click('Generate')
-    expect(await screen.findByText('Notes.md: 0.2')).toBeInTheDocument()
+    expect(await screen.findByText('Notes.md: 20% teachable')).toBeInTheDocument()
     click('Generate anyway')
     await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledTimes(2))
     expect(notebooksAPI.generate.mock.calls[1][1]).toEqual({ ...notebooksAPI.generate.mock.calls[0][1], allow_unteachable: true })
@@ -190,6 +190,41 @@ describe('Notebook workspace', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(6000) })
     expect(notebooksAPI.workspace).toHaveBeenCalledTimes(calls)
   })
+  it('stops polling once generation fails', async () => {
+    vi.useFakeTimers()
+    const data = fixture()
+    data.jobs = [{ job_id: 'failed-job', status: 'processing', current_step: 'Reading' }]
+    notebooksAPI.workspace.mockResolvedValue({ data })
+    statusAPI.get.mockResolvedValue({ data: { status: 'failed', error_message: 'No provider' } })
+    mount()
+    await act(async () => {})
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+    expect(screen.getByRole('alert')).toHaveTextContent('No provider')
+    const callsAfterFailure = statusAPI.get.mock.calls.length
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000) })
+    expect(statusAPI.get).toHaveBeenCalledTimes(callsAfterFailure)
+  })
+  it('retains completed warnings and held-back results after polling stops', async () => {
+    vi.useFakeTimers()
+    const data = fixture()
+    data.jobs = [{ job_id: 'held-job', status: 'processing', current_step: 'Reading' }]
+    notebooksAPI.workspace.mockResolvedValueOnce({ data }).mockResolvedValue({ data: fixture() })
+    statusAPI.get.mockResolvedValue({ data: { status: 'completed', deck_id: 9,
+      warnings: ['Some sections failed.'], total_questions_flagged: 1 } })
+    mount()
+    await act(async () => {})
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+    expect(screen.getByRole('alert')).toHaveTextContent('Some sections failed.')
+    expect(screen.getByText(/1 question\(s\) held back by the quality check/)).toBeInTheDocument()
+    const calls = statusAPI.get.mock.calls.length
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000) })
+    expect(statusAPI.get).toHaveBeenCalledTimes(calls)
+    expect(screen.getByRole('alert')).toHaveTextContent('Some sections failed.')
+    click('Continue')
+    expect(screen.queryByText('Some sections failed.')).not.toBeInTheDocument()
+    expect(screen.queryByText(/held back by the quality check/)).not.toBeInTheDocument()
+  })
+
   it('shows failed job messages and no-answer progress', async () => {
     const data = fixture(); data.progress.answered_count = 0
     data.jobs = [{ job_id: 'failed', status: 'failed', error_message: 'Generation exhausted' }]

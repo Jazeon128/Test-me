@@ -1,3 +1,4 @@
+import { serverMessage } from '../utils/serverMessage'
 import Spinner from './Spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
@@ -9,6 +10,7 @@ import HeldBackQuestions from './HeldBackQuestions'
 export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, onOpenCanvas, onBack, embedded = false }) {
     const [deck, setDeck] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState('')
     const [showAddModal, setShowAddModal] = useState(false)
 
     // Tag filtering
@@ -34,17 +36,17 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
     })
 
     const loadDeck = useCallback(async () => {
+        setLoading(true)
+        setLoadError('')
         try {
             const response = await decksAPI.get(deckId)
             setDeck(response.data)
         } catch (error) {
-            console.error('Failed to load deck:', error)
-            alert('Failed to load deck details')
-            onBack()
+            setLoadError(serverMessage(error.originalError || error) || 'Failed to load deck details')
         } finally {
             setLoading(false)
         }
-    }, [deckId, onBack])
+    }, [deckId])
 
     useEffect(() => {
         loadDeck()
@@ -166,6 +168,11 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
             </div>
         )
     }
+
+    if (loadError) return <div className="card">
+        <p role="alert">{loadError}</p>
+        <button className="btn-primary" onClick={loadDeck}>Try again</button>
+    </div>
 
     if (!deck) return null
 

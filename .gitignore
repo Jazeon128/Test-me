@@ -89,3 +89,6 @@ backend/backups/
 backend/evals/corpus/
 backend/evals/runs/
 backend/evals/pilot.local.json
+
+# Codex sandbox pytest folders (owned by the sandbox user)
+.pytest-*/

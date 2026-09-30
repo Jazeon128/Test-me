@@ -1,23 +1,25 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, it, expect } from 'vitest'
-import Decks from '../Decks'
+import DeckEditor from '../DeckEditor'
 import { decksAPI } from '../../services/api'
 
+vi.mock('../HeldBackQuestions', () => ({ default: () => null }))
+
 vi.mock('../../services/api', () => ({
-  decksAPI: { list: vi.fn() },
-  testsAPI: {},
+  decksAPI: { get: vi.fn() },
+  questionsAPI: {}, tagsAPI: {},
 }))
 
 it('shows the load error and retries successfully', async () => {
-  decksAPI.list.mockRejectedValueOnce({ originalError: {
+  decksAPI.get.mockRejectedValueOnce({ originalError: {
     response: { data: { error: { message: 'Service unavailable' } } },
-  } }).mockResolvedValueOnce({ data: [{ id: 1, name: "Science cards", num_questions: 2 }] })
-  render(<MemoryRouter><Decks /></MemoryRouter>)
+  } }).mockResolvedValueOnce({ data: { id: 1, name: "Science cards", num_questions: 0, questions: [], documents: [] } })
+  render(<MemoryRouter><DeckEditor deckId={1} onBack={vi.fn()} /></MemoryRouter>)
   expect(await screen.findByRole('alert')).toHaveTextContent('Service unavailable')
-  expect(screen.queryByText('No decks yet')).not.toBeInTheDocument()
+  expect(screen.queryByText('Science cards')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await screen.findByText('Science cards')).toBeInTheDocument()
-  await waitFor(() => expect(decksAPI.list).toHaveBeenCalledTimes(2))
+  await waitFor(() => expect(decksAPI.get).toHaveBeenCalledTimes(2))
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })

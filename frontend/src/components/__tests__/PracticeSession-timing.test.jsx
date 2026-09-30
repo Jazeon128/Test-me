@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import TestSession from '../TestSession'
+import PracticeSession from '../PracticeSession'
 import { progressAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -37,7 +37,7 @@ afterEach(() => {
 })
 
 async function open() {
-  await act(async () => { render(<MemoryRouter><TestSession /></MemoryRouter>) })
+  await act(async () => { render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>) })
   expect(screen.getByText(question.question_text)).toBeInTheDocument()
 }
 

@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, BookOpen, Layers, Upload, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
+import { BookOpen, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
 import { useTheme } from '../context/useTheme'
 import SearchModal from './SearchModal'
 
 const links = [
   { to: '/', label: 'Notebooks', icon: BookOpen },
-  { to: '/decks', label: 'Decks', icon: Layers },
-  { to: '/progress', label: 'Progress', icon: TrendingUp },
 ]
 
 export default function Layout({ children }) {
@@ -71,7 +69,6 @@ export default function Layout({ children }) {
             </button>
             <Link to="/settings" className="icon-button nav-settings" aria-label="Settings"
               aria-current={active('/settings') ? 'page' : undefined}><Settings size={19} /></Link>
-            <Link to="/upload" className="btn-primary hidden sm:inline-flex nav-upload"><Upload size={16} />Add material</Link>
             <button className="icon-button mobile-menu-toggle" aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={isMobileMenuOpen} aria-controls="mobile-navigation"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
@@ -80,7 +77,7 @@ export default function Layout({ children }) {
           </div>
           {isMobileMenuOpen && (
             <div id="mobile-navigation" className="mobile-navigation lg:hidden">
-              {[...links, { to: '/upload', label: 'Add material', icon: Upload }, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => (
+              {[...links, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => (
                 <Link key={to} to={to} className={`nav-link ${active(to) ? 'is-active' : ''}`}
                   aria-current={active(to) ? 'page' : undefined}>
                   <Icon size={18} />{label}

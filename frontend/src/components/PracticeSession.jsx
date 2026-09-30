@@ -83,6 +83,10 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     return () => clearInterval(timerRef.current)
   }, [currentIndex, showResult, questions, typed, handleSubmit])
 
+  useEffect(() => {
+    if (!loading && questions.length === 0 && !embedded) onEmpty()
+  }, [loading, questions.length, embedded, onEmpty])
+
   const handleGrading = async (quality) => {
     if (submitLock.current) return
     submitLock.current = true
@@ -158,17 +162,12 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
   }
 
   if (questions.length === 0) {
+    if (!embedded) return null
     return (
       <div className="max-w-2xl mx-auto px-4">
         <div className="glass-panel bg-white rounded-lg shadow p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No questions available</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{embedded ? 'This deck has no questions yet. Generate some in the Studio.' : 'Upload a document to generate questions first.'}</p>
-          {!embedded && <button
-            onClick={() => onEmpty()}
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition"
-          >
-            Upload Document
-          </button>}
+          <p className="text-gray-600 dark:text-gray-300 mb-6">This deck has no questions yet. Generate some in the Studio.</p>
         </div>
       </div>
     )

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import TestSession from '../TestSession'
+import PracticeSession from '../PracticeSession'
 import { progressAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 async function openWrittenMode() {
-  render(<MemoryRouter><TestSession /></MemoryRouter>)
+  render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
   await screen.findByText(question.question_text)
   fireEvent.change(screen.getByLabelText('Answer mode'), { target: { value: 'written' } })
   fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'Python' } })
@@ -55,7 +55,7 @@ describe('Written practice', () => {
   })
 
   it('submits an empty selection when the multiple-choice timer expires', async () => {
-    render(<MemoryRouter><TestSession /></MemoryRouter>)
+    render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
     await screen.findByText(question.question_text)
     vi.useFakeTimers()
     // Restart the timer after installing the fake clock.

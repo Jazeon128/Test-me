@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import TestSession from '../TestSession'
+import PracticeSession from '../PracticeSession'
 import { progressAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -25,7 +25,7 @@ beforeEach(() => {
 })
 
 async function open(mode, text) {
-  render(<MemoryRouter><TestSession /></MemoryRouter>)
+  render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
   await screen.findByText(question.question_text)
   fireEvent.change(screen.getByLabelText('Answer mode'), { target: { value: mode } })
   fireEvent.change(screen.getByRole('textbox'), { target: { value: text } })

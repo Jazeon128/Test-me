@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, it, expect } from 'vitest'
-import Progress from '../Progress'
+import ProgressOverview from '../ProgressOverview'
 import { progressAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -13,7 +13,7 @@ it('shows the load error and retries successfully', async () => {
   progressAPI.getStats.mockRejectedValueOnce({ originalError: {
     response: { data: { error: { message: 'Service unavailable' } } },
   } }).mockResolvedValueOnce({ data: { questions_due: 4 } })
-  render(<MemoryRouter><Progress /></MemoryRouter>)
+  render(<MemoryRouter><ProgressOverview /></MemoryRouter>)
   expect(await screen.findByRole('alert')).toHaveTextContent('Service unavailable')
   expect(screen.queryByText('All caught up! Great job!')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }))

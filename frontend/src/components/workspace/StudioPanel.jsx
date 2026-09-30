@@ -5,6 +5,7 @@ import GenerationProgress from '../GenerationProgress'
 import ArtifactList from './ArtifactList'
 
 export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, progress, refresh, onJob, open, onCanvas }) {
+  const [dismissed, setDismissed] = useState([])
   const [kind, setKind] = useState(null)
   const [count, setCount] = useState(10)
   const [difficulty, setDifficulty] = useState('mixed')
@@ -54,15 +55,21 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
       <button className="btn-primary" disabled={busy || !sourceIds.length}>{!sourceIds.length ? 'Tick at least one source' : busy ? 'Generating...' : 'Generate'}</button>
     </form>}
     {pending && <div role="alert" className="workspace-warning mt-3">
-      {unteachable.map(source => <p key={source.id}>{source.display_name}: {source.is_teachable}</p>)}
+      {unteachable.map(source => <p key={source.id}>{source.display_name}: {Math.round((source.is_teachable || 0) * 100)}% teachable{source.is_transcript > 0.5 ? ', reads like a transcript' : ''}</p>)}
       <button className="btn-primary" disabled={busy || !sourceIds.length} onClick={() => generate({ ...pending, allow_unteachable: true })}>Generate anyway</button>
+      <button onClick={() => { setPending(null); setUnteachable([]) }}>Cancel generation</button>
     </div>}
     {error && <p role="alert" className="workspace-error mt-3">{error}</p>}
     <div className="mt-4">
-      {jobs.map(job => <div key={job.job_id || job.id}>
+      {jobs.filter(job => !dismissed.includes(job.job_id || job.id)).map(job => <div key={job.job_id || job.id}>
         {job.status === 'failed' ? <p role="alert" className="workspace-error">{job.error_message || 'Generation failed'}</p>
-          : <GenerationProgress status={job} />}
-        {job.warnings?.map((warning, index) => <p key={index}>{warning}</p>)}
+          : job.status === 'completed' ? <p>Generation complete</p> : <GenerationProgress status={job} />}
+        {job.warnings?.map((warning, index) => <p role="alert" className="bg-amber-50 text-amber-800 p-3 rounded-lg" key={index}>{warning}</p>)}
+        {job.total_questions_flagged > 0 && <p>{job.total_questions_flagged} question(s) held back by the quality check.
+          <button className="underline" onClick={() => open(job.deck_id, 'edit')}>Review them in the deck editor.</button>
+        </p>}
+        {job.status === 'completed' && (job.warnings?.length > 0 || job.total_questions_flagged > 0) &&
+          <button onClick={() => setDismissed(current => [...current, job.job_id || job.id])}>Continue</button>}
       </div>)}
     </div>
     <ArtifactList artifacts={artifacts} progress={progress} open={open} />

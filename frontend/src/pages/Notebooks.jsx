@@ -1,6 +1,7 @@
+import ProgressOverview from '../components/ProgressOverview'
 import { displayIcon } from '../utils/displayIcon'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, FileText, Network, Layers, Loader2, Flame, ArrowUpRight } from 'lucide-react'
 import { notebooksAPI, progressAPI } from '../services/api'
 
@@ -15,6 +16,7 @@ const ICONS = ['📘', '🧠', '⚙️', '🔬', '🗺️', '📊', '🧩', '�
 
 export default function Notebooks() {
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const [notebooks, setNotebooks] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -49,6 +51,12 @@ export default function Notebooks() {
     load()
     loadProgress()
   }, [])
+
+  useEffect(() => {
+    if (!loading && hash === '#progress') document.getElementById('progress')?.scrollIntoView?.()
+  }, [hash, loading])
+
+  const due = Object.values(progress).reduce((total, row) => total + (row.questions_due || 0), 0)
 
   const create = async (event) => {
     event.preventDefault()
@@ -162,6 +170,12 @@ export default function Notebooks() {
         </form>
       )}
 
+      {due > 0 && <section aria-label="Review due" className="card mb-6">
+        <h2 className="text-xl font-bold">Review due</h2>
+        <p>{due} questions due</p>
+        <button className="btn-primary mt-3" onClick={() => navigate('/review')}>Review due</button>
+      </section>}
+
       {notebooks.length === 0 && !creating ? (
         <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
           <p className="font-medium text-gray-900 dark:text-white">No notebooks yet</p>
@@ -207,6 +221,9 @@ export default function Notebooks() {
           ))}
         </div>
       )}
+      <section id="progress" aria-label="Progress" className="mt-8">
+        <ProgressOverview notebookStats={Object.values(progress)} />
+      </section>
     </div>
   )
 }
@@ -215,7 +232,7 @@ export default function Notebooks() {
  * The progress strip on a notebook card.
  *
  * Answers "where do I stand on this subject" at a glance. Overall figures
- * across every notebook stay on the Progress page.
+ * across every notebook appear below the notebook grid.
  */
 function NotebookProgress({ stats }) {
   // No stats row yet, or a notebook holding no questions: show nothing rather

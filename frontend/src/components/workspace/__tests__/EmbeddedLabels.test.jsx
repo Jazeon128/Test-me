@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PracticeSession from '../../PracticeSession'
 import DeckEditor from '../../DeckEditor'
@@ -24,19 +24,17 @@ describe('Embedded labels', () => {
     expect(await screen.findByText('This deck has no questions yet. Generate some in the Studio.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Upload/ })).not.toBeInTheDocument()
   })
-  it('keeps standalone practice wording and its Upload callback', async () => {
+  it('notifies the review owner when standalone practice is empty', async () => {
     const onEmpty = vi.fn()
-    render(<PracticeSession deckId={9} onExit={vi.fn()} onEmpty={onEmpty} />)
-    const upload = await screen.findByRole('button', { name: 'Upload Document' })
-    expect(screen.getByText('Upload a document to generate questions first.')).toBeInTheDocument()
-    fireEvent.click(upload)
-    expect(onEmpty).toHaveBeenCalledTimes(1)
+    render(<PracticeSession deckId={null} onExit={vi.fn()} onEmpty={onEmpty} />)
+    await waitFor(() => expect(onEmpty).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('button', { name: 'Upload Document' })).not.toBeInTheDocument()
   })
   it('hides embedded editor navigation and uses Add a source wording', async () => {
     render(<DeckEditor embedded deckId={9} onBack={vi.fn()} />)
     expect(await screen.findByText('No questions in this deck yet. Add one manually or add a source!')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Back to Decks' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/upload a document/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Upload a document/i)).not.toBeInTheDocument()
   })
   it('keeps standalone editor navigation, wording and its Back callback', async () => {
     const onBack = vi.fn()

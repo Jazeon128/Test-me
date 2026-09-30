@@ -1,15 +1,12 @@
 import Spinner from './components/Spinner'
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import Layout from './components/Layout'
 import Notebooks from './pages/Notebooks'
+import Review from './pages/Review'
+import RedirectDeck from './components/RedirectDeck'
 import NotebookWorkspace from './pages/NotebookWorkspace'
-import Upload from './pages/Upload'
-import TestSession from './pages/TestSession'
-import Progress from './pages/Progress'
-import Decks from './pages/Decks'
 import Settings from './pages/Settings'
-import DeckDetails from './pages/DeckDetails'
 
 // The canvas pulls in React Flow and elkjs, roughly 1.6 MB. Loading it lazily
 // keeps that off every other page in the app.
@@ -70,11 +67,12 @@ function App() {
         <Routes>
           <Route path="/" element={<Notebooks />} />
           <Route path="/notebooks/:notebookId" element={<NotebookWorkspace />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/decks" element={<Decks />} />
-          <Route path="/decks/:deckId" element={<DeckDetails />} />
-          <Route path="/decks/:deckId/practice" element={<TestSession />} />
-          <Route path="/practice" element={<TestSession />} />
+          <Route path="/upload" element={<RedirectUpload />} />
+          <Route path="/decks" element={<Navigate to="/" replace />} />
+          <Route path="/decks/:deckId" element={<RedirectDeck view="edit" />} />
+          <Route path="/decks/:deckId/practice" element={<RedirectDeck view="practice" />} />
+          <Route path="/practice" element={<Navigate to="/review" replace />} />
+          <Route path="/review" element={<Review />} />
           <Route
             path="/canvas"
             element={
@@ -91,7 +89,7 @@ function App() {
               </Suspense>
             }
           />
-          <Route path="/progress" element={<Progress />} />
+          <Route path="/progress" element={<Navigate to="/#progress" replace />} />
           <Route path="/settings" element={<Settings />} />
 
           {/* Unknown paths land on the notebook list rather than an empty
@@ -102,6 +100,12 @@ function App() {
       </Layout>
     </ThemeProvider>
   )
+}
+
+function RedirectUpload() {
+  const [params] = useSearchParams()
+  const notebook = params.get('notebook')
+  return <Navigate to={notebook ? `/notebooks/${encodeURIComponent(notebook)}` : '/'} replace />
 }
 
 function CanvasLoading() {

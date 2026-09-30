@@ -55,6 +55,7 @@ async def list_decks(skip: int = 0, limit: int = 100, db: Session = Depends(get_
     return [
         {
             "id": deck.id,
+            "notebook_id": deck.notebook_id,
             "name": deck.name,
             "description": deck.description,
             "num_questions": len(deck.questions),
@@ -106,6 +107,7 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
 
     return {
         "id": deck.id,
+        "notebook_id": deck.notebook_id,
         "name": deck.name,
         "description": deck.description,
         "num_questions": len(deck.questions),

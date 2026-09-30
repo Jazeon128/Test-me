@@ -44,6 +44,8 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
           {source.status === 'processing' ? <p className="workspace-badge"><Loader2 size={14} className="workspace-reading" />Reading...</p>
             : source.status === 'failed' ? <div className="workspace-error"><span className="workspace-badge">Failed</span><p className="text-sm">{source.error_message || 'Failed'}</p></div>
               : <p className="workspace-badge">Ready</p>}
+          {source.status === 'ready' && source.preflight?.checked === false &&
+            <p>Could not check {source.display_name} before generating</p>}
           {source.status === 'ready' && source.preflight?.worth_generating === false &&
             <p className="workspace-badge workspace-warning">May not be worth studying</p>}
         </li>

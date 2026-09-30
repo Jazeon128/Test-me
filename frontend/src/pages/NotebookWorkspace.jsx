@@ -73,7 +73,7 @@ function Workspace({ notebookId }) {
         if (!alive.current) return
         const merged = new Map(data.jobs.map(job => [jobId(job), job]))
         for (const [id, status] of statuses) {
-          if (running(status) || status.status === 'failed') merged.set(id, status)
+          if (running(status) || status.status === 'failed' || (status.status === 'completed' && (status.warnings?.length || status.total_questions_flagged > 0))) merged.set(id, status)
           else { merged.delete(id); localJobs.current.delete(id) }
         }
         // Retain failures after they leave the workspace's running list.

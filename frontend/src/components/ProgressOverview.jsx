@@ -1,14 +1,14 @@
-import Spinner from '../components/Spinner'
+import Spinner from './Spinner'
 import { serverMessage } from '../utils/serverMessage'
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useNavigate } from 'react-router-dom'
 import { progressAPI, activityAPI } from '../services/api'
-import HeatMap from '../components/HeatMap'
-import Mascot from '../components/Mascot'
+import HeatMap from './HeatMap'
+import Mascot from './Mascot'
 import { TrendingUp, Award, Clock, Target, Flame, Trophy } from 'lucide-react'
 
-export default function Progress() {
+export default function ProgressOverview({ notebookStats = [] }) {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [activity, setActivity] = useState(null)
@@ -59,7 +59,7 @@ export default function Progress() {
   return (
     <div className="max-w-6xl mx-auto px-4 pb-12">
       <div className="mb-8">
-        <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">Your progress</h1>
+        <h2 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">Progress</h2>
 
         <div className="glass-panel rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-6">
@@ -173,7 +173,7 @@ export default function Progress() {
 
             {stats?.questions_due > 0 ? (
               <button
-                onClick={() => navigate('/practice')}
+                onClick={() => navigate('/review')}
                 className="w-full btn-primary py-3 text-lg shadow-lg shadow-primary-500/20"
               >
                 Start Review Session
@@ -189,6 +189,17 @@ export default function Progress() {
           </div>
         </div>
       </div>
+
+      {notebookStats.length > 0 && <div className="card mt-8">
+        <h2 className="text-xl font-bold mb-4">Progress by notebook</h2>
+        <table className="w-full text-left">
+          <thead><tr><th>Notebook</th><th>Mastered</th><th>Due</th></tr></thead>
+          <tbody>{notebookStats.map(row => <tr key={row.notebook_id}>
+            <td>{row.name}</td><td>{row.questions_mastered} / {row.total_questions}</td>
+            <td>{row.questions_due}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
 
       {/* Awards come from the server now: earned once, stored, and shown with
           the locked ones after them. The previous block computed a parallel set

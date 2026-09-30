@@ -86,3 +86,5 @@ apikey figma.txt
 
 # Database backups, any name
 backend/backups/
+backend/evals/corpus/
+backend/evals/runs/

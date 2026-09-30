@@ -1,7 +1,11 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
+from pathlib import Path, PurePosixPath
 from typing import List
 import os
 import sys
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -30,6 +34,8 @@ class Settings(BaseSettings):
 
     # Application
     DEBUG: bool = True
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     CORS_ORIGINS_STR: str = "http://localhost:5173,http://localhost:3000"
     ENVIRONMENT: str = "development"  # development, staging, production
@@ -38,6 +44,22 @@ class Settings(BaseSettings):
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     UPLOAD_DIR: str = "./uploads"
+
+    @model_validator(mode="after")
+    def resolve_paths(self) -> "Settings":
+        sqlite_prefix = "sqlite:///"
+        if self.DATABASE_URL.startswith(sqlite_prefix):
+            database_path = self.DATABASE_URL[len(sqlite_prefix):]
+            if (
+                database_path
+                and database_path != ":memory:"
+                and not Path(database_path).is_absolute()
+                and not PurePosixPath(database_path).is_absolute()
+            ):
+                self.DATABASE_URL = sqlite_prefix + (BACKEND_DIR / database_path).resolve().as_posix()
+        if not Path(self.UPLOAD_DIR).is_absolute():
+            self.UPLOAD_DIR = str((BACKEND_DIR / self.UPLOAD_DIR).resolve())
+        return self
 
     @property
     def CORS_ORIGINS(self) -> List[str]:
@@ -116,7 +138,7 @@ class Settings(BaseSettings):
             )
 
     class Config:
-        env_file = ".env"
+        env_file = str(BACKEND_DIR / ".env")
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields in .env file
 

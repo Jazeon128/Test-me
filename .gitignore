@@ -80,3 +80,6 @@ tmp/
 # Secrets - never commit
 apikey figma.txt
 *.token
+
+# Codex sandbox test temp folders (created under the sandbox user, remove as admin)
+.test-tmp/

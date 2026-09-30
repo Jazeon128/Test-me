@@ -51,22 +51,41 @@ class Answers:
     duration_ms: int = 0
     input_tokens: int = 0
 
+    def _unit(self, question_id: str) -> Dict:
+        unit = self.raw.get(question_id, {}) if isinstance(self.raw, dict) else {}
+        return unit if isinstance(unit, dict) else {}
+
+    def _number(self, question_id: str, name: str, default: float) -> float:
+        try:
+            return float(self._unit(question_id).get(name, default))
+        except (ValueError, TypeError):
+            return default
+
     def choice(self, question_id: str, default: Optional[str] = None) -> Optional[str]:
-        return self.raw.get(question_id, {}).get("choice", default)
+        value = self._unit(question_id).get("choice", default)
+        return value if isinstance(value, str) else default
 
     def probabilities(self, question_id: str) -> Dict[str, float]:
-        raw = self.raw.get(question_id, {}).get("probabilities") or {}
-        return {key: float(value) for key, value in raw.items()}
+        raw = self._unit(question_id).get("probabilities")
+        if not isinstance(raw, dict):
+            return {}
+        probabilities = {}
+        for key, value in raw.items():
+            try:
+                probabilities[key] = float(value)
+            except (ValueError, TypeError):
+                continue
+        return probabilities
 
     def confidence(self, question_id: str) -> float:
-        return float(self.raw.get(question_id, {}).get("confidence", 0.0))
+        return self._number(question_id, "confidence", 0.0)
 
     def noul(self, question_id: str, default: float = 0.0) -> float:
         """The probability of yes. Not a confidence: 0.5 means genuinely torn."""
-        return float(self.raw.get(question_id, {}).get("noul", default))
+        return self._number(question_id, "noul", default)
 
     def score(self, question_id: str, default: float = 0.0) -> float:
-        return float(self.raw.get(question_id, {}).get("score", default))
+        return self._number(question_id, "score", default)
 
 
 def ask(
@@ -99,9 +118,18 @@ def ask(
         logger.warning("jev_unavailable", label=label, error=str(exc))
         raise JevUnavailable(str(exc)) from exc
 
-    body = response.json()
-    duration_ms = int((time.time() - started) * 1000)
-    input_tokens = int(body.get("usage", {}).get("input_tokens", 0))
+    try:
+        body = response.json()
+        duration_ms = int((time.time() - started) * 1000)
+        input_tokens = int(body.get("usage", {}).get("input_tokens", 0))
+        raw = body.get("answers", {})
+        if not isinstance(raw, dict):
+            raise TypeError("answers must be a dict")
+        answers = Answers(raw=raw, duration_ms=duration_ms, input_tokens=input_tokens)
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        error = f"Malformed Jev response: {exc}"
+        logger.warning("jev_unavailable", label=label, error=error)
+        raise JevUnavailable(error) from exc
 
     logger.info(
         "jev_answered",
@@ -111,11 +139,7 @@ def ask(
         input_tokens=input_tokens,
     )
 
-    return Answers(
-        raw=body.get("answers", {}) or {},
-        duration_ms=duration_ms,
-        input_tokens=input_tokens,
-    )
+    return answers
 
 
 def trim(text: str, limit: int) -> str:

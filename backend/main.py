@@ -229,4 +229,4 @@ app.include_router(activity.router, prefix="/api/activity", tags=["activity"])
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=config_settings.HOST, port=config_settings.PORT)

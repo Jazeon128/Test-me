@@ -112,7 +112,7 @@ describe('BackendManager Unit Tests', () => {
       expect(env).toHaveProperty('HOST');
       expect(env).toHaveProperty('DATABASE_URL');
       expect(env).toHaveProperty('UPLOAD_DIR');
-      expect(env).toHaveProperty('CORS_ENABLED');
+      expect(env).toHaveProperty('DESKTOP_MODE');
     });
 
     test('should set PORT to the current port', () => {
@@ -127,10 +127,10 @@ describe('BackendManager Unit Tests', () => {
       expect(env.HOST).toBe('127.0.0.1');
     });
 
-    test('should disable CORS', () => {
+    test('should enable desktop origins', () => {
       manager.port = 8000;
       const env = manager._getBackendEnvironment();
-      expect(env.CORS_ENABLED).toBe('false');
+      expect(env.DESKTOP_MODE).toBe('true');
     });
 
     test('should set DATABASE_URL with correct path', () => {

@@ -28,7 +28,10 @@ const ensureBaseURL = () => {
 }
 
 api.interceptors.request.use(async (config) => {
-  await ensureBaseURL()
+  const baseURL = await ensureBaseURL()
+  if (!/^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(config.url || '')) {
+    config.baseURL = baseURL
+  }
   return config
 })
 
@@ -154,9 +157,10 @@ export const updateBaseURL = async () => {
   if (window.electronAPI) {
     try {
       const response = await window.electronAPI.getBackendPort()
-      if (response.success && response.data.baseURL) {
-        api.defaults.baseURL = response.data.baseURL
-        return response.data.baseURL
+      const baseURL = response.data?.baseURL || response.data?.baseUrl
+      if (response.success && baseURL) {
+        api.defaults.baseURL = baseURL
+        return baseURL
       }
     } catch (error) {
       console.error('Failed to update backend URL:', error)

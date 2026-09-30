@@ -334,7 +334,8 @@ describe('IPC Handlers', () => {
 
       expect(result.success).toBe(true);
       expect(result.data.port).toBe(8000);
-      expect(result.data.baseUrl).toBe('http://127.0.0.1:8000');
+      expect(result.data.baseURL).toBe('http://127.0.0.1:8000/api');
+      expect(result.data.baseUrl).toBe(result.data.baseURL);
     });
 
     test('should handle missing backend manager', async () => {
@@ -470,6 +471,13 @@ describe('IPC Handlers', () => {
   });
 
   describe('set-api-key handler', () => {
+    beforeEach(() => {
+      jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true });
+    });
+
+    afterEach(() => {
+      global.fetch.mockRestore();
+    });
     test('should set an API key', async () => {
       const result = await ipcHandlers['set-api-key'](null, {
         provider: 'openai',

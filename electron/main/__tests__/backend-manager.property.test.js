@@ -101,7 +101,7 @@ describe('BackendManager Property-Based Tests', () => {
             // Verify required environment variables
             expect(env.PORT).toBe('8000');
             expect(env.HOST).toBe('127.0.0.1');
-            expect(env.CORS_ENABLED).toBe('false');
+            expect(env.DESKTOP_MODE).toBe('true');
             expect(env.DATABASE_URL).toContain('sqlite:///');
             expect(env.DATABASE_URL).toContain('flashlearn.db');
             expect(env.UPLOAD_DIR).toContain('uploads');

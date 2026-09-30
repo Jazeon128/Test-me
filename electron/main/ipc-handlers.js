@@ -249,7 +249,8 @@ function setupIpcHandlers({ mainWindow, backendManager, settingsManager, logger,
         success: true,
         data: {
           port,
-          baseUrl: `http://127.0.0.1:${port}`,
+          baseURL: `http://127.0.0.1:${port}/api`,
+          baseUrl: `http://127.0.0.1:${port}/api`,
         },
       };
     } catch (error) {
@@ -346,6 +347,32 @@ function setupIpcHandlers({ mainWindow, backendManager, settingsManager, logger,
 
       // This will validate and throw if invalid
       settingsManager.setApiKey(provider, key);
+
+      const port = backendManager && backendManager.getPort();
+      if (!port) {
+        throw new Error('Backend not running');
+      }
+      const baseURL = `http://127.0.0.1:${port}/api`;
+      const response = await fetch(`${baseURL}/settings/ai-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: provider === 'google' ? 'gemini' : provider,
+          api_key: key,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        let message = text || `Backend returned HTTP ${response.status}`;
+        try {
+          const data = JSON.parse(text);
+          message = data.error?.message || data.detail || data.message || message;
+        } catch {
+          // Preserve a plain-text backend error message.
+        }
+        throw new Error(message);
+      }
 
       return {
         success: true,
@@ -455,7 +482,8 @@ function setupIpcHandlers({ mainWindow, backendManager, settingsManager, logger,
         success: true,
         data: {
           port,
-          baseUrl: `http://127.0.0.1:${port}`,
+          baseURL: `http://127.0.0.1:${port}/api`,
+          baseUrl: `http://127.0.0.1:${port}/api`,
         },
       };
     } catch (error) {

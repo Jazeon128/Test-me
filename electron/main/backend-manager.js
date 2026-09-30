@@ -262,8 +262,8 @@ class BackendManager {
     // Set host to localhost only
     env.HOST = '127.0.0.1';
     
-    // Disable CORS in desktop mode
-    env.CORS_ENABLED = 'false';
+    // Allow the packaged file page's opaque origin in the backend.
+    env.DESKTOP_MODE = 'true';
     
     return env;
   }

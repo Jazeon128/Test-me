@@ -87,10 +87,14 @@ app = FastAPI(
 # Request logging middleware (add before CORS)
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS middleware
+# CORS middleware: file pages have an opaque origin only allowed in desktop mode.
+allowed_origins = list(config_settings.CORS_ORIGINS)
+if os.environ.get("DESKTOP_MODE") == "true":
+    allowed_origins.append("null")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config_settings.CORS_ORIGINS,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

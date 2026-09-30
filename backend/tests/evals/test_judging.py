@@ -253,3 +253,11 @@ def test_resume_only_rubric(run):
     primary = [r for r in rows(directory / 'judges.jsonl') if r['judge'] == config['judge']['primary']]
     assert len(primary) == 1 and primary[0]['good']
     assert primary[0]['calls']['solve'] == stages[0]
+
+
+def test_adding_judge_settings_does_not_block_resuming_generation():
+    from evals.run import generation_settings
+    before = {'seed': 1, 'models': ['a'], 'budget_cap': '3.00'}
+    after = dict(before, judge={'primary': 'x'}, judge_budget='2.00', judge_per_cell=20)
+    assert generation_settings(before) == generation_settings(after)
+    assert generation_settings(before) != generation_settings(dict(before, seed=2))

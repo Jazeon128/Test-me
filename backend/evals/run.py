@@ -6,6 +6,11 @@ from . import checks, corpus, generate, judge, report, review
 from .config import load, run_path, write
 
 
+def generation_settings(config):
+    """Settings that change what generate produces. Judge settings may change mid-run."""
+    return {key: value for key, value in config.items() if not key.startswith('judge')}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['freeze', 'generate', 'check', 'judge', 'report', 'agreement'])
@@ -48,7 +53,7 @@ def generate_run(args, directory, parser):
         from app.services.ai.openrouter_catalog import get_models
         prices = {m['id']: m for m in get_models()['models']}
         snapshot = directory / 'config.json'
-        if snapshot.exists() and load(snapshot) != config:
+        if snapshot.exists() and generation_settings(load(snapshot)) != generation_settings(config):
             parser.error('Run configuration changed. Use a new run name.')
         write(snapshot, config)
     generate.generate(config, corpus.frozen(config), directory, prices, dry=args.dry_run)

@@ -29,7 +29,7 @@ export default function SearchModal({ isOpen, onClose }) {
 
             setLoading(true)
             try {
-                const response = await api.get(`/search?q=${encodeURIComponent(query)}`)
+                const response = await api.get('/search/', { params: { q: query } })
                 setResults(response.data.results)
                 setSelectedIndex(0)
             } catch (error) {

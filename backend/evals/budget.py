@@ -36,8 +36,25 @@ class Budget:
         self.phase = phase
         self.cap = price(cap)
         self.entries = {}
+        unresolved = set()
         for event in rows(path):
+            if event['event'] == 'abandon':
+                self.entries.pop(event['id'], None)
+                self.entries[event['id'] + ':abandoned'] = Decimal(event['amount'])
+                unresolved.discard(event['id'])
+                continue
             self.entries[event['id']] = Decimal(event['amount'])
+            if event['event'] == 'reserve':
+                unresolved.add(event['id'])
+            else:
+                unresolved.discard(event['id'])
+        # A reservation left open by a killed run may or may not have been
+        # billed. Count it as spent, the safe side, and free its id for a retry.
+        for identifier in sorted(unresolved):
+            amount = self.entries.pop(identifier)
+            self._record(identifier, amount, 'abandon')
+            self.entries.pop(identifier, None)
+            self.entries[identifier + ':abandoned'] = amount
 
     @property
     def total(self):

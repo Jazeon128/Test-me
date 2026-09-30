@@ -343,3 +343,19 @@ def test_retry_reserves_each_attempt(tmp_path, config, passage, prices, question
     assert len(calls) == 1
     assert budget.total == estimate(cell['prompt'], prices['test/model']) + Decimal('.001')
     assert Decimal(record['total_cost']) == budget.total
+
+
+def test_open_reservation_from_a_killed_run_counts_as_spent_and_can_retry(tmp_path):
+    from decimal import Decimal
+    from evals.budget import Budget
+    ledger = tmp_path / 'ledger.jsonl'
+    first = Budget(ledger, '1.00')
+    first.reserve('call:1', '0.30')
+    # The process dies here: no settle.
+    second = Budget(ledger, '1.00')
+    assert second.total == Decimal('0.30')
+    second.reserve('call:1', '0.30')
+    second.settle('call:1', '0.10')
+    assert second.total == Decimal('0.40')
+    third = Budget(ledger, '1.00')
+    assert third.total == Decimal('0.40')

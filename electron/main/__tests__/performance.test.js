@@ -9,6 +9,9 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Mock the cached machine-ID lookup so this suite measures store loading.
+jest.mock('node-machine-id', () => ({ machineIdSync: jest.fn(() => 'fake-machine-id') }));
+
 // Mock electron modules
 jest.mock('electron', () => ({
   app: {

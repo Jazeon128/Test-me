@@ -60,9 +60,12 @@ describe('Data Persistence Properties', () => {
 
             // Write uploaded files
             const uploadsPath = manager1.getUploadsPath();
+            const expectedContents = new Map();
             for (const file of data.files) {
               const filePath = path.join(uploadsPath, file.filename);
               fs.writeFileSync(filePath, file.content);
+              expect(fs.readFileSync(filePath, 'utf8')).toBe(file.content);
+              expectedContents.set(file.filename, file.content);
             }
 
             // Verify data exists in session 1
@@ -84,11 +87,21 @@ describe('Data Persistence Properties', () => {
               const filePath = path.join(persistedUploadsPath, file.filename);
               expect(fs.existsSync(filePath)).toBe(true);
               const persistedContent = fs.readFileSync(filePath, 'utf8');
-              expect(persistedContent).toBe(file.content);
+              // Duplicate filenames overwrite earlier contents in session 1.
+              expect(persistedContent).toBe(expectedContents.get(file.filename));
             }
           }
         ),
-        { numRuns: 100 }
+        {
+          numRuns: 100,
+          examples: [[{
+            dbContent: 'fake-database-content',
+            files: [
+              { filename: 'a.txt', content: '' },
+              { filename: 'a.txt', content: ' ' }
+            ]
+          }]]
+        }
       );
     });
 

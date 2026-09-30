@@ -20,10 +20,10 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers())
 
-async function completedUpload(count, notebook = false) {
+async function completedUpload(count, notebook = false, warnings) {
   statusAPI.get.mockResolvedValue({ data: {
     status: 'completed', deck_id: 4, progress: 100, current_step: 'Complete', logs: [],
-    total_questions_generated: 2, total_questions_flagged: count,
+    total_questions_generated: 2, total_questions_flagged: count, warnings,
   } })
   const { container } = render(
     <MemoryRouter initialEntries={[notebook ? '/upload?notebook=9' : '/upload']}>
@@ -43,6 +43,48 @@ async function completedUpload(count, notebook = false) {
 }
 
 describe('Upload held-back completion', () => {
+  const warnings = [
+    'Generated 1 of 4 question(s). Gemini failed on 3 section(s): 503 UNAVAILABLE',
+    'Some source sections could not be processed.',
+  ]
+
+  it.each([false, true])('keeps warnings until Continue, notebook=%s', async notebook => {
+    await completedUpload(0, notebook, warnings)
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    for (const warning of warnings) {
+      expect(screen.getByText(warning)).toHaveAttribute('role', 'alert')
+      expect(screen.getByText(warning)).toHaveClass('bg-amber-50', 'text-amber-800')
+    }
+    expect(screen.queryByText(/held back by the quality check/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Redirecting to deck view...')).not.toBeInTheDocument()
+    expect(screen.queryByText('Deck destination')).not.toBeInTheDocument()
+    expect(screen.queryByText('Notebook destination')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText(notebook ? 'Notebook destination' : 'Deck destination')).toBeInTheDocument()
+  })
+
+  it('shows warnings and held-back questions together until Continue', async () => {
+    await completedUpload(1, false, warnings)
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    for (const warning of warnings) expect(screen.getByText(warning)).toBeInTheDocument()
+    expect(screen.getByText(/1 question\(s\) held back by the quality check/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Review them on the deck page.' })).toHaveAttribute('href', '/decks/4')
+    expect(screen.queryByText('Redirecting to deck view...')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Deck destination')).toBeInTheDocument()
+  })
+
+  it('auto-navigates after 2000 ms with no warnings or held-back questions', async () => {
+    await completedUpload(0, false, [])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+    expect(screen.getByText('Redirecting to deck view...')).toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(1999) })
+    expect(screen.queryByText('Deck destination')).not.toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(screen.getByText('Deck destination')).toBeInTheDocument()
+  })
+
   it.each([false, true])('keeps flagged results until Continue, notebook=%s', async notebook => {
     await completedUpload(1, notebook)
     await act(async () => { vi.advanceTimersByTime(10000) })

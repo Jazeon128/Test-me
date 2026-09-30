@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, BookOpen, FileText, Loader2 } from 'lucide-react'
-import axios from 'axios'
+import api from '../services/api'
+import { serverMessage } from '../utils/serverMessage'
 
 export default function SearchModal({ isOpen, onClose }) {
     const [query, setQuery] = useState('')
@@ -28,11 +29,11 @@ export default function SearchModal({ isOpen, onClose }) {
 
             setLoading(true)
             try {
-                const response = await axios.get(`/api/search?q=${encodeURIComponent(query)}`)
+                const response = await api.get(`/search?q=${encodeURIComponent(query)}`)
                 setResults(response.data.results)
                 setSelectedIndex(0)
             } catch (error) {
-                console.error('Search failed:', error)
+                console.error('Search failed:', serverMessage(error.originalError || error) || error)
             } finally {
                 setLoading(false)
             }

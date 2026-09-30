@@ -1,7 +1,7 @@
 import Spinner from '../components/Spinner'
 import { useState, useEffect, useRef } from 'react'
 import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Server, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
-import axios from 'axios'
+import api from '../services/api'
 import { useTheme } from '../context/useTheme'
 import ModelSelector from '../components/ModelSelector'
 import TypeSafeKeyCard from '../components/TypeSafeKeyCard'
@@ -61,7 +61,7 @@ export default function Settings() {
 
   const loadModels = async () => {
     try {
-      const response = await axios.get('/api/settings/ai-config/models')
+      const response = await api.get('/settings/ai-config/models')
       setAvailableModels(response.data)
     } catch (error) {
       console.error('Failed to load models:', error)
@@ -70,7 +70,7 @@ export default function Settings() {
 
   const loadConfig = async () => {
     try {
-      const response = await axios.get('/api/settings/ai-config')
+      const response = await api.get('/settings/ai-config')
       setCurrentConfig(response.data)
       if (response.data.provider) {
         setProvider(response.data.provider)
@@ -121,7 +121,7 @@ export default function Settings() {
         }
       }
 
-      const response = await axios.post('/api/settings/ai-config', {
+      const response = await api.post('/settings/ai-config', {
         provider,
         api_key: apiKey,
         model
@@ -139,7 +139,7 @@ export default function Settings() {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: serverMessage(error) || 'Failed to save configuration'
+        text: serverMessage(error.originalError || error) || 'Failed to save configuration'
       })
     } finally {
       setSaving(false)
@@ -151,12 +151,12 @@ export default function Settings() {
     setMessage(null)
 
     try {
-      const response = await axios.post('/api/settings/ai-config/test')
+      const response = await api.post('/settings/ai-config/test')
       setMessage({ type: 'success', text: response.data.message })
     } catch (error) {
       setMessage({
         type: 'error',
-        text: serverMessage(error) || 'Failed to test connection'
+        text: serverMessage(error.originalError || error) || 'Failed to test connection'
       })
     } finally {
       setTesting(false)
@@ -169,14 +169,14 @@ export default function Settings() {
     }
 
     try {
-      await axios.delete('/api/settings/ai-config')
+      await api.delete('/settings/ai-config')
       setMessage({ type: 'success', text: 'Configuration deleted successfully' })
       setApiKey('')
       setProvider('openai')
       setModel('')
       loadConfig()
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to delete configuration' })
+      setMessage({ type: 'error', text: serverMessage(error.originalError || error) || 'Failed to delete configuration' })
     }
   }
 

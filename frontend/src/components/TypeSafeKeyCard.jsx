@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Key, Server, CheckCircle, AlertCircle } from 'lucide-react'
-import axios from 'axios'
+import api from '../services/api'
 import { serverMessage } from '../utils/serverMessage'
 
-const endpoint = '/api/settings/typesafe'
+const endpoint = '/settings/typesafe'
 
 export default function TypeSafeKeyCard() {
   const [config, setConfig] = useState(null)
@@ -18,7 +18,7 @@ export default function TypeSafeKeyCard() {
     let active = true
     const load = async () => {
       try {
-        const { data } = await axios.get(`${endpoint}/usage?days=30`)
+        const { data } = await api.get(`${endpoint}/usage?days=30`)
         if (active) setUsage(Array.isArray(data?.features) && data?.totals ? data : null)
       } catch {
         if (active) setUsage(null)
@@ -30,7 +30,7 @@ export default function TypeSafeKeyCard() {
 
   useEffect(() => {
     let active = true
-    axios.get(endpoint).then(({ data }) => {
+    api.get(endpoint).then(({ data }) => {
       if (active) setConfig(data)
     }).catch(() => {
       if (active) setUnavailable(true)
@@ -44,12 +44,12 @@ export default function TypeSafeKeyCard() {
     try {
       let response
       if (action === 'save') {
-        response = await axios.put(endpoint, { api_key: apiKey.trim() })
+        response = await api.put(endpoint, { api_key: apiKey.trim() })
         setApiKey('')
       } else if (action === 'remove') {
-        response = await axios.delete(endpoint)
+        response = await api.delete(endpoint)
       } else {
-        response = await axios.post(`${endpoint}/test`)
+        response = await api.post(`${endpoint}/test`)
         setUsageReload((value) => value + 1)
       }
       if (action !== 'test') {
@@ -58,7 +58,7 @@ export default function TypeSafeKeyCard() {
       }
       setMessage({ type: 'success', text: response.data.message })
     } catch (error) {
-      setMessage({ type: 'error', text: serverMessage(error) || 'TypeSafe request failed. Try again.' })
+      setMessage({ type: 'error', text: serverMessage(error.originalError || error) || 'TypeSafe request failed. Try again.' })
     } finally {
       setBusy(false)
     }

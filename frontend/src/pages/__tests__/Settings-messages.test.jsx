@@ -7,12 +7,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../services/api'
 import Settings from '../Settings'
 import { ThemeProvider } from '../../context/ThemeContext'
 
-// Mock axios
-vi.mock('axios')
+// Mock the shared API client
+vi.mock('../../services/api', () => ({
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}))
 
 // Helper to render Settings with required providers
 const renderSettings = () => {
@@ -49,11 +51,11 @@ describe('Settings - Message Display', () => {
     vi.clearAllMocks()
     
     // Default mock responses
-    axios.get.mockImplementation((url) => {
-      if (url === '/api/settings/ai-config/models') {
+    api.get.mockImplementation((url) => {
+      if (url === '/settings/ai-config/models') {
         return Promise.resolve({ data: mockModels })
       }
-      if (url === '/api/settings/ai-config') {
+      if (url === '/settings/ai-config') {
         return Promise.resolve({
           data: {
             provider: 'openai',
@@ -68,7 +70,7 @@ describe('Settings - Message Display', () => {
 
   describe('Confirmation message after save - Requirement 3.4', () => {
     it('should display success message after saving configuration', async () => {
-      axios.post.mockResolvedValueOnce({
+      api.post.mockResolvedValueOnce({
         data: { message: 'Configuration saved successfully' }
       })
 
@@ -110,7 +112,7 @@ describe('Settings - Message Display', () => {
     })
 
     it('should display standard message for predefined models', async () => {
-      axios.post.mockResolvedValueOnce({
+      api.post.mockResolvedValueOnce({
         data: { message: 'Configuration saved successfully' }
       })
 

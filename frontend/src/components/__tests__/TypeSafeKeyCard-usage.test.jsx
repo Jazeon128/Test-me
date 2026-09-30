@@ -1,11 +1,13 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import axios from 'axios'
+import api from '../../services/api'
 import TypeSafeKeyCard from '../TypeSafeKeyCard'
 
-vi.mock('axios')
+vi.mock('../../services/api', () => ({
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}))
 
-const endpoint = '/api/settings/typesafe'
+const endpoint = '/settings/typesafe'
 const usageUrl = `${endpoint}/usage?days=30`
 const empty = { days: 30, features: [], totals: { calls: 0, failures: 0, input_tokens: 0 } }
 const usage = {
@@ -18,7 +20,7 @@ const usage = {
 }
 
 function mockUsage(data) {
-  axios.get.mockImplementation((url) => url === usageUrl
+  api.get.mockImplementation((url) => url === usageUrl
     ? Promise.resolve({ data })
     : Promise.resolve({ data: { configured: true, source: 'settings', preview: 'saved' } }))
 }
@@ -54,10 +56,10 @@ it('shows the empty state', async () => {
 })
 
 it('keeps the card working when usage fails', async () => {
-  axios.get.mockImplementation((url) => url === usageUrl
+  api.get.mockImplementation((url) => url === usageUrl
     ? Promise.reject(new Error('Offline'))
     : Promise.resolve({ data: { configured: true, source: 'settings', preview: 'saved' } }))
-  axios.post.mockResolvedValue({ data: { success: true, message: 'Connected.' } })
+  api.post.mockResolvedValue({ data: { success: true, message: 'Connected.' } })
   render(<TypeSafeKeyCard />)
   fireEvent.click(await screen.findByRole('button', { name: 'Test TypeSafe key' }))
   expect(await screen.findByRole('status')).toHaveTextContent('Connected.')
@@ -67,11 +69,11 @@ it('keeps the card working when usage fails', async () => {
 })
 
 it('reloads usage after a successful key test', async () => {
-  axios.post.mockResolvedValue({ data: { success: true, message: 'Connected.' } })
+  api.post.mockResolvedValue({ data: { success: true, message: 'Connected.' } })
   render(<TypeSafeKeyCard />)
   await screen.findByText('No Jev calls yet.')
   mockUsage(usage)
   fireEvent.click(screen.getByRole('button', { name: 'Test TypeSafe key' }))
   expect(await screen.findByRole('table')).toBeInTheDocument()
-  expect(axios.get.mock.calls.filter(([url]) => url === usageUrl)).toHaveLength(2)
+  expect(api.get.mock.calls.filter(([url]) => url === usageUrl)).toHaveLength(2)
 })

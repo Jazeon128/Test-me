@@ -7,12 +7,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../services/api'
 import Settings from '../Settings'
 import { ThemeProvider } from '../../context/ThemeContext'
 
-// Mock axios
-vi.mock('axios')
+// Mock the shared API client
+vi.mock('../../services/api', () => ({
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}))
 
 // Helper to render Settings with required providers
 const renderSettings = () => {
@@ -67,11 +69,11 @@ describe('Settings - ModelSelector Integration', () => {
     vi.clearAllMocks()
     
     // Default mock responses
-    axios.get.mockImplementation((url) => {
-      if (url === '/api/settings/ai-config/models') {
+    api.get.mockImplementation((url) => {
+      if (url === '/settings/ai-config/models') {
         return Promise.resolve({ data: mockModels })
       }
-      if (url === '/api/settings/ai-config') {
+      if (url === '/settings/ai-config') {
         return Promise.resolve({
           data: {
             provider: 'openai',
@@ -172,11 +174,11 @@ describe('Settings - ModelSelector Integration', () => {
   describe('Loading existing custom model - Requirement 1.5', () => {
     it('should detect and display custom model on load', async () => {
       // Mock config with custom model
-      axios.get.mockImplementation((url) => {
-        if (url === '/api/settings/ai-config/models') {
+      api.get.mockImplementation((url) => {
+        if (url === '/settings/ai-config/models') {
           return Promise.resolve({ data: mockModels })
         }
-        if (url === '/api/settings/ai-config') {
+        if (url === '/settings/ai-config') {
           return Promise.resolve({
             data: {
               provider: 'openai',
@@ -222,7 +224,7 @@ describe('Settings - ModelSelector Integration', () => {
 
   describe('Save functionality with custom models', () => {
     it('should save custom model successfully', async () => {
-      axios.post.mockResolvedValueOnce({
+      api.post.mockResolvedValueOnce({
         data: { message: 'Configuration saved successfully' }
       })
 
@@ -249,7 +251,7 @@ describe('Settings - ModelSelector Integration', () => {
 
       // Should call API with custom model
       await waitFor(() => {
-        expect(axios.post).toHaveBeenCalledWith('/api/settings/ai-config', {
+        expect(api.post).toHaveBeenCalledWith('/settings/ai-config', {
           provider: 'openai',
           api_key: 'sk-test-key',
           model: 'gpt-5-preview'
@@ -286,7 +288,7 @@ describe('Settings - ModelSelector Integration', () => {
       })
 
       // Should not call API
-      expect(axios.post).not.toHaveBeenCalled()
+      expect(api.post).not.toHaveBeenCalled()
     })
   })
 

@@ -71,7 +71,7 @@ export default function Upload() {
         // Return to the notebook the upload came from, where the new source,
         // its deck and any canvas of it all sit together. Only fall through to
         // the deck when the upload was not started from a notebook.
-        if (!(status.total_questions_flagged > 0)) {
+        if (!(status.total_questions_flagged > 0) && !status.warnings?.length) {
           setTimeout(() => {
             navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${status.deck_id}`)
           }, 2000)
@@ -550,7 +550,13 @@ export default function Upload() {
                   <div>
                     <h3 className="font-bold text-success-900 dark:text-success-200 text-lg">Upload complete</h3>
                     <p className="text-success-800 dark:text-success-200 mt-1">{result.message}</p>
-                    {generationStatus?.status === 'completed' && generationStatus.total_questions_flagged > 0 ? (
+                    {generationStatus?.status === 'completed' && generationStatus.warnings?.map((warning, index) => (
+                      <div key={index} role="alert"
+                        className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                        {warning}
+                      </div>
+                    ))}
+                    {generationStatus?.status === 'completed' && (generationStatus.total_questions_flagged > 0 || generationStatus.warnings?.length > 0) ? (
                       <button type="button" className="btn-primary mt-3"
                         onClick={() => navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${generationStatus.deck_id}`)}>
                         Continue

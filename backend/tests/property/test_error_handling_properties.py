@@ -17,6 +17,7 @@ import tempfile
 import os
 from unittest.mock import Mock, patch, MagicMock
 from io import BytesIO
+from structlog.testing import capture_logs
 
 from app.services.ai.question_generator import QuestionGenerator
 from app.services.parsers.base_parser import ParsedDocument, ParsedSection
@@ -42,51 +43,68 @@ class TestQuestionGenerationErrorLogging:
     Validates: Requirements 4.1
     """
 
-    def test_question_generation_error_contains_context(self):
-        """
-        Test that question generation errors are raised with proper context.
-
-        This test verifies that when question generation fails due to API errors,
-        the system raises an AIServiceError with appropriate context.
-        """
-        # Use fixed values for simpler test
-        section_page = 5
-        section_paragraph = 3
-        error_message = "Test API error"
-
-        # Create a mock section
+    @given(
+        provider=st.sampled_from(["anthropic", "openai", "gemini"]),
+        model=st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789-", min_size=1, max_size=60),
+        section_page=st.one_of(st.none(), st.integers(min_value=1, max_value=10000)),
+        section_paragraph=st.integers(min_value=1, max_value=1000),
+        error_type=st.sampled_from([Exception, RuntimeError, ValueError]),
+        error_message=st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789 ", min_size=1, max_size=150),
+    )
+    def test_question_generation_error_contains_context(
+        self, provider, model, section_page, section_paragraph, error_type, error_message
+    ):
+        """Every failed batch records its error and logs its generation context."""
         section = ParsedSection(
             text="Sample text for testing",
             page=section_page,
             section="test_section",
             paragraph=section_paragraph,
         )
+        mock_client = Mock()
+        error = error_type(error_message)
+        mock_client.messages.create.side_effect = error
+        mock_client.chat.completions.create.side_effect = error
+        mock_client.models.generate_content.side_effect = error
 
-        # Create a mock generator that will fail
-        with patch("app.services.ai.question_generator.Anthropic") as mock_anthropic_class:
-            # Configure mock to raise an exception
-            mock_client = Mock()
-            mock_client.messages.create.side_effect = Exception(error_message)
-            mock_anthropic_class.return_value = mock_client
+        with (
+            patch("app.services.ai.question_generator.Anthropic", return_value=mock_client),
+            patch("app.services.ai.question_generator.OpenAI", return_value=mock_client),
+            patch("app.services.ai.question_generator.genai.Client", return_value=mock_client),
+            patch("app.services.ai.question_generator.settings") as mock_settings,
+        ):
+            mock_settings.AI_PROVIDER = provider
+            mock_settings.AI_MODEL = model
+            mock_settings.ANTHROPIC_API_KEY = "test-key"
+            mock_settings.OPENAI_API_KEY = "test-key"
+            mock_settings.GEMINI_API_KEY = "test-key"
+            generator = QuestionGenerator()
+            with capture_logs() as logs:
+                result = generator._generate_batch_questions(
+                    section=section, count=5, difficulty="medium"
+                )
 
-            with patch("app.services.ai.question_generator.settings") as mock_settings:
-                mock_settings.AI_PROVIDER = "anthropic"
-                mock_settings.ANTHROPIC_API_KEY = "test-key"
-                mock_settings.AI_MODEL = "claude-3-5-sonnet-20241022"
+            assert result == []
+            assert len(generator.failed_batches) == 1
+            failure = generator.failed_batches[0]
+            # Provider and model belong to the generator. The batch entry's
+            # contract contains section_page, error_type, and message.
+            assert generator.provider == provider
+            assert generator.model == model
+            assert failure["section_page"] == section_page
+            assert failure["error_type"] == error_type.__name__
+            assert failure["message"] == error_message
 
-                generator = QuestionGenerator()
-
-                # Attempt to generate questions (should fail and raise AIServiceError)
-                with pytest.raises(AIServiceError) as exc_info:
-                    result = generator._generate_batch_questions(
-                        section=section, count=5, difficulty="medium"
-                    )
-
-                # Verify the exception contains proper context
-                assert exc_info.value.code == "AI_SERVICE_ERROR"
-                assert "AI service" in exc_info.value.message or "failed" in exc_info.value.message
-                assert exc_info.value.details["model"] == "claude-3-5-sonnet-20241022"
-                assert exc_info.value.details["error_type"] == "Exception"
+            errors = [entry for entry in logs if entry["event"] == "question_generation_error"]
+            assert len(errors) == 1
+            logged = errors[0]
+            assert logged["log_level"] == "error"
+            assert logged["provider"] == generator.provider
+            assert logged["model"] == generator.model
+            assert logged["section_page"] == failure["section_page"]
+            assert logged["section_paragraph"] == section_paragraph
+            assert logged["error_type"] == failure["error_type"]
+            assert logged["error_message"] == failure["message"]
 
 
 class TestAPIErrorResponseStructure:

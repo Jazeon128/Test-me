@@ -134,6 +134,7 @@ class QuestionGenerator:
         # Questions discarded by verification during the last run, each carrying
         # the reasons it was flagged. Read by the caller for reporting.
         self.flagged_questions: List[Dict] = []
+        self.failed_batches: List[Dict] = []
 
         # Kept so the System One features can resolve their own key from
         # settings, the same way the canvas router does.
@@ -165,6 +166,7 @@ class QuestionGenerator:
                 details={"configuration_required": True},
             )
 
+        self._api_key = api_key
         if self.provider == "anthropic":
             self.client = Anthropic(api_key=api_key)
             if not self.model:
@@ -219,6 +221,8 @@ class QuestionGenerator:
             List of question dictionaries with questions, options, answers, and references
         """
         start_time = time.time()
+        self.failed_batches = []
+        self.flagged_questions = []
 
         try:
             return self._generate_questions_internal(
@@ -330,6 +334,12 @@ class QuestionGenerator:
 
         # Limit to requested number
         final_questions = all_questions[:num_questions]
+        if not final_questions and not self.flagged_questions and self.failed_batches:
+            raise AIServiceError(
+                message=(f"Gemini failed on {len(self.failed_batches)} of "
+                         f"{len(selected_sections)} section(s): {self.failed_batches[-1]['message']}"),
+                provider=self.provider,
+            )
         elapsed_time = time.time() - start_time
 
         # Track metrics
@@ -435,11 +445,10 @@ class QuestionGenerator:
         total_questions: int = 0,
     ) -> List[Dict]:
         """Generate a batch of multiple-choice questions from a section"""
-        prompt = self._build_batch_prompt(
-            section.text, count, difficulty, custom_prompt, example_questions
-        )
-
         try:
+            prompt = self._build_batch_prompt(
+                section.text, count, difficulty, custom_prompt, example_questions
+            )
             content = ""
             provider_display = {
                 "anthropic": "Anthropic Claude",
@@ -537,6 +546,8 @@ class QuestionGenerator:
 
             # Parse the response
             questions_data = self._parse_batch_response(content)
+            if not questions_data:
+                raise ValueError("Response contained no valid questions")
 
             valid_questions = []
             for q_data in questions_data:
@@ -584,13 +595,18 @@ class QuestionGenerator:
                 stack_trace=traceback.format_exc(),
                 exc_info=True,
             )
-            # Raise AIServiceError for API failures
-            if "API" in str(e) or "timeout" in str(e).lower() or "rate limit" in str(e).lower():
-                raise AIServiceError(
-                    message=f"AI service request failed: {str(e)}",
-                    provider=self.provider,
-                    details={"model": self.model, "error_type": type(e).__name__},
-                )
+            message = str(e)
+            api_key = getattr(self, "_api_key", None)
+            if api_key:
+                message = message.replace(api_key, "[redacted]")
+            message = re.sub(r"(?i)(api[_ -]?key[=:]\s*)[^\s&,]+", r"\1[redacted]", message)
+            if not hasattr(self, "failed_batches"):
+                self.failed_batches = []
+            self.failed_batches.append({
+                "section_page": section.page,
+                "error_type": type(e).__name__,
+                "message": message[:200],
+            })
             return []
 
     def _build_batch_prompt(
@@ -721,7 +737,6 @@ JSON Response:"""
                     return valid_items
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON batch: {e}")
-            print(f"Response was: {response}")
+            logger.warning("invalid_batch_json", error_type=type(e).__name__)
 
         return []

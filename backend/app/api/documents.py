@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import update, case, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
@@ -439,6 +440,40 @@ def process_document(
             gen_status.add_log(f"Started processing document {document_id}")
             db.commit()
 
+    def finish_document(error=None, generated=0, flagged=0):
+        if gen_status is None:
+            return
+        document = db.query(Document).filter_by(id=document_id).first()
+        filename = document.original_filename if document else os.path.basename(file_path)
+        failure = f"{filename}: {error}" if error else None
+        values = {
+            "documents_completed": GenerationStatus.documents_completed + (0 if error else 1),
+            "documents_failed": GenerationStatus.documents_failed + (1 if error else 0),
+            "total_questions_generated": GenerationStatus.total_questions_generated + generated,
+            "total_questions_flagged": GenerationStatus.total_questions_flagged + flagged,
+        }
+        if failure:
+            values["error_message"] = case(
+                (or_(GenerationStatus.error_message.is_(None), GenerationStatus.error_message == ""), failure),
+                else_=GenerationStatus.error_message + "; " + failure,
+            )
+        flag_modified(gen_status, "logs")
+        db.flush()
+        db.execute(update(GenerationStatus).where(GenerationStatus.id == gen_status.id).values(**values))
+        db.refresh(gen_status)
+        finished = gen_status.documents_completed + gen_status.documents_failed
+        # Derive terminal status in SQL too, so a concurrent task cannot write
+        # processing over a job whose last document has already finished.
+        terminal = (GenerationStatus.documents_completed + GenerationStatus.documents_failed >= GenerationStatus.total_documents)
+        db.execute(update(GenerationStatus).where(GenerationStatus.id == gen_status.id).values(
+            status=case((terminal, case((GenerationStatus.documents_completed > 0, "completed"), else_="failed")), else_="processing"),
+            current_step=case((terminal, case((GenerationStatus.documents_completed > 0, "Complete"), else_="Failed")), else_=f"Finished document {finished} of {gen_status.total_documents}"),
+            progress=case((terminal, 100), else_=GenerationStatus.progress),
+            completed_at=case((terminal, datetime.now()), else_=None),
+        ))
+        db.commit()
+        db.refresh(gen_status)
+
     # Define progress callback function for question generation
     def progress_callback(current: int, total: int):
         """Update generation status with current question progress"""
@@ -556,17 +591,7 @@ def process_document(
                 error_message=str(e),
                 exc_info=True,
             )
-            if gen_status:
-                gen_status.status = "failed"
-                gen_status.error_message = str(e)
-                gen_status.add_log(f"Error: {str(e)}", level="error")
-                if isinstance(e, AIServiceError):
-                    gen_status.add_log(
-                        "Please configure your AI API key in Settings page or .env file",
-                        level="error",
-                    )
-                db.commit()
-            return
+            raise
         finally:
             sys.stdout = old_stdout
 
@@ -577,7 +602,6 @@ def process_document(
             gen_status.progress = 90
             gen_status.current_step = "Saving questions to database"
             gen_status.add_log(f"Successfully generated {len(questions_data)} questions")
-            gen_status.total_questions_generated = len(questions_data)
             db.commit()
 
         # Get deck if provided
@@ -597,7 +621,6 @@ def process_document(
                 reasons=q_data.get("flags", []),
             ))
         if gen_status:
-            gen_status.total_questions_flagged = (gen_status.total_questions_flagged or 0) + len(flagged)
             if flagged:
                 gen_status.add_log(f"{len(flagged)} question(s) held back by the quality check")
                 flag_modified(gen_status, "logs")
@@ -610,13 +633,15 @@ def process_document(
         )
 
         if gen_status:
-            gen_status.status = "completed"
-            gen_status.progress = 100
-            gen_status.current_step = "Complete"
-            gen_status.completed_at = datetime.now()
+            failures = getattr(generator, "failed_batches", [])
+            if failures:
+                gen_status.add_log(
+                    f"Generated {len(questions_data)} of {num_questions} question(s). "
+                    f"Gemini failed on {len(failures)} section(s): {failures[-1]['message']}",
+                    level="warning",
+                )
             gen_status.add_log(f"Successfully saved {len(questions_data)} questions to database")
-            gen_status.add_log("Generation completed successfully")
-            db.commit()
+        finish_document(generated=len(questions_data), flagged=len(flagged))
 
     except Exception as e:
         logger.error(
@@ -627,13 +652,10 @@ def process_document(
             stack_trace=traceback.format_exc(),
             exc_info=True,
         )
-        if gen_status:
-            gen_status.status = "failed"
-            gen_status.error_message = str(e)
-            gen_status.add_log(f"Error: {str(e)}", level="error")
-            gen_status.add_log(traceback.format_exc(), level="error")
-            db.commit()
         db.rollback()
+        if gen_status:
+            gen_status.add_log(f"Error: {str(e)}", level="error")
+        finish_document(error=str(e))
     finally:
         db.close()
 
@@ -684,14 +706,26 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     if not document:
         raise ResourceNotFoundError("Document", document_id)
 
-    # Delete file
-    if os.path.exists(document.file_path):
-        os.remove(document.file_path)
+    from ..models.canvas import Canvas, CanvasRoutingLog
 
-    # Delete from database (cascade will handle questions)
+    file_path = document.file_path
+    canvas_ids = db.query(Canvas.id).filter_by(document_id=document_id)
+    db.query(CanvasRoutingLog).filter(or_(
+        CanvasRoutingLog.document_id == document_id,
+        CanvasRoutingLog.canvas_id.in_(canvas_ids),
+    )).delete(synchronize_session="fetch")
+    for canvas in db.query(Canvas).filter_by(document_id=document_id).all():
+        db.delete(canvas)
+    db.flush()
     db.query(FlaggedQuestion).filter_by(document_id=document_id).delete(synchronize_session="fetch")
     db.delete(document)
     db.commit()
+
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except OSError as error:
+        logger.warning("document_file_removal_failed", document_id=document_id, error_message=str(error))
 
     return {"message": "Document deleted successfully"}
 
@@ -706,6 +740,7 @@ def regenerate_deck_questions(
 ):
     """Generate every source before replacing the deck in one transaction."""
     from ..db import SessionLocal
+    from ..models.deck import DeckQuestion
 
     db = SessionLocal()
     gen_status = None
@@ -756,7 +791,10 @@ def regenerate_deck_questions(
                 gen_status.current_step = f"Parsing document {index + 1} of {len(source_documents)}"
                 add_log(f"Processing document: {document.original_filename}")
                 db.commit()
-            parsed_doc = _parser_for(document.file_type).parse(document.file_path)
+            try:
+                parsed_doc = _parser_for(document.file_type).parse(document.file_path)
+            except Exception as error:
+                raise ValueError(f"{document.original_filename}: {error}") from error
 
             def progress_callback(current: int, total: int):
                 if gen_status:
@@ -773,25 +811,53 @@ def regenerate_deck_questions(
                 gen_status.current_step = f"Generating questions for document {index + 1}"
                 add_log(f"Starting AI question generation ({num_questions_per_doc} questions)")
                 db.commit()
-            flagged_start = len(getattr(generator, "flagged_questions", []))
-            questions_data = generator.generate_questions(
-                parsed_doc,
-                num_questions=num_questions_per_doc,
-                difficulty=difficulty,
-                custom_prompt=custom_prompt,
-                progress_callback=progress_callback,
-            )
+            generator.flagged_questions = []
+            try:
+                questions_data = generator.generate_questions(
+                    parsed_doc,
+                    num_questions=num_questions_per_doc,
+                    difficulty=difficulty,
+                    custom_prompt=custom_prompt,
+                    progress_callback=progress_callback,
+                )
+                current_flagged = getattr(generator, "flagged_questions", [])
+                failures = getattr(generator, "failed_batches", [])
+                if failures:
+                    raise ValueError(f"Gemini failed on {len(failures)} section(s): {failures[-1]['message']}")
+                if not questions_data and not current_flagged:
+                    raise ValueError("No questions were generated before verification")
+            except Exception as error:
+                raise ValueError(f"{document.original_filename}: {error}") from error
             generated.extend((document.id, q_data) for q_data in questions_data)
-            flagged.extend(
-                (document.id, q_data)
-                for q_data in getattr(generator, "flagged_questions", [])[flagged_start:]
-            )
+            flagged.extend((document.id, q_data) for q_data in current_flagged)
             if gen_status:
                 add_log(f"Generated {len(questions_data)} questions from {document.original_filename}")
                 db.commit()
 
         if not generated:
-            raise ValueError("No questions were generated")
+            if not flagged:
+                raise ValueError("No questions were generated")
+            for document_id, q_data in flagged:
+                db.add(FlaggedQuestion(
+                    deck_id=deck.id, document_id=document_id, job_id=job_id,
+                    payload={key: value for key, value in q_data.items() if key != "flags"},
+                    reasons=q_data.get("flags", []),
+                ))
+            message = (
+                "Every regenerated question was held back by the quality check. "
+                f"The existing {existing_count} questions were kept. "
+                "Review the held-back questions on the deck page."
+            )
+            if gen_status:
+                gen_status.status = "failed"
+                gen_status.error_message = message
+                gen_status.current_step = "Failed"
+                gen_status.completed_at = datetime.now()
+                gen_status.total_questions_flagged = (gen_status.total_questions_flagged or 0) + len(flagged)
+                gen_status.total_questions_generated = 0
+                add_log(message, level="error")
+            db.commit()
+            return
 
         if gen_status:
             gen_status.progress = 90
@@ -800,8 +866,11 @@ def regenerate_deck_questions(
             db.commit()
 
         # No commits or generation callbacks after deletion until replacement is complete.
+        deck.deck_questions.clear()
+        db.flush()
         for question in old_questions:
-            db.delete(question)
+            if not db.query(DeckQuestion).filter_by(question_id=question.id).first():
+                db.delete(question)
         db.flush()
         db.expire(deck, ["deck_questions"])
         for document_id, q_data in generated:

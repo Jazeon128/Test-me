@@ -24,6 +24,8 @@ class GenerationStatus(Base):
 
     # Metadata
     total_documents = Column(Integer, default=0)
+    documents_completed = Column(Integer, default=0)
+    documents_failed = Column(Integer, default=0)
     total_questions_requested = Column(Integer, default=0)
     total_questions_generated = Column(Integer, default=0)
     total_questions_flagged = Column(Integer, default=0)
@@ -62,6 +64,8 @@ class GenerationStatus(Base):
             "logs": self.logs or [],
             "error_message": self.error_message,
             "total_documents": self.total_documents,
+            "documents_completed": self.documents_completed,
+            "documents_failed": self.documents_failed,
             "total_questions_requested": self.total_questions_requested,
             "total_questions_generated": self.total_questions_generated,
             "total_questions_flagged": self.total_questions_flagged,

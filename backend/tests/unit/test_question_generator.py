@@ -1,6 +1,7 @@
 """Unit tests for question generator"""
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+from types import SimpleNamespace
 import json
 
 from app.services.ai.question_generator import QuestionGenerator, get_setting
@@ -245,8 +246,10 @@ class TestQuestionGeneration:
 
             # Mock the API response
             mock_client = Mock()
-            mock_response = Mock()
-            mock_response.content = [Mock(text=json.dumps(mock_anthropic_response))]
+            mock_response = SimpleNamespace(
+                content=[SimpleNamespace(text=json.dumps([mock_anthropic_response]))],
+                usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            )
             mock_client.messages.create.return_value = mock_response
             mock_anthropic.return_value = mock_client
 
@@ -271,8 +274,10 @@ class TestQuestionGeneration:
             mock_settings.AI_MODEL = ""
 
             mock_client = Mock()
-            mock_response = Mock()
-            mock_response.content = [Mock(text=json.dumps(mock_anthropic_response))]
+            mock_response = SimpleNamespace(
+                content=[SimpleNamespace(text=json.dumps([mock_anthropic_response]))],
+                usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            )
             mock_client.messages.create.return_value = mock_response
             mock_anthropic.return_value = mock_client
 
@@ -295,8 +300,10 @@ class TestQuestionGeneration:
             mock_settings.AI_MODEL = ""
 
             mock_client = Mock()
-            mock_response = Mock()
-            mock_response.content = [Mock(text=json.dumps(mock_anthropic_response))]
+            mock_response = SimpleNamespace(
+                content=[SimpleNamespace(text=json.dumps([mock_anthropic_response]))],
+                usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            )
             mock_client.messages.create.return_value = mock_response
             mock_anthropic.return_value = mock_client
 
@@ -325,9 +332,15 @@ class TestQuestionGeneration:
 
             generator = QuestionGenerator()
 
-            # Should raise AIServiceError for API failures
-            with pytest.raises(AIServiceError, match="AI service request failed"):
+            # A failed batch is recorded. An entirely failed call still raises.
+            with pytest.raises(AIServiceError, match=r"Gemini failed on 1 of 1 section\(s\): API Error") as exc_info:
                 generator.generate_questions(parsed_doc=mock_parsed_doc, num_questions=1)
+            assert exc_info.value.message == "Gemini failed on 1 of 1 section(s): API Error"
+            assert generator.failed_batches == [{
+                "section_page": mock_parsed_doc.sections[0].page,
+                "error_type": "Exception",
+                "message": "API Error",
+            }]
 
     @patch("app.services.ai.question_generator.Anthropic")
     def test_generate_questions_without_callback(
@@ -345,8 +358,10 @@ class TestQuestionGeneration:
 
             # Mock the API response
             mock_client = Mock()
-            mock_response = Mock()
-            mock_response.content = [Mock(text=json.dumps(mock_anthropic_response))]
+            mock_response = SimpleNamespace(
+                content=[SimpleNamespace(text=json.dumps([mock_anthropic_response]))],
+                usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            )
             mock_client.messages.create.return_value = mock_response
             mock_anthropic.return_value = mock_client
 
@@ -382,8 +397,10 @@ class TestQuestionGeneration:
 
             # Mock the API response
             mock_client = Mock()
-            mock_response = Mock()
-            mock_response.content = [Mock(text=json.dumps(mock_anthropic_response))]
+            mock_response = SimpleNamespace(
+                content=[SimpleNamespace(text=json.dumps([mock_anthropic_response]))],
+                usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            )
             mock_client.messages.create.return_value = mock_response
             mock_anthropic.return_value = mock_client
 

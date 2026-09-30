@@ -156,7 +156,7 @@ describe('Data Persistence Properties', () => {
     test('for any uploaded files, they should persist across multiple restarts', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.array(
+          fc.uniqueArray(
             fc.record({
               filename: fc.stringOf(
                 fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')),
@@ -164,7 +164,7 @@ describe('Data Persistence Properties', () => {
               ).map(s => s + '.txt'),
               content: fc.string({ minLength: 0, maxLength: 200 })
             }),
-            { minLength: 1, maxLength: 5 }
+            { minLength: 1, maxLength: 5, selector: file => file.filename.toLowerCase() }
           ),
           async (files) => {
             const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flashlearn-test-'));

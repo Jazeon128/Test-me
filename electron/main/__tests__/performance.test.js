@@ -58,6 +58,17 @@ jest.mock('electron', () => ({
   },
 }));
 
+// Measure real stores in a fresh directory, without shared application data.
+let mockSettingsDirectory;
+jest.mock('electron-store', () => {
+  const Store = jest.requireActual('electron-store');
+  return class extends Store {
+    constructor(options) {
+      super({ ...options, cwd: mockSettingsDirectory });
+    }
+  };
+});
+
 describe('Performance Tests', () => {
   let testDataDir;
 
@@ -66,6 +77,7 @@ describe('Performance Tests', () => {
     if (!fs.existsSync(testDataDir)) {
       fs.mkdirSync(testDataDir, { recursive: true });
     }
+    mockSettingsDirectory = testDataDir;
     jest.clearAllMocks();
   });
 
@@ -212,6 +224,12 @@ describe('Performance Tests', () => {
   describe('Memory Usage', () => {
     test('should not leak memory when creating/destroying managers', () => {
       const SettingsManager = require('../settings-manager');
+      // Measure retained memory, with collection available under plain npx jest.
+      const v8 = require('v8');
+      v8.setFlagsFromString('--expose_gc');
+      const collectGarbage = require('vm').runInNewContext('gc');
+      v8.setFlagsFromString('--no-expose_gc');
+      collectGarbage();
       
       const initialMemory = process.memoryUsage().heapUsed;
       
@@ -221,10 +239,7 @@ describe('Performance Tests', () => {
         manager.get('theme');
       }
       
-      // Force garbage collection if available
-      if (global.gc) {
-        global.gc();
-      }
+      collectGarbage();
       
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryIncrease = finalMemory - initialMemory;

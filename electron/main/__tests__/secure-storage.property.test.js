@@ -8,6 +8,16 @@ const fc = require('fast-check');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+// Keep real encrypted stores inside each test's temporary directory.
+let mockSettingsDirectory;
+jest.mock('electron-store', () => {
+  const Store = jest.requireActual('electron-store');
+  return class extends Store {
+    constructor(options) {
+      super({ ...options, cwd: mockSettingsDirectory });
+    }
+  };
+});
 const SettingsManager = require('../settings-manager');
 
 describe('Secure Storage Properties', () => {
@@ -17,6 +27,7 @@ describe('Secure Storage Properties', () => {
   beforeEach(() => {
     // Create a temporary directory for test settings
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flashlearn-test-'));
+    mockSettingsDirectory = tempDir;
   });
 
   afterEach(() => {

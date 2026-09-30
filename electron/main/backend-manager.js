@@ -6,6 +6,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 const { app } = require('electron');
 const DataDirectoryManager = require('./data-directory-manager');
 
@@ -37,27 +38,31 @@ class BackendManager {
       throw new Error('Backend is already starting');
     }
 
-    if (this.isRunning()) {
-      return this.port;
-    }
-
     this.isStarting = true;
     this.startAttempts++;
 
     try {
+      if (this.isRunning()) {
+        await this._waitForHealthy();
+        this.isStarting = false;
+        this.startAttempts = 0;
+        return this.port;
+      }
+
       // Find an available port
       this.port = await this._findAvailablePort();
       
       // Get the backend executable path
       const backendPath = this._getBackendPath();
+      const isDev = process.env.NODE_ENV === 'development';
       
       // Set up environment variables
       const env = this._getBackendEnvironment();
       
       // Spawn the backend process
-      this.process = spawn(backendPath, [], {
+      this.process = spawn(backendPath, isDev ? ['main.py'] : [], {
         env,
-        cwd: path.dirname(backendPath),
+        cwd: isDev ? path.resolve(__dirname, '../../backend') : path.dirname(backendPath),
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
@@ -209,9 +214,11 @@ class BackendManager {
     const isDev = process.env.NODE_ENV === 'development';
     
     if (isDev) {
-      // In development, use Python directly
-      const pythonPath = process.platform === 'win32' ? 'python' : 'python3';
-      return pythonPath;
+      const backendDir = path.resolve(__dirname, '../../backend');
+      const pythonPath = process.platform === 'win32'
+        ? path.join(backendDir, '.venv', 'Scripts', 'python.exe')
+        : path.join(backendDir, '.venv', 'bin', 'python');
+      return fs.existsSync(pythonPath) ? pythonPath : (process.platform === 'win32' ? 'python' : 'python3');
     }
 
     // In production, use the bundled executable
@@ -448,7 +455,7 @@ class BackendManager {
       const options = {
         hostname: '127.0.0.1',
         port: this.port,
-        path: '/api/status',
+        path: '/health',
         method: 'GET',
         timeout: 1000, // Reduced from 2000ms to 1000ms for faster checks
       };

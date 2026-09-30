@@ -113,6 +113,7 @@ function setupIpcHandlers({ mainWindow, backendManager, settingsManager, logger,
         data: {
           logs,
           logPath: logger.getLogPath(),
+          ...(logs.length === 0 ? { message: 'No logs available yet' } : {}),
         },
       };
     } catch (error) {

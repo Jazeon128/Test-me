@@ -10,6 +10,12 @@ jest.mock('electron', () => {
   const mockBrowserWindow = jest.fn().mockImplementation(() => ({
     loadURL: jest.fn().mockResolvedValue(undefined),
     loadFile: jest.fn().mockResolvedValue(undefined),
+    isDestroyed: jest.fn(() => false),
+    center: jest.fn(),
+    setBounds: jest.fn(),
+    getBounds: jest.fn(() => ({ width: 1200, height: 800 })),
+    isFullScreen: jest.fn(() => false),
+    setFullScreen: jest.fn(),
     show: jest.fn(),
     hide: jest.fn(),
     focus: jest.fn(),
@@ -42,11 +48,12 @@ jest.mock('electron', () => {
 
   return {
     app: {
+      getVersion: jest.fn(() => '1.0.0'),
       getPath: jest.fn((name) => {
         if (name === 'userData') return '/tmp/flashlearn-test';
         return '/tmp';
       }),
-      whenReady: jest.fn().mockResolvedValue(undefined),
+      whenReady: jest.fn(() => new Promise(() => {})),
       on: jest.fn(),
       quit: jest.fn(),
       dock: {
@@ -65,6 +72,13 @@ jest.mock('electron', () => {
     },
   };
 });
+
+// Isolate updater initialization and persistent window state in these window/tray tests.
+jest.mock('electron-updater', () => ({ autoUpdater: { on: jest.fn() } }));
+jest.mock('electron-store', () => jest.fn().mockImplementation(options => ({
+  get: jest.fn(key => options.defaults[key]),
+  set: jest.fn(),
+})));
 
 // Mock BackendManager
 jest.mock('../backend-manager', () => {

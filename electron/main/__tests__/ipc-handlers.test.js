@@ -9,6 +9,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { setupIpcHandlers, removeIpcHandlers } = require('../ipc-handlers');
+const Logger = require('../logger');
 
 // Mock electron modules
 jest.mock('electron', () => ({
@@ -103,7 +104,11 @@ describe('IPC Handlers', () => {
     });
 
     // Set up IPC handlers
+    const logger = new Logger('/mock/user/data');
+    jest.spyOn(logger, 'info').mockResolvedValue();
+    jest.spyOn(logger, 'error').mockResolvedValue();
     setupIpcHandlers({
+      logger,
       mainWindow: mockMainWindow,
       backendManager: mockBackendManager,
       settingsManager: mockSettingsManager,
@@ -207,7 +212,7 @@ describe('IPC Handlers', () => {
     });
 
     test('should handle missing log file', async () => {
-      fs.access.mockRejectedValue(new Error('File not found'));
+      fs.readFile.mockRejectedValue(Object.assign(new Error('File not found'), { code: 'ENOENT' }));
 
       const result = await ipcHandlers['get-logs']();
 

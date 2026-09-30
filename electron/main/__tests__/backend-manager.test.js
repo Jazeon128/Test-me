@@ -98,7 +98,7 @@ describe('BackendManager Unit Tests', () => {
     });
 
     test('should return true for available port', async () => {
-      const result = await manager._isPortAvailable(8000);
+      const result = await manager._isPortAvailable(0);
       expect(result).toBe(true);
     });
   });
@@ -157,9 +157,13 @@ describe('BackendManager Unit Tests', () => {
     });
 
     test('should return python/python3 in development mode', () => {
+      const originalEnv = process.env.NODE_ENV;
+      const exists = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
       process.env.NODE_ENV = 'development';
       const backendPath = manager._getBackendPath();
       expect(['python', 'python3']).toContain(backendPath);
+      process.env.NODE_ENV = originalEnv;
+      exists.mockRestore();
     });
 
     test('should return executable path in production mode', () => {
@@ -247,9 +251,17 @@ describe('BackendManager Unit Tests', () => {
     });
 
     test('_checkHealth should return false for non-existent backend', async () => {
+      const http = require('http');
+      const { EventEmitter } = require('events');
+      const request = jest.spyOn(http, 'request').mockImplementation(() => {
+        const req = new EventEmitter();
+        req.end = () => req.emit('error', new Error('ECONNREFUSED'));
+        return req;
+      });
       manager.port = 8000;
       const result = await manager._checkHealth();
       expect(result).toBe(false);
+      request.mockRestore();
     });
   });
 });

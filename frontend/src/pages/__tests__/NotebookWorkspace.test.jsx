@@ -5,7 +5,7 @@ import NotebookWorkspace from '../NotebookWorkspace'
 import { notebooksAPI, statusAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
-  notebooksAPI: { workspace: vi.fn(), addSources: vi.fn(), generate: vi.fn() },
+  notebooksAPI: { workspace: vi.fn(), addSources: vi.fn(), generate: vi.fn(), chatHistory: vi.fn() },
   statusAPI: { get: vi.fn() },
 }))
 vi.mock('../../components/PracticeSession', () => ({ default: ({ deckId, onFinished, onExit, onEmpty }) =>
@@ -43,17 +43,18 @@ beforeEach(() => {
   vi.resetAllMocks()
   localStorage.clear()
   notebooksAPI.workspace.mockResolvedValue({ data: fixture() })
+  notebooksAPI.chatHistory.mockResolvedValue({ data: [] })
   notebooksAPI.generate.mockResolvedValue({ data: { job_id: 'job-1', deck_id: 10 } })
   statusAPI.get.mockResolvedValue({ data: { status: 'processing', current_step: 'Reading sources', current_question: 1, total_questions: 10 } })
 })
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('Notebook workspace', () => {
-  it('renders sources, artifacts, progress and empty centre', async () => {
+  it('renders sources, artifacts, progress and chat centre', async () => {
     mount(); await loaded()
     expect(notebooksAPI.workspace).toHaveBeenCalledWith('7')
     expect(screen.getByText('Study cells')).toBeInTheDocument()
-    expect(screen.getByText('Tick sources on the left, then make a quiz or flashcards in the studio.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Ask about your sources')).toBeInTheDocument()
     expect(screen.getByLabelText('Cells.pdf')).toBeChecked()
     expect(screen.getByLabelText('Notes.md')).toBeChecked()
     expect(screen.getByLabelText('Broken.pdf')).toBeDisabled()

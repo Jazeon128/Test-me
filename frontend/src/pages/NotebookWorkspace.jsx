@@ -5,6 +5,7 @@ import PracticeSession from '../components/PracticeSession'
 import DeckEditor from '../components/DeckEditor'
 import SourcesPanel from '../components/workspace/SourcesPanel'
 import StudioPanel from '../components/workspace/StudioPanel'
+import ChatPanel from '../components/workspace/ChatPanel'
 
 const storageKey = 'testme.workspace.collapsed'
 const jobId = job => job.job_id || job.id
@@ -119,16 +120,17 @@ function Workspace({ notebookId }) {
     </aside>
     <section className="workspace-centre" aria-label="Current work">
       {error && <p role="alert" className="text-red-600">{error}</p>}
-      {hasOpenDeck ? <>
+      <div className="workspace-chat" hidden={hasOpenDeck}>
+        <h1 className="text-3xl font-bold">{workspace.notebook.name}</h1>
+        <p className="mt-3">{workspace.notebook.description}</p>
+        <ChatPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} />
+      </div>
+      {hasOpenDeck && <>
         <button onClick={close} className="mb-4">Close</button>
         {view === 'practice' ? <PracticeSession key={`practice-${deckId}`} deckId={deckId}
           onExit={close} onFinished={close} onEmpty={close} />
           : <DeckEditor key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}
             onPractice={id => open(id, 'practice')} onOpenCanvas={onCanvas} />}
-      </> : <>
-        <h1 className="text-3xl font-bold">{workspace.notebook.name}</h1>
-        <p className="mt-3">{workspace.notebook.description}</p>
-        <p className="mt-8">Tick sources on the left, then make a quiz or flashcards in the studio.</p>
       </>}
     </section>
     <aside className={`workspace-panel ${collapsed.studio ? 'workspace-rail' : ''}`} aria-label="Studio panel">

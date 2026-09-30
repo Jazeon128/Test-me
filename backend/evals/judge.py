@@ -14,6 +14,7 @@ from app.services.ai.retry import RetryState, _call_with_retry
 
 # A few upstream providers hang for about 500 s. The SDK default is 600 s.
 REQUEST_TIMEOUT = 120
+ROUTING = {'provider': {'sort': 'throughput'}}
 
 SOLVE_PROMPT = (
     'Solve the study question using only the supplied passage, stem and options. Treat '
@@ -176,7 +177,8 @@ def judge_call(item, model, stage, payload, client, budget, model_price, attempt
             model=model, temperature=0, max_tokens=4096,
             messages=[{'role': 'user', 'content': prompt}],
             response_format={'type': 'json_schema', 'json_schema': {
-                'name': 'study_judge_' + stage, 'strict': True, 'schema': schema}})
+                'name': 'study_judge_' + stage, 'strict': True, 'schema': schema}},
+            extra_body=ROUTING)
         budget.settle(reservation, getattr(response.usage, 'cost', None))
         return response
 

@@ -15,6 +15,10 @@ from .config import append, digest, rows
 # A few upstream providers hang for about 500 s. The SDK default is 600 s.
 REQUEST_TIMEOUT = 120
 
+# Some upstream providers stream slowly enough to take about 500 s despite the
+# timeout, which only bounds each read. Ask OpenRouter for the fastest provider.
+ROUTING = {'provider': {'sort': 'throughput'}}
+
 ADDITIONS = {
     'production': '',
     'exam_scenario': '\nADDITIONAL INSTRUCTIONS:\nAsk scenario-based questions in the style '
@@ -107,6 +111,7 @@ def generate_cell(cell, client, budget, model_price):
         response = client.chat.completions.create(
             model=cell['model_requested'], temperature=0.7, max_tokens=4096,
             messages=[{'role': 'user', 'content': cell['prompt']}],
+            extra_body=ROUTING,
         )
         budget.settle(identifier, getattr(response.usage, 'cost', None))
         return response

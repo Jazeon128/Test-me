@@ -40,12 +40,20 @@
     "openai/gpt-6-luna": {
       "prompt_per_million": "0.1",
       "completion_per_million": "0.5"
+    },
+    "anthropic/claude-sonnet-5.5": {
+      "prompt_per_million": "2",
+      "completion_per_million": "10"
+    },
+    "mistralai/mistral-large-2512": {
+      "prompt_per_million": "0.5",
+      "completion_per_million": "1.5"
     }
   },
   "judge": {
     "primary": "anthropic/claude-sonnet-5.5",
     "second": "mistralai/mistral-large-2512"
   },
-  "judge_budget": "2.00",
+  "judge_budget": "2.50",
   "judge_per_cell": 20
 }

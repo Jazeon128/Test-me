@@ -1,13 +1,14 @@
 """Blind, resumable two-family judging of deterministic survivors."""
 
 import json
+from pathlib import Path
 import random
 import re
 import time
 from collections import defaultdict
 from decimal import Decimal
 
-from .budget import Budget, BudgetStop, estimate, price, run_lock
+from .budget import _hold_lock, Budget, BudgetStop, estimate, price, run_lock
 from .config import append, digest, rows, write
 from .generate import response_record
 from app.services.ai.retry import RetryState, _call_with_retry
@@ -122,9 +123,11 @@ def validate(data, key, explanation):
 
 class JudgeBudget(Budget):
     """Use the shared ledger while counting only the independent judge cap."""
-    def __init__(self, path, cap):
+    def __init__(self, path, cap, recover=False):
         self.path, self.cap, self.phase = path, price(cap), 'judge'
         self.entries = {}
+        if recover:
+            _hold_lock(Path(path).parent)
         unresolved = set()
         for event in rows(path):
             if event.get('phase') != 'judge':
@@ -139,7 +142,8 @@ class JudgeBudget(Budget):
                 unresolved.add(identifier)
             else:
                 unresolved.discard(identifier)
-        for identifier in sorted(unresolved):
+        # Only the run's own writer recovers; a reader must not abandon a live call.
+        for identifier in sorted(unresolved if recover else ()):
             amount = self.entries.pop(identifier)
             self._record(identifier, amount, 'abandon')
             self.entries.pop(identifier)
@@ -261,7 +265,7 @@ def _judge(config, directory, prices, client=None, dry=False):  # noqa: C901
     if snapshot.exists() and json.loads(snapshot.read_text(encoding='utf-8')) != judge_config:
         raise ValueError('Judge configuration changed. Use a new run name.')
     write(snapshot, judge_config)
-    budget = JudgeBudget(directory / 'ledger.jsonl', config.get('judge_budget', '2.00'))
+    budget = JudgeBudget(directory / 'ledger.jsonl', config.get('judge_budget', '2.00'), recover=True)
     done = {r['id'] for r in rows(directory / 'judges.jsonl')}
     completed = {r['id']: r for r in rows(directory / 'judge_calls.jsonl')}
     for item, model, payload, mapping in jobs:

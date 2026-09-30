@@ -135,7 +135,7 @@ def test_phase_budget_and_recovery(tmp_path):
     budget.reserve('judge:one', Decimal('.2'))
     budget.settle('judge:one', Decimal('.1'))
     budget.reserve('judge:two', Decimal('.2'))
-    recovered = JudgeBudget(ledger, '.5')
+    recovered = JudgeBudget(ledger, '.5', recover=True)  # the resuming writer
     assert recovered.total == Decimal('.3')
     assert rows(ledger)[-1]['event'] == 'abandon'
     recovered.reserve('judge:two', Decimal('.1'))
@@ -261,3 +261,13 @@ def test_adding_judge_settings_does_not_block_resuming_generation():
     after = dict(before, judge={'primary': 'x'}, judge_budget='2.00', judge_per_cell=20)
     assert generation_settings(before) == generation_settings(after)
     assert generation_settings(before) != generation_settings(dict(before, seed=2))
+
+
+def test_reading_the_judge_ledger_never_abandons_a_live_call(tmp_path):
+    from decimal import Decimal
+    from evals.judge import JudgeBudget
+    ledger = tmp_path / 'ledger.jsonl'
+    JudgeBudget(ledger, '1.00').reserve('judge:item:solve:1', '0.20')
+    reader = JudgeBudget(ledger, '1.00')
+    assert reader.total == Decimal('0.20')
+    assert '"abandon"' not in ledger.read_text(encoding='utf-8')

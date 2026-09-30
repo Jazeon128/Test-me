@@ -1,3 +1,4 @@
+from .chat_message import ChatMessage
 from .base import Base
 from .document import Document
 from .passage import DocumentPassage
@@ -16,6 +17,7 @@ from .llm_call import LLMCall
 
 __all__ = [
     "Base",
+    "ChatMessage",
     "Document",
     "DocumentPassage",
     "Question",

@@ -3,10 +3,10 @@
 from typing import Dict, List, Optional
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
+from fastapi import Query, APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from ..services.source_names import display_name
@@ -16,6 +16,10 @@ from ..models.canvas import Canvas
 from ..models.deck import Deck
 from ..models.document import Document
 from ..models.notebook import Notebook
+from ..models.chat_message import ChatMessage
+from ..services.chat.retrieve import retrieve
+from ..services.chat.answer import answer, REFUSAL, validate_citations
+from ..services.ai.question_generator import explain_provider_error
 from ..models.generation_status import GenerationStatus
 from ..services.generation import GenerateRequest, selected_sources, question_split
 from ..services.workspace import notebook_workspace
@@ -287,4 +291,102 @@ async def delete_notebook(notebook_id: int, db: Session = Depends(get_db)):
     db.delete(notebook)
     db.commit()
     invalidate_stats_cache()
+    return {"success": True}
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    source_ids: List[int] = Field(min_length=1)
+
+    @field_validator("message")
+    @classmethod
+    def nonempty_message(cls, value):
+        if not value.strip():
+            raise ValueError("A message must contain text")
+        return value
+
+
+def _chat_notebook(db, notebook_id):
+    if db.get(Notebook, notebook_id) is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+
+
+def _chat_sources(db, notebook_id, source_ids):
+    sources = db.query(Document).filter(Document.id.in_(source_ids)).all()
+    if {source.id for source in sources if source.notebook_id == notebook_id} != set(source_ids):
+        raise HTTPException(status_code=400, detail="A selected source is not in this notebook")
+    return [source.id for source in sources if source.status == "processing"]
+
+
+def _chat_message(db, turn):
+    citations = []
+    for stored in turn.citations or []:
+        citation = dict(stored)
+        if db.get(Document, citation["document_id"]) is None:
+            citation.update(removed=True, display_name="Removed source")
+            citation.pop("excerpt", None)
+        citations.append(citation)
+    _, _, invalid, uncited = validate_citations(
+        turn.content, max((citation["n"] for citation in citations), default=0),
+    )
+    return dict(id=turn.id, role=turn.role, content=turn.content, citations=citations,
+                refused=turn.refused, uncited=uncited and not turn.refused and turn.role == "assistant",
+                invalid_citations=invalid, model=turn.model, created_at=turn.created_at.isoformat())
+
+
+def _chat_history(db, notebook_id, limit=6, before=None):
+    query = db.query(ChatMessage).filter(ChatMessage.notebook_id == notebook_id)
+    if before is not None:
+        query = query.filter(ChatMessage.id < before)
+    return list(reversed(query.order_by(ChatMessage.id.desc()).limit(limit).all()))
+
+
+@router.post("/{notebook_id}/chat")
+def post_chat(notebook_id: int, request: ChatRequest, db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    processing = _chat_sources(db, notebook_id, request.source_ids)
+    if processing:
+        return JSONResponse(status_code=409, content={
+            "detail": "Selected sources are still processing", "processing": processing,
+        })
+    history = _chat_history(db, notebook_id)
+    prior = (db.query(ChatMessage)
+             .filter(ChatMessage.notebook_id == notebook_id, ChatMessage.role == "user")
+             .order_by(ChatMessage.id.desc()).first())
+    previous = prior.content if prior else ""
+    user = ChatMessage(notebook_id=notebook_id, role="user", content=request.message,
+                       source_ids=request.source_ids)
+    db.add(user)
+    db.commit()
+    passages = retrieve(db, notebook_id, request.source_ids, request.message, previous)
+    result = dict(content=REFUSAL, citations=[], refused=True, model=None,
+                  uncited=False, invalid_citations=[])
+    if passages:
+        try:
+            result = answer(db, passages, history, request.message, previous)
+        except Exception as error:
+            provider = getattr(error, "details", {}).get("provider", "")
+            raise HTTPException(status_code=502, detail=explain_provider_error(
+                str(error), provider or "gemini")) from error
+    assistant = ChatMessage(notebook_id=notebook_id, role="assistant",
+                            **{key: result[key] for key in ("content", "citations", "refused", "model")})
+    db.add(assistant)
+    db.commit()
+    db.refresh(assistant)
+    return {**_chat_message(db, assistant), "uncited": result["uncited"],
+            "invalid_citations": result["invalid_citations"]}
+
+
+@router.get("/{notebook_id}/chat")
+def get_chat(notebook_id: int, limit: int = Query(50, ge=1, le=200),
+             before: Optional[int] = Query(None, ge=1), db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    return [_chat_message(db, turn) for turn in _chat_history(db, notebook_id, limit, before)]
+
+
+@router.delete("/{notebook_id}/chat")
+def clear_chat(notebook_id: int, db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    db.query(ChatMessage).filter(ChatMessage.notebook_id == notebook_id).delete()
+    db.commit()
     return {"success": True}

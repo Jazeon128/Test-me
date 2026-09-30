@@ -18,3 +18,14 @@ it('shows the server reason when the upload fails', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('File type not allowed')
   await waitFor(() => expect(notebooksAPI.addSources).toHaveBeenCalledTimes(1))
 })
+
+
+it.each([
+  ['study_process', 'Looks like notes about your study process, not study material'],
+  ['low_teachability', 'Little to study'],
+  ['empty', 'No text could be read from this source'],
+])('explains %s', (reason, message) => {
+  render(<SourcesPanel notebookId="7" sources={[{ id: 9, display_name: 'notes.md', status: 'ready',
+    preflight: { worth_generating: false, reason } }]} selected={{}} setSelected={vi.fn()} refresh={vi.fn()} />)
+  expect(screen.getByText(message)).toBeInTheDocument()
+})

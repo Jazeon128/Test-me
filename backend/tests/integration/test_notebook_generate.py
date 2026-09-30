@@ -123,7 +123,8 @@ def test_source_validation(client, db_session, selected, state, code, key):
     if key == "processing":
         assert response.json()[key] == [source.id]
     elif key == "unteachable":
-        assert response.json()[key] == [dict(id=source.id, display_name="source0", is_teachable=0.2)]
+        assert response.json()[key] == [dict(id=source.id, display_name="source0", is_teachable=0.2,
+                                            has_study_content=None, reason=None)]
     else:
         assert str(body["source_ids"][0]) in response.json()["error"]["message"]
     assert db_session.query(Deck).count() == 0
@@ -236,3 +237,29 @@ def test_failed_generation_keeps_deck_with_saved_material(client, db_session, se
         assert deck.questions[0].document_id == sources[2].id
     else:
         assert db_session.query(FlaggedQuestion).filter_by(deck_id=deck.id, status="pending").count() == 1
+
+
+@pytest.mark.parametrize("reason,allow,code", [
+    ("study_process", False, 409), ("study_process", True, 202),
+    ("low_teachability", False, 409), ("low_teachability", True, 202),
+    ("empty", False, 409), ("empty", True, 409),
+])
+def test_preflight_reasons_and_override(client, db_session, selected, reason, allow, code):
+    notebook, sources, calls = selected
+    source = sources[0]
+    source.preflight = dict(worth_generating=False, is_teachable=.99,
+                            has_study_content=.1, reason=reason)
+    db_session.commit()
+    response = client.post(f"/api/notebooks/{notebook.id}/generate", json=request(
+        [source], allow_unteachable=allow,
+    ))
+    assert response.status_code == code
+    if code == 409:
+        assert response.json()["unteachable"] == [dict(
+            id=source.id, display_name="source0", is_teachable=.99,
+            has_study_content=.1, reason=reason,
+        )]
+        assert not calls
+        assert db_session.query(Deck).count() == 0
+    else:
+        assert len(calls) == 1

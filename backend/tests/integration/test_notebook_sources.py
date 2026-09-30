@@ -52,14 +52,16 @@ def test_preflight(client, db_session, notebook, monkeypatch):
     db_session.add(Settings(key="typesafe_api_key", value="fake-key"))
     db_session.commit()
     calls = []
-    def assess(title, text, key):
+    def assess(title, text, key, **context):
+        assert context == {"notebook_name": "Sources", "notebook_description": None}
         calls.append((title, text, key))
         return SourceAssessment(is_teachable=0.2, is_transcript=0.8)
     monkeypatch.setattr(ingest.sourcing, "assess_source", assess)
     response = upload(client, notebook)
     document = db_session.get(Document, response.json()["sources"][0]["id"])
     assert document.preflight == dict(checked=True, worth_generating=False,
-                                      is_teachable=0.2, is_transcript=0.8)
+                                      is_teachable=0.2, is_transcript=0.8,
+                                      has_study_content=1.0, reason="low_teachability")
     assert len(calls) == 1
     assert calls[0][2] == "fake-key"
     assert document.status == "ready"
@@ -187,3 +189,16 @@ def test_legacy_parse_failure(db_session, notebook, monkeypatch):
     db_session.refresh(document)
     assert document.status == "failed"
     assert document.error_message == "Parse failed"
+
+
+def test_empty_without_key(client, db_session, notebook, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Empty source must not call Jev")
+    monkeypatch.setattr(ingest.sourcing.jev, "ask", forbidden)
+    response = client.post(f"/api/notebooks/{notebook.id}/sources", files={
+        "files": ("empty.md", b" \n\t", "text/markdown"),
+    })
+    assert response.status_code == 202
+    document = db_session.get(Document, response.json()["sources"][0]["id"])
+    assert document.status == "ready"
+    assert document.preflight == {"reason": "empty", "worth_generating": False}

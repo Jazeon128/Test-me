@@ -39,3 +39,22 @@ it('cancels without generating', async () => {
   expect(notebooksAPI.generate).toHaveBeenCalledTimes(1)
   expect(onJob).not.toHaveBeenCalled()
 })
+
+
+it.each([
+  ['study_process', 'Looks like notes about your study process, not study material', false],
+  ['low_teachability', 'Little to study', false],
+  ['empty', 'No text could be read from this source', true],
+])('explains %s and controls override', async (reason, message, disabled) => {
+  notebooksAPI.generate.mockRejectedValue({ status: 409, response: { data: { unteachable: [
+    { id: 9, display_name: 'notes.md', reason, has_study_content: .1, is_teachable: .99 },
+  ] } } })
+  mount()
+  expect(await screen.findByText(`notes.md: ${message}`)).toBeInTheDocument()
+  const override = screen.getByRole('button', { name: 'Generate anyway' })
+  if (disabled) {
+    expect(override).toBeDisabled()
+    fireEvent.click(override)
+    expect(notebooksAPI.generate).toHaveBeenCalledTimes(1)
+  } else expect(override).toBeEnabled()
+})

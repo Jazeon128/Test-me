@@ -92,3 +92,7 @@ backend/evals/pilot.local.json
 
 # Codex sandbox pytest folders (owned by the sandbox user)
 .pytest-*/
+
+# SQLite write-ahead log files
+*.db-wal
+*.db-shm

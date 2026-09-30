@@ -248,6 +248,8 @@ async def upload_document(
 
     rejected = [item for item in preflight if not item["worth_generating"]]
     if rejected:
+        pending_request["empty_sources"] = [item["document_id"] for item in rejected
+                                            if item.get("reason") == "empty"]
         gen_status.status = "awaiting_confirmation"
         gen_status.current_step = "Waiting for confirmation"
         gen_status.pending_request = pending_request
@@ -328,6 +330,8 @@ def assess_sources(documents: List[dict], api_key: str) -> List[dict]:
             "worth_generating": True,
             "is_teachable": None,
             "is_transcript": None,
+            "has_study_content": None,
+            "reason": "unchecked",
         }
         try:
             parsed = _parser_for(doc["file_type"]).parse(doc["file_path"])
@@ -338,6 +342,8 @@ def assess_sources(documents: List[dict], api_key: str) -> List[dict]:
 
         assessment = sourcing.assess_source(parsed.title or doc["filename"], parsed.full_text, api_key)
         result.update(
+            has_study_content=round(assessment.has_study_content, 3) if assessment.checked else None,
+            reason=assessment.reason,
             checked=assessment.checked,
             worth_generating=assessment.worth_generating,
             is_teachable=round(assessment.is_teachable, 3) if assessment.checked else None,
@@ -365,6 +371,8 @@ def confirm_generation(
     """Generate from sources that failed pre-flight, reusing the stored files."""
     job = _awaiting_job(job_id, db)
     request = job.pending_request
+    if request.get("empty_sources"):
+        raise HTTPException(status_code=409, detail="No text could be read from this source")
 
     job.status = "pending"
     job.current_step = "Queued"

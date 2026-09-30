@@ -1,3 +1,4 @@
+import { PreflightMessage } from './SourcesPanel'
 import { useState } from 'react'
 import { ListChecks, Layers, Network } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
@@ -55,8 +56,8 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
       <button className="btn-primary" disabled={busy || !sourceIds.length}>{!sourceIds.length ? 'Tick at least one source' : busy ? 'Generating...' : 'Generate'}</button>
     </form>}
     {pending && <div role="alert" className="workspace-warning mt-3">
-      {unteachable.map(source => <p key={source.id}>{source.display_name}: {Math.round((source.is_teachable || 0) * 100)}% teachable{source.is_transcript > 0.5 ? ', reads like a transcript' : ''}</p>)}
-      <button className="btn-primary" disabled={busy || !sourceIds.length} onClick={() => generate({ ...pending, allow_unteachable: true })}>Generate anyway</button>
+      {unteachable.map(source => <p key={source.id}>{source.display_name}: {source.reason ? <PreflightMessage reason={source.reason} /> : `${Math.round((source.is_teachable || 0) * 100)}% teachable${source.is_transcript > 0.5 ? ", reads like a transcript" : ""}`}</p>)}
+      <button className="btn-primary" disabled={busy || !sourceIds.length || unteachable.some(source => source.reason === 'empty')} onClick={() => generate({ ...pending, allow_unteachable: true })}>Generate anyway</button>
       <button onClick={() => { setPending(null); setUnteachable([]) }}>Cancel generation</button>
     </div>}
     {error && <p role="alert" className="workspace-error mt-3">{error}</p>}

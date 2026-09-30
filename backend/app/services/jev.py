@@ -128,6 +128,7 @@ def ask(
     api_key: str,
     timeout: float = DEFAULT_TIMEOUT,
     label: str = "jev",
+    model: Optional[str] = None,
 ) -> Answers:
     """Put one set of questions to Jev over one piece of state.
 
@@ -140,7 +141,7 @@ def ask(
         record(label, len(questions), 0, 0, False, "No TypeSafe API key configured")
         raise JevUnavailable("No TypeSafe API key configured")
 
-    payload = {"state": state, "model": MODEL, "questions": questions}
+    payload = {"state": state, "model": model or MODEL, "questions": questions}
 
     try:
         response = requests.post(

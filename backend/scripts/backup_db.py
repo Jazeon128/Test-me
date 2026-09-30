@@ -11,8 +11,8 @@ Usage:
     python scripts/backup_db.py --restore <backup_file>  # Restore from a backup
 """
 
-import os
 import shutil
+import sqlite3
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +26,12 @@ def get_paths():
     backup_dir = backend_dir / "backups"
 
     return db_path, backup_dir
+
+
+def sqlite_copy(source, target):
+    """Copy a live database consistently, including pages still in the WAL file."""
+    with sqlite3.connect(source) as src, sqlite3.connect(target) as dst:
+        src.backup(dst)
 
 
 def create_backup(keep_last_n=None):
@@ -54,7 +60,7 @@ def create_backup(keep_last_n=None):
 
     # Copy database file
     try:
-        shutil.copy2(db_path, backup_path)
+        sqlite_copy(db_path, backup_path)
         file_size_mb = backup_path.stat().st_size / (1024 * 1024)
         print(f"[SUCCESS] Backup created: {backup_path}")
         print(f"[INFO] Size: {file_size_mb:.2f} MB")
@@ -124,12 +130,17 @@ def restore_backup(backup_file):
 
     # Create a safety backup of current database before restoring
     if db_path.exists():
-        safety_backup = db_path.with_suffix(".db.before_restore")
-        shutil.copy2(db_path, safety_backup)
+        # Ends in .db so the gitignore rule for *.db covers it: a copy named
+        # test_me.db.before_restore would not be ignored and holds the same data.
+        safety_backup = db_path.with_name(db_path.stem + ".before_restore.db")
+        sqlite_copy(db_path, safety_backup)
         print(f"[INFO] Safety backup created: {safety_backup}")
 
     # Restore from backup
     try:
+        # Stale write-ahead log files would be replayed over the restored file.
+        for suffix in ("-wal", "-shm"):
+            Path(str(db_path) + suffix).unlink(missing_ok=True)
         shutil.copy2(backup_path, db_path)
         print(f"[SUCCESS] Database restored from: {backup_path}")
         print(f"[INFO] Restored to: {db_path}")

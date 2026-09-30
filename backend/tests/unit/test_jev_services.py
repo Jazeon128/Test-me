@@ -239,7 +239,8 @@ class TestSourceAssessment:
         monkeypatch.setattr(
             jev,
             "ask",
-            lambda *a, **k: answers({"is_teachable": {"noul": 0.9}, "is_transcript": {"noul": 0.1}}),
+            lambda *a, **k: answers({"is_teachable": {"noul": 0.9}, "is_transcript": {"noul": 0.1},
+                                    "has_study_content": {"noul": 0.9}}),
         )
 
         assert sourcing.assess_source("Notes", "text", "key").worth_generating is True

@@ -75,10 +75,13 @@ def selected_sources(db, notebook_id, request):
     if failed:
         raise HTTPException(status_code=400, detail=f"Failed sources: {failed}")
     unteachable = [dict(id=source.id, display_name=display_name(source),
-                        is_teachable=source.preflight.get("is_teachable"))
+                        is_teachable=source.preflight.get("is_teachable"),
+                        has_study_content=source.preflight.get("has_study_content"),
+                        reason=source.preflight.get("reason"))
                    for source in sources
                    if source.preflight and source.preflight.get("worth_generating") is False]
-    if unteachable and not request.allow_unteachable:
+    if unteachable and (not request.allow_unteachable
+                        or any(item["reason"] == "empty" for item in unteachable)):
         raise HTTPException(status_code=409, detail={
             "detail": "Sources may not contain anything to study", "unteachable": unteachable,
         })

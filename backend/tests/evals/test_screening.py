@@ -28,14 +28,16 @@ def test_screen_selection_rejections_cache_and_ledger(tmp_path, monkeypatch):
     calls = []
     original_model = jev.MODEL
 
-    def fake(title, text, key):
+    def fake(title, text, key, **context):
         assert key == 'fake'
-        assert jev.MODEL == 'jev-1.13.0'
+        assert context == {'notebook_name': 'study'}
+        assert sourcing.PREFLIGHT_MODEL == 'jev-1.13.0'
         assert len(text) == 12000
         sha = digest((tmp_path / 'sources' / f'{title}.md').read_bytes())
         ledger = rows(output / 'study' / 'screen_ledger.jsonl')
         assert ledger[-1]['event'] == 'reserve'
-        assert ledger[-1]['id'] == 'screen:' + sha
+        assert ledger[-1]['id'] == 'screen:' + corpus.prepared(
+            tmp_path / 'sources' / f'{title}.md', sha, 'study')[2]
         assert ledger[-1]['phase'] == 'screen'
         calls.append(title)
         return sourcing.SourceAssessment(is_teachable=.9 if title in {'lesson0', 'lesson1'} else .1,
@@ -71,7 +73,7 @@ def test_screen_limit_and_seed(tmp_path, monkeypatch):
         path.write_text(path.read_text(encoding='utf-8') + path.stem, encoding='utf-8')
     calls = []
 
-    def fake(title, text, key):
+    def fake(title, text, key, **context):
         calls.append(title)
         return sourcing.SourceAssessment(.9, 0)
     monkeypatch.setattr(sourcing, 'assess_source', fake)
@@ -105,7 +107,7 @@ def test_no_key_fails_and_no_screen_skips_secrets(tmp_path, monkeypatch):
 def test_screen_actual_usage(tmp_path, monkeypatch):
     config, output = setup_sources(tmp_path, 1)
 
-    def fake(title, text, key):
+    def fake(title, text, key, **context):
         answers = jev.ask(state={'text': text}, questions={}, api_key=key)
         assert answers.input_tokens == 100
         return sourcing.SourceAssessment(.9, 0)

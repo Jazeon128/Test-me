@@ -1,5 +1,6 @@
 """Deterministic sampling and immutable passage manifests."""
 
+import json
 import fnmatch
 import os
 import random
@@ -14,21 +15,38 @@ from app.services.ai import sourcing
 from app.services.passages import split_passages
 from . import adapters
 from .budget import Budget, BudgetStop, MILLION, tokens
-from .checks import JEV_MODEL
 from .config import ROOT, digest, load, write
 
 SKIP = {'node_modules', '.git', '.venv', '__pycache__'}
 MAX_BYTES = 20 * 1024 * 1024
 SCREEN_CHARS = 12000
 SCREEN_INSTRUCTION_TOKENS = 1024
+ASSESSMENT_VERSION = 2
 
 
-def assess(path, key, budget, sha):
+def assessment_key(sha, parser, title, notebook_name="", notebook_description=""):
+    context = {"name": notebook_name or "", "description": notebook_description or ""}
+    return digest(json.dumps({
+        "sha256": sha, "version": ASSESSMENT_VERSION, "model": sourcing.PREFLIGHT_MODEL,
+        "parser": parser,
+        "text_policy": {"selection": "joined_sections_prefix", "characters": SCREEN_CHARS},
+        "title": title or "Untitled", "context": digest(json.dumps(context, sort_keys=True)),
+    }, sort_keys=True))
+
+
+def prepared(path, sha, notebook_name="", title=None, notebook_description=""):
     source = adapters.parse(path)
     text = '\n'.join(section.text for section in source.sections)[:SCREEN_CHARS]
-    title = path.stem
-    identifier = f'screen:{sha}'
-    estimated = (tokens(title + text) + SCREEN_INSTRUCTION_TOKENS) * Decimal('0.042') / MILLION
+    title = path.stem if title is None else title
+    cache_key = assessment_key(sha, source.parser, title, notebook_name, notebook_description)
+    return title, text, cache_key
+
+
+def assess(path, key, budget, sha, notebook_name="", preparation=None):
+    title, text, cache_key = preparation or prepared(path, sha, notebook_name)
+    identifier = f'screen:{cache_key}'
+    estimated = (tokens(title + text + notebook_name) + SCREEN_INSTRUCTION_TOKENS)
+    estimated = estimated * Decimal('0.042') / MILLION
     budget.reserve(identifier, estimated)
     reported = None
     original = jev.ask
@@ -41,11 +59,12 @@ def assess(path, key, budget, sha):
         return answers
 
     try:
-        with patch.object(jev, 'MODEL', JEV_MODEL), patch.object(jev, 'ask', ask):
-            score = sourcing.assess_source(title, text, key)
+        with patch.object(jev, 'ask', ask):
+            score = sourcing.assess_source(title, text, key, notebook_name=notebook_name)
         return {'checked': score.checked, 'is_teachable': score.is_teachable,
                 'is_transcript': score.is_transcript, 'worth_generating': score.worth_generating,
-                'model': JEV_MODEL}
+                'has_study_content': score.has_study_content, 'reason': score.reason,
+                'model': sourcing.PREFLIGHT_MODEL}
     finally:
         budget.settle(identifier, reported)
 
@@ -59,13 +78,16 @@ def screen(grouped, config, output, name, key, cache, manifest):
     for path in sample(grouped, config.get('screen_limit', 40), config['seed']):
         sha = digest(path.read_bytes())
         try:
-            if sha not in cache:
-                cache[sha] = assess(path, key, budget, sha)
+            preparation = prepared(path, sha, name)
+            cache_key = preparation[2]
+            if cache_key not in cache:
+                cache[cache_key] = assess(path, key, budget, sha, name, preparation)
                 write(output / 'screen_cache.json', cache)
-            score = cache[sha]
+            score = cache[cache_key]
         except Exception as error:
             score = {'checked': False, 'is_teachable': None, 'is_transcript': None,
-                     'worth_generating': False, 'model': JEV_MODEL, 'error': str(error)}
+                     'worth_generating': False, 'model': sourcing.PREFLIGHT_MODEL,
+                     'has_study_content': None, 'reason': 'unchecked', 'error': str(error)}
             if not isinstance(error, BudgetStop):
                 manifest['parse_failures'].append({'source_path': str(path), 'error': str(error)})
         group = normalized_stem(path)

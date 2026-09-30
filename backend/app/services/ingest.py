@@ -86,16 +86,31 @@ def parse_source(db, document_id, api_key):
         parsed = _parser_for(document.file_type).parse(document.file_path)
         store_parsed(db, document, parsed)
         document.preflight = None
-        if api_key:
+        # Commit the passages before the Jev call and keep the source "processing".
+        # SQLite allows one writer: holding this transaction open through a network
+        # call made concurrent source uploads fail with "database is locked".
+        document.status = "processing"
+        title = document.title or document.original_filename
+        notebook_name = document.notebook.name if document.notebook else ""
+        notebook_description = document.notebook.description if document.notebook else ""
+        db.commit()
+        if not parsed.full_text.strip():
+            document.preflight = {"reason": "empty", "worth_generating": False}
+        elif api_key:
             assessment = sourcing.assess_source(
-                document.title or document.original_filename, parsed.full_text, api_key,
+                title, parsed.full_text, api_key,
+                notebook_name=notebook_name,
+                notebook_description=notebook_description,
             )
             document.preflight = {
                 "checked": assessment.checked,
                 "worth_generating": assessment.worth_generating,
                 "is_teachable": assessment.is_teachable,
                 "is_transcript": assessment.is_transcript,
+                "has_study_content": assessment.has_study_content,
+                "reason": assessment.reason,
             }
+        document.status = "ready"
         db.commit()
         invalidate_stats_cache()
     except Exception as error:

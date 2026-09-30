@@ -30,6 +30,13 @@ MIN_USEFUL_SCORE = 0.5
 #: Below this a source is not worth generating from at all.
 TEACHABLE_FLOOR = 0.4
 
+#: Calibrate with evals/calibrate_preflight.py on labelled sources.
+# Provisional until calibrated on the owner's labels. Live checks on 2026-09-30:
+# a study plan scored 0.03, one-sentence factual notes 0.18 to 0.55, a full note
+# 0.89. 0.5 held back short real notes, so start low and let calibration raise it.
+STUDY_CONTENT_FLOOR = 0.15
+PREFLIGHT_MODEL = "jev-1.13.0"
+
 MAX_SECTION_CHARS = 2_000
 MAX_SOURCE_CHARS = 20_000
 
@@ -63,11 +70,28 @@ class SourceAssessment:
     is_transcript: float
     subject: Optional[str] = None
     checked: bool = True
+    has_study_content: float = 1.0
+    empty: bool = False
+
+    @property
+    def reason(self) -> str:
+        if self.empty:
+            return "empty"
+        if not self.checked:
+            return "unchecked"
+        if self.has_study_content < STUDY_CONTENT_FLOOR:
+            return "study_process"
+        if self.is_teachable < TEACHABLE_FLOOR:
+            return "low_teachability"
+        return "ok"
 
     @property
     def worth_generating(self) -> bool:
         # An unchecked source always passes: never block on a missing judgment.
-        return not self.checked or self.is_teachable >= TEACHABLE_FLOOR
+        return not self.empty and (not self.checked or (
+            self.is_teachable >= TEACHABLE_FLOOR
+            and self.has_study_content >= STUDY_CONTENT_FLOOR
+        ))
 
 
 def rank_sections(
@@ -178,29 +202,56 @@ def assess_source(
     text: str,
     api_key: str,
     timeout: float = jev.DEFAULT_TIMEOUT,
+    notebook_name: str = "",
+    notebook_description: str = "",
 ) -> SourceAssessment:
     """Judge a whole document before generating from it."""
+    if not text or not text.strip():
+        return SourceAssessment(0.0, 0.0, has_study_content=0.0, empty=True)
     state = {
-        "title": title or "Untitled",
-        "text": jev.trim(text, MAX_SOURCE_CHARS),
+        "notebook": {"name": notebook_name or "", "description": notebook_description or ""},
+        "source": {"title": title or "Untitled", "text": jev.trim(text, MAX_SOURCE_CHARS)},
     }
 
     questions = {
         "is_teachable": {
             "type": "noul",
             "instructions": (
-                "Does `text` contain factual material a learner could be examined on?"
+                "Does `source.text` contain factual material a learner could be examined on?"
             ),
             "criteria": {
                 "true": "It explains concepts, processes, facts or relationships",
                 "false": "It is chatter, narrative, opinion or admin with nothing examinable",
             },
         },
+        "has_study_content": {
+            "type": "noul",
+            "instructions": (
+                "Does `source.text` contain substantive study material a learner could "
+                "revise from: explanations, procedures, worked examples, or practice "
+                "questions with answers? Use the notebook name and description only "
+                "as topic context."
+            ),
+            "criteria": {
+                "true": (
+                    "It teaches: it explains concepts or services, walks through a "
+                    "procedure, works an example, or poses practice questions with "
+                    "answers. Material about tools counts when it teaches that tool "
+                    "as the subject."
+                ),
+                "false": (
+                    "It is about the learner's process rather than teaching: study "
+                    "plans, reading or resource lists, catalogues or indexes of notes, "
+                    "assessments or reviews of other materials, import or conversion "
+                    "instructions, prompts, scraping or file-format notes, or boilerplate."
+                ),
+            },
+        },
         # Speculative: only read when the caller wants to warn about transcripts,
         # which need different chunking than prose.
         "is_transcript": {
             "type": "noul",
-            "instructions": "Is `text` a transcript of speech rather than written prose?",
+            "instructions": "Is `source.text` a transcript of speech rather than written prose?",
             "criteria": {
                 "true": "It reads as spoken language, with filler, repetition or speaker turns",
                 "false": "It reads as written, edited prose",
@@ -209,7 +260,8 @@ def assess_source(
     }
 
     try:
-        answers = jev.ask(state, questions, api_key, timeout, label="assess_source")
+        answers = jev.ask(state, questions, api_key, timeout, label="assess_source",
+                          model=PREFLIGHT_MODEL)
     except jev.JevUnavailable:
         logger.warning("source_assessment_skipped", title=title)
         return SourceAssessment(is_teachable=1.0, is_transcript=0.0, checked=False)
@@ -217,6 +269,7 @@ def assess_source(
     assessment = SourceAssessment(
         is_teachable=answers.noul("is_teachable"),
         is_transcript=answers.noul("is_transcript"),
+        has_study_content=answers.noul("has_study_content"),
     )
 
     logger.info(

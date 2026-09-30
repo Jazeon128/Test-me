@@ -152,3 +152,29 @@ def test_a_job_can_only_be_answered_once(client, monkeypatch, scheduled):
 
 def test_unknown_job_is_404(client):
     assert client.post("/api/documents/jobs/nope/confirm").status_code == 404
+
+
+def test_legacy_new_fields(client, monkeypatch, scheduled):
+    monkeypatch.setattr(documents, "_typesafe_key", lambda db: "fake")
+    monkeypatch.setattr(sourcing, "assess_source", lambda *args, **kwargs:
+                        sourcing.SourceAssessment(.99, 0, has_study_content=.1))
+    body = _upload(client)
+    assert body["status"] == "needs_confirmation"
+    assert body["preflight"][0]["reason"] == "study_process"
+    assert body["preflight"][0]["has_study_content"] == .1
+    assert not scheduled
+
+
+def test_legacy_empty_cannot_confirm(client, monkeypatch, scheduled):
+    monkeypatch.setattr(documents, "_typesafe_key", lambda db: "fake")
+    def forbidden(*args, **kwargs):
+        pytest.fail("Empty extraction must not call Jev")
+    monkeypatch.setattr(sourcing.jev, "ask", forbidden)
+    response = client.post("/api/documents/upload", files={
+        "files": ("empty.md", b" \n\t", "text/markdown"),
+    })
+    assert response.status_code == 200
+    body = response.json()
+    assert body["preflight"][0]["reason"] == "empty"
+    assert client.post(f"/api/documents/jobs/{body['job_id']}/confirm").status_code == 409
+    assert not scheduled

@@ -22,7 +22,8 @@ export default function TestSession() {
   const [showResult, setShowResult] = useState(false)
   const [result, setResult] = useState(null)
   const [timeLeft, setTimeLeft] = useState(30)
-  const [startTime, setStartTime] = useState(null)
+  const startTime = useRef(null)
+  const answerDuration = useRef(null)
   const [sessionStats, setSessionStats] = useState({
     correct: 0,
     incorrect: 0,
@@ -38,6 +39,7 @@ export default function TestSession() {
     if (timerRef.current) clearInterval(timerRef.current)
     const currentQuestion = questions[currentIndex]
     if (!currentQuestion) return
+    answerDuration.current = (Date.now() - startTime.current) / 1000
     const selected = option || ''
     setSelectedOption(selected)
     setResult({
@@ -70,7 +72,8 @@ export default function TestSession() {
 
   useEffect(() => {
     if (showResult || questions.length === 0) return
-    setStartTime(Date.now())
+    startTime.current = Date.now()
+    answerDuration.current = null
     if (typed) return
     setTimeLeft(30)
     const deadline = Date.now() + 30000
@@ -87,7 +90,7 @@ export default function TestSession() {
     submitLock.current = true
     setSubmitting(true)
     setSubmitError('')
-    const timeTaken = (Date.now() - startTime) / 1000
+    const timeTaken = typed ? (Date.now() - startTime.current) / 1000 : answerDuration.current
     const currentQuestion = questions[currentIndex]
 
     try {
@@ -135,7 +138,8 @@ export default function TestSession() {
     setWrittenAnswer('')
     setFeedback(null)
     setSubmitError('')
-    setStartTime(Date.now())
+    startTime.current = Date.now()
+    answerDuration.current = null
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1)
       setSelectedOption(null)
@@ -187,7 +191,7 @@ export default function TestSession() {
             setWrittenAnswer('')
             setFeedback(null)
             setSubmitError('')
-            setStartTime(Date.now())
+            startTime.current = Date.now()
           }}>
           <option value="choice">Multiple choice</option>
           <option value="written">Written answer</option>

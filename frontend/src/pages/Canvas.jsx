@@ -325,6 +325,7 @@ export default function Canvas() {
 
         {phase === 'ready' && selected && (
           <NodePanel
+            key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}
             node={selected}
             source={source}

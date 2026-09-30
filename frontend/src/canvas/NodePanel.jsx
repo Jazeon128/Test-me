@@ -2,6 +2,7 @@ import { useState } from 'react'
 import PropTypes from 'prop-types'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { canvasAPI } from '../services/api'
+import { serverMessage } from '../utils/serverMessage'
 
 /**
  * The passage a node came from, and the way back into practice.
@@ -23,7 +24,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
       setQuestions(response.data.questions)
     } catch (err) {
       setError(
-        err.response?.data?.detail || 'Could not generate questions for this node.'
+        serverMessage(err) || 'Could not generate questions for this node.'
       )
     } finally {
       setLoading(false)

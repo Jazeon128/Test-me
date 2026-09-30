@@ -501,6 +501,15 @@ def _find_node(payload: Dict, node_id: str) -> Optional[Dict]:
     if isinstance(payload, dict):
         if payload.get("id") == node_id and "label" in payload:
             return payload
+        cells = payload.get("cells")
+        if isinstance(cells, list):
+            for index, cell in enumerate(cells):
+                if node_id == f"cell-{index}" and isinstance(cell, dict):
+                    return {
+                        **cell,
+                        "id": node_id,
+                        "label": cell.get("value") or f"{cell.get('option', '')}: {cell.get('criterion', '')}",
+                    }
         for value in payload.values():
             found = _find_node(value, node_id)
             if found is not None:

@@ -19,11 +19,14 @@ Each ADR follows a consistent format:
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [ADR-001](001-spaced-repetition-algorithm.md) | Use SM-2 Algorithm for Spaced Repetition | Accepted |
+| [ADR-001](001-spaced-repetition-algorithm.md) | Use SuperMemo 2 (SM-2) for Spaced Repetition | Accepted |
 | [ADR-002](002-property-based-testing-strategy.md) | Adopt Property-Based Testing with Hypothesis | Accepted |
 | [ADR-003](003-technology-stack-selection.md) | Technology Stack: FastAPI, React, and SQLite | Accepted |
 | [ADR-004](004-database-choice-sqlite-vs-postgresql.md) | SQLite for Development, PostgreSQL for Production | Accepted |
 | [ADR-005](005-naming-standardization-deck-vs-test.md) | Standardize on "Deck" Terminology | Accepted |
+| [ADR-006](006-notebook-workspaces.md) | Notebooks as workspaces | Accepted |
+| [ADR-007](007-stored-passages-chat-retrieval.md) | Stored passages and grounded chat retrieval | Accepted |
+| [ADR-008](008-os-credential-store.md) | Provider keys in the operating system credential store | Accepted |
 
 ## Creating New ADRs
 

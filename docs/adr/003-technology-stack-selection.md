@@ -202,10 +202,10 @@ const api = axios.create({
   },
 });
 
-export const uploadDocument = async (file) => {
+export const addSource = async (notebookId, file) => {
   const formData = new FormData();
-  formData.append('file', file);
-  return api.post('/api/documents/upload', formData);
+  formData.append('files', file);
+  return api.post(`/api/notebooks/${notebookId}/sources`, formData);
 };
 ```
 

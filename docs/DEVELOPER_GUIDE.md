@@ -1,1106 +1,289 @@
-# FlashLearn Desktop - Developer Guide
+# Developer guide
 
-This guide provides comprehensive information for developers who want to build, modify, or contribute to FlashLearn Desktop.
+This guide describes the implementation at `f4b450e` on 2026-09-30. The [README](../README.md) covers setup. The [user guide](USER_GUIDE.md) covers workspace tasks.
 
-## Table of Contents
+## Architecture
 
-- [Development Setup](#development-setup)
-- [Architecture Overview](#architecture-overview)
-- [Build Instructions](#build-instructions)
-- [Testing Guide](#testing-guide)
-- [Contributing Guidelines](#contributing-guidelines)
-- [Release Process](#release-process)
-- [Troubleshooting Development Issues](#troubleshooting-development-issues)
+| Component | Responsibility | Monthly fixed service cost |
+| --- | --- | ---: |
+| React and Vite frontend | Notebook workspace, Settings, practice and canvases | $0 locally |
+| FastAPI backend | Application programming interface (API), parsing, model calls and review scheduling | $0 locally |
+| SQLAlchemy and SQLite | Local persistence | $0 |
+| Operating system (OS) credential store through `keyring` | Provider secrets | $0 |
+| Anthropic, OpenAI, Gemini, OpenRouter | External model inference | $0 app subscription, usage billed by provider |
+| Optional TypeSafe Jev | Source assessment, ranking and quality checks | $0 app subscription, usage billed by provider |
+| Manual evaluation harness | Offline analysis and budget-capped external calls | $0 locally, separate usage caps |
 
----
+Check account free allowances and known zero-price catalog models before paid calls. No shared inference service is required. Public hosting remains deferred until authentication, tenancy, durable jobs and spend caps exist.
 
-## Development Setup
+### Repository map
 
-### Prerequisites
+| Path | Purpose |
+| --- | --- |
+| `backend/main.py` | Startup, routes, origin checks, health and metrics |
+| `backend/app/api/` | Request validation and endpoint handlers |
+| `backend/app/models/` | SQLAlchemy models |
+| `backend/app/services/ingest.py` | Save and parse sources independently of generation |
+| `backend/app/services/passages.py` | Bounded passage splitting |
+| `backend/app/services/generation.py` | Selected-source validation, count allocation and empty-deck cleanup |
+| `backend/app/services/workspace.py` | Workspace aggregate response |
+| `backend/app/services/chat/` | Retrieval, grounded prompts and citation validation |
+| `backend/app/services/ai/` | Provider clients, completion, retries and generation |
+| `backend/app/services/secrets.py` | Shared secret resolver |
+| `backend/app/services/parsers/` | Source parsers |
+| `backend/app/services/viz/` | Canvas routing and generation |
+| `backend/app/services/spaced_repetition/` | SuperMemo 2 (SM-2) scheduling |
+| `backend/alembic/versions/` | Schema migrations |
+| `backend/evals/` | Manual quality evaluation |
+| `frontend/src/pages/NotebookWorkspace.jsx` | Workspace selection, polling and embedded deck views |
+| `frontend/src/components/workspace/` | Sources, chat, citations, Studio and drawers |
+| `frontend/src/services/api.js` | Shared frontend API client |
+| `electron/` | Desktop launcher and packaging |
 
-**Required Software:**
-- Node.js 18+ and npm
-- Python 3.9+
-- Git
+## Setup and configuration
 
-**Platform-Specific Requirements:**
+Use Python 3.11 and Node.js 20 to match continuous integration (CI). From `backend/`:
 
-**Windows:**
-- Visual Studio Build Tools or Visual Studio 2019+
-- Windows SDK
-- Code signing certificate (for releases)
-
-**macOS:**
-- Xcode Command Line Tools: `xcode-select --install`
-- Apple Developer account (for code signing)
-
-**Linux:**
-- Build essentials: `sudo apt install build-essential`
-- FUSE: `sudo apt install fuse libfuse2`
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/flashlearn.git
-cd flashlearn
+```powershell
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python -m alembic upgrade head
+.venv/Scripts/python main.py
 ```
 
-### Backend Setup
+From `frontend/`, run `npm ci` and `npm run dev`. Frontend development uses port 5173. The backend binds to `127.0.0.1:8000`. The API schema is available at `http://127.0.0.1:8000/docs`. `scripts/dev-backend.cmd` is the Windows launcher for an existing backend virtual environment.
 
-```bash
-cd backend
+Relative database and upload paths resolve against `backend/`. Configuration loads `backend/.env`. Settings task values override environment provider and model defaults.
 
-# Create virtual environment
-python -m venv venv
+| Variable | Default or purpose |
+| --- | --- |
+| `DATABASE_URL` | `sqlite:///./test_me.db` |
+| `AI_PROVIDER` | `anthropic`, also accepts `openai`, `gemini`, `openrouter` |
+| `AI_MODEL` | Empty means provider default |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` | Optional private environment credentials |
+| `TYPESAFE_API_KEY` | Optional Jev credential |
+| `HOST`, `PORT` | `127.0.0.1`, `8000` |
+| `MAX_UPLOAD_SIZE` | 10,485,760 bytes |
+| `UPLOAD_DIR` | `./uploads` |
+| `CORS_ORIGINS_STR` | Cross-Origin Resource Sharing origins, `http://localhost:5173,http://localhost:3000` |
+| `CA_BUNDLE` | Optional certificate authority bundle for intercepted Transport Layer Security connections |
+| `DEBUG`, `ENVIRONMENT`, `LOG_LEVEL` | `true`, `development`, `INFO` |
+| `SECRET_KEY` | Development placeholder. Production validation rejects the default |
 
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+No model key is required to start the app. Production configuration does not add authentication. Keep the backend local.
 
-# Install dependencies
-pip install -r requirements.txt
+## Workspace and routes
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
+The canonical route is `/notebooks/:id`. Sources and Studio flank the centre. An open deck uses `?deck=<id>&view=practice` or `?deck=<id>&view=edit`. With no open deck, the centre is chat. Closing a deck preserves chat state.
 
-# Initialize database
-python -c "from app.db.database import init_db; init_db()"
+Below 1,024 pixels, side panels become modal drawers. At 1,024 pixels and above, side panels collapse independently. Drawer focus is trapped. Escape or backdrop closes the drawer. Reduced-motion settings disable animated movement.
 
-# Run backend (for development)
-python main.py
+Home contains notebook cards, Review due and a Progress section. `/review` practises due questions across notebooks. Review due is hidden at 0. Old standalone routes redirect to home, the notebook workspace, the home Progress anchor or `/review`. These compatibility redirects are historical entry points, not current navigation.
+
+### API surface
+
+| Method | Endpoint | Contract |
+| --- | --- | --- |
+| GET, POST | `/api/notebooks/` | List and create notebooks |
+| GET, PATCH, DELETE | `/api/notebooks/{id}` | Read, update and delete empty notebooks |
+| POST | `/api/notebooks/{id}/sources` | Multipart `files` and optional `youtube_url`, returns 202 |
+| GET | `/api/notebooks/{id}/workspace` | Notebook, sources, jobs, artifacts and progress |
+| POST | `/api/notebooks/{id}/generate` | Selected sources and deck options, returns 202 |
+| POST | `/api/notebooks/{id}/chat` | `message` and `source_ids` |
+| GET | `/api/notebooks/{id}/chat` | Paged history |
+| DELETE | `/api/notebooks/{id}/chat` | Clear notebook chat |
+| GET | `/api/status/{job_id}` | Job step, counts, logs and warnings |
+| GET, POST | `/api/decks/` | Deck collections remain backend resources |
+| POST | `/api/progress/submit` | Persist attempt and schedule review |
+| POST | `/api/progress/review-session` | Due questions |
+| GET | `/api/progress/stats` | Learning statistics |
+| GET | `/api/settings/openrouter/models` | Catalog, optional `refresh=true` |
+| GET | `/api/settings/openrouter/key` | Credit or usage |
+
+Use the generated API schema for complete field definitions. The deprecated `/api/tests` backend router remains for compatibility.
+
+## Source ingestion and passages
+
+`save_source` hashes content and deduplicates within a notebook. It writes a local file and a `documents` row with `processing` status. Re-adding a failed duplicate schedules parsing again. A background task parses the source without generating questions.
+
+Supported parsers handle Portable Document Format (PDF), HyperText Markup Language (HTML), Markdown, Word documents, PowerPoint presentations and YouTube transcripts. YouTube titles use oEmbed when available. `source_names.display_name` avoids exposing timestamped storage names as user labels.
+
+Successful parsing stores full text, metadata and passages, then sets `ready` and `parsed_at`. Optional pre-flight assessment stores checked, worth-generating, teachable and transcript values. Failed parsing sets `failed` and an error message.
+
+Passages are section-local chunks of at most 1,500 characters with a 200-character overlap before whitespace trimming. Splitting prefers whitespace near the boundary. Each passage has an ordinal, section index, page or heading, locator and character offsets. YouTube locators use Part numbers. Passages cascade with source deletion.
+
+The workspace polls every 2,000 milliseconds while sources process or jobs run. Newly ready sources become selected. Only ready sources can be ticked in the interface.
+
+## Generation jobs and provenance
+
+`GenerateRequest` accepts `source_ids`, `kind` (`quiz` or `flashcards`), `num_questions` from 1 to 100, difficulty (`easy`, `medium`, `hard`, `mixed`), optional custom prompt and deck name, and `allow_unteachable`.
+
+Selected sources must belong to the notebook. Processing sources return 409. Failed or foreign sources return 400. A pre-flight rejection returns 409 with named sources until `allow_unteachable` is true. Unchecked sources do not block.
+
+`num_questions` is the total for the deck. `question_split` weights by passage count and uses largest remainder allocation with source identifier tie breaks. With 0 passages across all sources, allocation uses equal weights. Shares sum to the requested total. Sources allocated 0 questions do not spawn generation tasks.
+
+The handler creates a deck and a job with notebook, source identifiers, artifact kind and result identifier. Background tasks process each allocated source. Job rows retain current step, step start, section progress, generated and held-back counts, failed-source counts and logs. Warning-level logs become API warnings.
+
+Quality checks preserve held-back candidates and reasons in `flagged_questions`. Restore adds a question to the deck. Discard rejects it. Failed generation removes only the new empty deck created by that job when no accepted or pending held-back material exists. Regeneration preserves existing material on failure. Shared questions use deck associations.
+
+Job state persists, but execution uses in-process background tasks. It is not a durable worker queue. Restart recovery and distributed execution remain hosting prerequisites.
+
+## Grounded chat retrieval
+
+Retrieval searches stored passages from selected ready sources in the notebook. Best Matching 25 (BM25) runs locally with `k1=1.2` and `b=0.75`. Current query terms have weight 1.0. Previous user query terms add weight 0.5. Stop words are removed.
+
+The minimum score is 1.0. No passages or a score below that threshold returns the refusal without a model call. Jev reranks the top 25 candidates using a 400-character window centred on query terms. If Jev is unavailable, BM25 order remains. Up to 6 passages reach the chat model.
+
+The prompt wraps and escapes passages as data. It instructs the model to ignore instructions inside passages and cite claims with `[n]`. History is context, not evidence. Only the last 6 stored turns, bounded to 6,000 characters, enter the prompt. Chat completion uses 1,500 output tokens and temperature 0.2.
+
+Citation validation strips out-of-range references, records invalid references and flags uncited answers unless the answer says Not in your sources. Citations store source, locator and a 300-character excerpt. History serialization marks deleted documents as Removed source and removes their excerpts. Citation validation checks references, not semantic correctness.
+
+`ChatRequest.message` is 1 to 2,000 characters and must contain non-whitespace text. It requires at least 1 source identifier. Foreign sources return 400. Processing sources return 409. The frontend retains the draft on 409 and offers Retry for other errors. History supports Load earlier and clear confirmation.
+
+## Provider clients, retries and deadlines
+
+`client_for(task, db)` resolves task provider and model, then legacy general settings, then environment defaults. It builds per-client credentials through the shared secret resolver. Provider software development kit (SDK) retries are disabled so the shared retry policy owns attempts.
+
+| Provider | Code default model | Client |
+| --- | --- | --- |
+| Anthropic | `claude-sonnet-5` | Anthropic |
+| OpenAI | `gpt-4o` | OpenAI |
+| Gemini | `gemini-3.8-flash` | `google.genai` |
+| OpenRouter | `openrouter/auto` | OpenAI-compatible client at `https://openrouter.ai/api/v1` |
+
+These are code defaults, not promises of provider availability. Settings exposes separate generation and chat choices and an OpenRouter catalog with prices. Key-scoped credit shows a remaining limit or usage when no limit exists.
+
+OpenRouter sends `provider.sort=throughput`. Its socket timeout is 10 seconds for connection and 180 seconds for reads. A total deadline bounds each caller wait to 180 seconds for generation and canvas, or 90 seconds for chat. A deadline becomes a retryable 504 and is retried once. A running request cannot be cancelled by the deadline wrapper, so upstream billing can remain uncertain.
+
+Other retryable statuses are 429, 500, 502, 503 and 504, with at most 4 attempts. Numeric Retry-After delays are capped at 60 seconds. Otherwise backoff uses provider details or bounded exponential delay and jitter. Daily quota exhaustion and OpenRouter exhausted credit stop retries. Generation exposes provider retry steps to users.
+
+## Secrets and backups
+
+| Priority | Store | Behaviour |
+| --- | --- | --- |
+| 1 | OS credential store | `keyring`, service `test-me`, credential name is provider |
+| 2 | Environment configuration | Includes private `backend/.env` |
+| 3 | Legacy database values | Read only fallback |
+
+Supported names are `anthropic`, `openai`, `gemini`, `openrouter` and `typesafe`. New Settings key writes use the credential store. Windows uses Windows Credential Manager. Missing secure storage produces an error directing the user to private environment configuration. There is no new plaintext database write fallback.
+
+The API returns configured and storage-source metadata, never key characters. Removing a credential-store value can expose an environment or legacy value. Model settings remain in the database.
+
+Run these manually from `backend/` for old installations:
+
+```powershell
+.venv/Scripts/python scripts/move_keys_to_keyring.py
+.venv/Scripts/python scripts/move_keys_to_keyring.py --apply
 ```
 
-Backend will be available at `http://localhost:8000`
+The default is a dry run showing provider names and character counts. Apply saves, reads back and verifies each credential before clearing its database row. Unverified values remain in the database on failure.
 
-### Frontend Setup
+Never put real keys in `.env.example`. Never commit `.env`. `backend/backups/` is gitignored, but backups contain all database values present at backup time. Old backups can retain legacy keys after migration. Keep them private.
 
-```bash
+Origin checks reject cross-site browser writes with 403. Loopback, desktop origins and requests without an Origin header can still be allowed. This is not authentication or tenancy.
+
+## Model call ledger
+
+Every application model call is recorded in `llm_calls` with task, requested and actual model, provider, upstream provider, input and output tokens, latency, attempts, outcome and cost. A logical call includes retries. The first OpenRouter deadline can add its own timeout row. Costs use United States dollars (USD) and may be unknown. `cost_source` distinguishes reported, estimated or unknown cost. The ledger is observability, not a spend cap.
+
+Jev calls use `jev_calls` with feature label, question count, input tokens, duration, success and error. Recording is best effort. Settings shows recent TypeSafe usage. Eval calls use their own persisted budget ledgers described in the harness README.
+
+## Data model
+
+JavaScript Object Notation (JSON) columns preserve source selection, provenance, citations, diagram payloads and job metadata.
+
+| Table | Important fields and relationships |
+| --- | --- |
+| `notebooks` | Name, description, icon. Owns documents and decks |
+| `documents` | Notebook, original and stored file names, type, path, size, full content, content hash, title, pages, `status`, `error_message`, `preflight`, `parsed_at` |
+| `document_passages` | Document foreign key with deletion cascade, ordinal unique per document, section index, page, heading, locator, text, `char_start`, `char_end` |
+| `decks` | Notebook, name, description, `kind`, `source_ids` |
+| `deck_questions` | Deck-question association and order. Supports shared questions |
+| `questions` | Document, stem, explanation, difficulty, source reference including source text |
+| `question_options` | Question, option text, correctness and order |
+| `flagged_questions` | Document and deck, raw question data, reasons, review status |
+| `generation_status` | Unique job identifier, deck, notebook, source identifiers, kind, result identifier, `deck_created`, state, current step, progress, logs, errors, pending request, requested/generated/flagged counts, document completion/failure counts, timestamps including `step_started_at` |
+| `chat_messages` | Notebook foreign key with cascade, role, content, source identifiers, citations, refusal flag, model, created time |
+| `llm_calls` | Task, provider, requested/actual model, upstream provider, input/output tokens, `cost_usd` numeric (12, 6), cost source, latency milliseconds, attempts, status, error type, job and response identifiers |
+| `jev_calls` | Feature label, question count, input tokens, duration milliseconds, outcome and error |
+| `canvases` | Document, request, template, title, payload, layout, sources, routing confidence and user choice |
+| `canvas_routing_log` | Routing probabilities, shape signals, confidence, chosen template, override, duration and tokens |
+| `user_progress` | Question, SM-2 factor/interval/repetitions, due time, attempts, accuracy, timing, mastery and mutable history |
+| `study_days` | Unique local date, answered/correct counts, canvases and persisted points |
+| `awards` | Unique award code, title, description and earned detail |
+| `tags`, `question_tags` | Tags and question associations |
+| `settings` | Unique key/value pairs for configuration and read-only legacy secrets |
+
+Indexes support document/difficulty queries, due-question queries, notebook jobs and passage lookup. Source deletion removes passages and handles dependent study material. Notebook deletion rejects notebooks still holding sources or decks with 409.
+
+## Migrations
+
+Stop the backend and keep a private backup before upgrades. From `backend/`:
+
+```powershell
+.venv/Scripts/python -m alembic current
+.venv/Scripts/python -m alembic upgrade head
+.venv/Scripts/python -m alembic heads
+```
+
+Startup `init_db` creates tables only for an empty database. It does not upgrade an existing schema. Use Alembic for schema changes. Do not stamp an old schema as head to bypass migrations.
+
+| Revision in chain order | Change |
+| --- | --- |
+| `96bad6a9040d` | Initial schema |
+| `32f25b397e98` | Composite indexes |
+| `64306e156071` | Generation progress fields |
+| `84d5a1b9211a` | Canvas and routing log |
+| `2c468b48ab41` | Notebooks |
+| `7b5dca85479c` | Study days and awards |
+| `9c1e4f2a7b30` | Pre-flight pending request |
+| `b7f3a1c9d2e4` | Held-back questions |
+| `d4e8b2f6a1c3` | Repair damaged notebook icons |
+| `e5a9c3d7f1b2` | Jev usage |
+| `f6b1d8e3a9c5` | Completed and failed document counts |
+| `a1c4e7b9d2f6` | Step start time |
+| `b7d2e4f8a1c3` | Source state and stored passages |
+| `c3f9a2d6e8b4` | Artifact/job provenance and Unsorted backfill |
+| `d8a1b5c7e2f9` | Job created-deck flag |
+| `e4c7a9b1d3f5` | Model call ledger |
+| `f2a8c4e6b1d9` | Chat messages, current head |
+
+## Testing exactly as CI
+
+`.github/workflows/ci.yml` uses Python 3.11 and Node.js 20 on Ubuntu. Run the same commands from each component directory. Local Windows commands can use `.venv/Scripts/python -m pytest` in place of the activated environment's `pytest`.
+
+| Directory | Install | Checks in CI order |
+| --- | --- | --- |
+| `backend` | `pip install -r requirements.txt` | `flake8 app/`, `pytest -m "not slow"` |
+| `frontend` | `npm ci` | `npm run lint`, `npm test -- --run`, `npm run build` |
+| `electron` | `npm ci` | `npx jest --forceExit` |
+
+Documentation sanity checks:
+
+```powershell
 cd frontend
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env if needed
-
-# Run frontend (for development)
-npm run dev
+npm test -- --run
 ```
 
-Frontend will be available at `http://localhost:5173`
-
-### Electron Setup
-
-```bash
-cd electron
-
-# Install dependencies
-npm install
-
-# Run Electron in development mode
-npm run dev
-```
-
-This will:
-1. Start the backend server
-2. Build the frontend
-3. Launch Electron with hot-reload
-
----
-
-## Architecture Overview
-
-### High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  Electron Main Process                   │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │  - Window Management (index.js)                     │ │
-│  │  - System Tray (index.js)                           │ │
-│  │  - Backend Process Manager (backend-manager.js)     │ │
-│  │  - IPC Handler (ipc-handlers.js)                    │ │
-│  │  - Settings Manager (settings-manager.js)           │ │
-│  │  - Auto-updater (auto-updater.js)                   │ │
-│  │  - Logger (logger.js)                               │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-         │                                    │
-         │ IPC                                │ Spawns/Manages
-         │                                    │
-         ▼                                    ▼
-┌──────────────────────┐          ┌──────────────────────┐
-│  Renderer Process    │          │   Python Backend     │
-│  (React Frontend)    │◄────────►│   (FastAPI)          │
-│                      │   HTTP   │                      │
-│  - Vite Build        │          │  - Bundled with      │
-│  - React Components  │          │    PyInstaller       │
-│  - API Client        │          │  - SQLite Database   │
-└──────────────────────┘          └──────────────────────┘
-```
-
-### Directory Structure
-
-```
-flashlearn/
-├── backend/                 # Python FastAPI backend
-│   ├── app/
-│   │   ├── api/            # API endpoints
-│   │   ├── db/             # Database models and connection
-│   │   ├── models/         # SQLAlchemy models
-│   │   ├── services/       # Business logic
-│   │   │   ├── ai/         # AI integration
-│   │   │   └── parsers/    # Document parsers
-│   │   ├── utils/          # Utility functions
-│   │   └── middleware/     # FastAPI middleware
-│   ├── tests/              # Backend tests
-│   │   ├── unit/
-│   │   ├── integration/
-│   │   ├── property/       # Property-based tests
-│   │   └── benchmarks/
-│   ├── main.py             # FastAPI entry point
-│   ├── backend.spec        # PyInstaller spec
-│   └── requirements.txt
-│
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── services/       # API client
-│   │   ├── context/        # React context
-│   │   └── main.jsx        # Entry point
-│   ├── public/             # Static assets
-│   └── package.json
-│
-├── electron/               # Electron main process
-│   ├── main/               # Main process code
-│   │   ├── index.js        # Main entry point
-│   │   ├── backend-manager.js
-│   │   ├── ipc-handlers.js
-│   │   ├── settings-manager.js
-│   │   ├── auto-updater.js
-│   │   ├── logger.js
-│   │   ├── data-directory-manager.js
-│   │   ├── keyboard-shortcuts.js
-│   │   ├── window-state-manager.js
-│   │   ├── splash-window.js
-│   │   ├── diagnostic-report.js
-│   │   ├── api-key-validator.js
-│   │   └── __tests__/      # Electron tests
-│   ├── preload/            # Preload scripts
-│   │   ├── index.js
-│   │   └── splash-preload.js
-│   ├── renderer/           # Renderer assets
-│   │   └── splash.html
-│   ├── dev-runner.js       # Development runner
-│   └── package.json
-│
-├── docs/                   # Documentation
-│   ├── USER_GUIDE.md
-│   ├── DEVELOPER_GUIDE.md
-│   └── adr/                # Architecture Decision Records
-│
-├── .github/
-│   └── workflows/          # CI/CD workflows
-│       ├── desktop-app-build.yml
-│       ├── code-quality.yml
-│       └── performance-benchmarks.yml
-│
-└── README.md
-```
-
-### Key Components
-
-#### Electron Main Process (`electron/main/`)
-
-**index.js** - Main entry point
-- Creates application windows
-- Manages system tray
-- Handles application lifecycle
-- Coordinates other modules
-
-**backend-manager.js** - Backend Process Manager
-- Spawns Python backend executable
-- Monitors backend health
-- Handles backend crashes and restarts
-- Manages port allocation
-
-**ipc-handlers.js** - IPC Communication
-- Handles messages from renderer
-- Provides native dialogs
-- Exposes system information
-
-**settings-manager.js** - Settings Management
-- Stores user preferences
-- Encrypts sensitive data (API keys)
-- Provides settings validation
-
-**auto-updater.js** - Automatic Updates
-- Checks for updates on startup
-- Downloads and installs updates
-- Manages update notifications
-
-**logger.js** - Logging System
-- Structured logging with levels
-- Log file rotation
-- Error tracking
-
-#### Backend (`backend/`)
-
-**FastAPI Application**
-- RESTful API for frontend
-- Document processing
-- AI integration
-- Database operations
-- Spaced repetition algorithm
-
-**Key Services:**
-- `question_generator.py` - AI-powered flashcard generation
-- `parsers/` - Document parsing (PDF, DOCX, etc.)
-- `sm2_algorithm.py` - Spaced repetition implementation
-
-#### Frontend (`frontend/`)
-
-**React Application**
-- Modern React with hooks
-- Vite for fast development
-- Tailwind CSS for styling
-- Axios for API calls
-
-**Key Components:**
-- `SettingsDialog.jsx` - API key configuration
-- `LogViewer.jsx` - Application logs
-- `AboutDialog.jsx` - Version information
-- `UpdateNotification.jsx` - Update prompts
-
----
-
-## Build Instructions
-
-### Development Build
-
-**Run Full Stack in Development:**
-
-```bash
-# Terminal 1: Backend
+```powershell
 cd backend
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-python main.py
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Electron
-cd electron
-npm run dev
+.venv/Scripts/python -m pytest -m "not slow" -q -p no:cacheprovider
 ```
 
-**Or use the integrated dev runner:**
+Do not replace real-user reproduction of a bug with unit tests alone. Test provider behaviour with mocks in CI. Do not run paid evaluation as part of CI.
 
-```bash
-cd electron
-npm run dev
-```
+## Manual evaluation harness
 
-This starts all three components with hot-reload enabled.
+See [backend/evals/README.md](../backend/evals/README.md) for freeze, generate, check, judge, report and agreement commands. This is manual only, budget-capped and never in CI.
 
-### Production Build
+Freeze records a deterministic corpus manifest. Generate stores raw candidates and production parser results for each model, prompt and passage cell. Check runs deterministic rules and pinned Jev checks. Judge makes separate blind solve and rubric calls. Human review uses a blind sheet with a separate model key. Report produces a self-contained offline HTML report. Agreement compares human and judge labels.
 
-#### 1. Build Backend Executable
+`pilot.local.json` holds private source paths. Corpus and run artifacts are gitignored. Do not publish them as documentation. Generation dry-run makes 0 network calls and needs saved catalog prices. Screened freeze, generation, checks and judging can spend money. Offline report and agreement do not.
 
-```bash
-cd backend
+Pilot caps are $3.00 for generation/check ledger work and $2.50 for judging. Screening has its own cap accounting. Reservations precede calls and uncertain billing is retained on recovery. Only the run's writer recovers reservations under a lock. A cap cannot undo upstream charges above the estimate.
 
-# Activate virtual environment
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+Pilot results remain pending. No model recommendation follows from harness implementation alone.
 
-# Build with PyInstaller
-python build_backend.py
+## Architecture decisions
 
-# Output: backend/dist/backend-server or backend-server.exe
-```
-
-**Verify backend bundle:**
-```bash
-cd backend
-python test_bundle.py
-```
-
-#### 2. Build Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Build for production
-npm run build
-
-# Output: frontend/dist/
-```
-
-#### 3. Package Electron Application
-
-```bash
-cd electron
-
-# Install dependencies
-npm install
-
-# Copy backend executable
-# Windows:
-copy ..\backend\dist\backend-server.exe .\backend\
-# macOS/Linux:
-cp ../backend/dist/backend-server ./backend/
-
-# Copy frontend build
-# Windows:
-xcopy /E /I ..\frontend\dist .\renderer
-# macOS/Linux:
-cp -r ../frontend/dist/* ./renderer/
-
-# Build for current platform
-npm run build
-
-# Build for all platforms (requires platform-specific setup)
-npm run build:all
-```
-
-**Platform-Specific Builds:**
-
-```bash
-# Windows only
-npm run build:win
-
-# macOS only
-npm run build:mac
-
-# Linux only
-npm run build:linux
-```
-
-**Output locations:**
-- Windows: `electron/dist/FlashLearn-Setup-x.x.x.exe`
-- macOS: `electron/dist/FlashLearn-x.x.x.dmg`
-- Linux: `electron/dist/FlashLearn-x.x.x.AppImage`
-
-### Build Configuration
-
-**electron-builder Configuration** (`electron/package.json`):
-
-```json
-{
-  "build": {
-    "appId": "com.flashlearn.app",
-    "productName": "FlashLearn",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "main/**/*",
-      "preload/**/*",
-      "renderer/**/*",
-      "backend/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "backend",
-        "to": "backend",
-        "filter": ["**/*"]
-      }
-    ],
-    "win": {
-      "target": ["nsis", "portable"],
-      "icon": "build/icon.ico"
-    },
-    "mac": {
-      "target": ["dmg", "zip"],
-      "icon": "build/icon.icns",
-      "category": "public.app-category.education"
-    },
-    "linux": {
-      "target": ["AppImage", "deb", "rpm"],
-      "icon": "build/icon.png",
-      "category": "Education"
-    }
-  }
-}
-```
-
-### Code Signing
-
-**Windows:**
-```bash
-# Set environment variables
-set CSC_LINK=path\to\certificate.pfx
-set CSC_KEY_PASSWORD=your_password
-
-# Build with signing
-npm run build:win
-```
-
-**macOS:**
-```bash
-# Set environment variables
-export CSC_LINK=path/to/certificate.p12
-export CSC_KEY_PASSWORD=your_password
-export APPLE_ID=your@email.com
-export APPLE_ID_PASSWORD=app-specific-password
-
-# Build with signing and notarization
-npm run build:mac
-```
-
----
-
-## Testing Guide
-
-### Backend Testing
-
-**Run All Tests:**
-```bash
-cd backend
-pytest
-```
-
-**Run Specific Test Types:**
-```bash
-# Unit tests only
-pytest tests/unit/
-
-# Integration tests
-pytest tests/integration/
-
-# Property-based tests
-pytest tests/property/
-
-# With coverage
-pytest --cov=app --cov-report=html
-```
-
-**Property-Based Testing:**
-
-We use Hypothesis for property-based testing. Each test runs 100+ iterations with random inputs.
-
-Example:
-```python
-from hypothesis import given, strategies as st
-
-@given(st.text(min_size=1))
-def test_document_parsing_preserves_length(content):
-    """Property: Parsing should not lose content"""
-    parsed = parse_document(content)
-    assert len(parsed) >= len(content) * 0.9  # Allow some formatting
-```
-
-**Run with more iterations:**
-```bash
-pytest tests/property/ --hypothesis-profile=ci
-```
-
-### Frontend Testing
-
-**Run All Tests:**
-```bash
-cd frontend
-npm test
-```
-
-**Run with Coverage:**
-```bash
-npm run test:coverage
-```
-
-**Run Specific Tests:**
-```bash
-# Component tests
-npm test -- SettingsDialog
-
-# Property tests
-npm test -- property.test
-```
-
-**Property-Based Testing:**
-
-We use fast-check for JavaScript property-based testing.
-
-Example:
-```javascript
-import fc from 'fast-check';
-
-test('API key validation rejects invalid formats', () => {
-  fc.assert(
-    fc.property(
-      fc.string().filter(s => !s.startsWith('sk-')),
-      (invalidKey) => {
-        expect(validateApiKey(invalidKey)).toBe(false);
-      }
-    ),
-    { numRuns: 100 }
-  );
-});
-```
-
-### Electron Testing
-
-**Run All Tests:**
-```bash
-cd electron
-npm test
-```
-
-**Run Specific Test Suites:**
-```bash
-# Main process tests
-npm test -- main
-
-# Property tests
-npm test -- property.test
-
-# With coverage
-npm run test:coverage
-```
-
-**Property-Based Testing:**
-
-Example:
-```javascript
-const fc = require('fast-check');
-
-test('Property: Backend startup invariant', async () => {
-  await fc.assert(
-    fc.asyncProperty(
-      fc.record({
-        port: fc.integer({ min: 8000, max: 8010 }),
-        timeout: fc.integer({ min: 1000, max: 5000 })
-      }),
-      async (config) => {
-        const manager = new BackendManager();
-        const started = await manager.start(config);
-        expect(started).toBe(true);
-        expect(manager.isRunning()).toBe(true);
-        await manager.stop();
-      }
-    ),
-    { numRuns: 100 }
-  );
-});
-```
-
-### Integration Testing
-
-**End-to-End Tests:**
-
-We use Playwright for E2E testing:
-
-```bash
-cd electron
-npm run test:e2e
-```
-
-**Manual Testing Checklist:**
-
-Before release, manually test:
-- [ ] Application startup on clean system
-- [ ] First-run experience
-- [ ] API key configuration
-- [ ] Document upload and processing
-- [ ] Flashcard generation
-- [ ] Study session
-- [ ] Settings persistence
-- [ ] System tray functionality
-- [ ] Window management
-- [ ] Keyboard shortcuts
-- [ ] Auto-update flow
-- [ ] Error handling
-- [ ] Log viewer
-- [ ] Diagnostic report
-
-### Performance Testing
-
-**Backend Benchmarks:**
-```bash
-cd backend
-pytest tests/benchmarks/ --benchmark-only
-```
-
-**Frontend Performance:**
-```bash
-cd frontend
-npm run build
-npm run preview
-# Use Chrome DevTools for performance profiling
-```
-
-**Electron Performance:**
-- Monitor startup time
-- Check memory usage
-- Profile CPU usage during AI generation
-
-### Test Coverage Goals
-
-- Backend: >80% code coverage
-- Frontend: >70% code coverage
-- Electron: >60% code coverage
-- All critical paths: 100% coverage
-
----
-
-## Contributing Guidelines
-
-### Getting Started
-
-1. **Fork the Repository**
-   - Click "Fork" on GitHub
-   - Clone your fork locally
-
-2. **Create a Branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-3. **Make Changes**
-   - Write code
-   - Add tests
-   - Update documentation
-
-4. **Test Your Changes**
-   ```bash
-   # Run all tests
-   cd backend && pytest
-   cd frontend && npm test
-   cd electron && npm test
-   ```
-
-5. **Commit Changes**
-   ```bash
-   git add .
-   git commit -m "feat: add your feature description"
-   ```
-
-6. **Push and Create PR**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-   - Open Pull Request on GitHub
-   - Fill out PR template
-   - Wait for review
-
-### Commit Message Convention
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-
-**Examples:**
-```
-feat(backend): add support for PowerPoint files
-
-fix(electron): resolve backend startup race condition
-
-docs(user-guide): update API key configuration steps
-
-test(frontend): add property tests for settings dialog
-```
-
-### Code Style
-
-**Python (Backend):**
-- Follow PEP 8
-- Use Black for formatting: `black .`
-- Use flake8 for linting: `flake8 .`
-- Use mypy for type checking: `mypy app/`
-
-**JavaScript/React (Frontend/Electron):**
-- Follow Airbnb style guide
-- Use Prettier for formatting: `npm run format`
-- Use ESLint for linting: `npm run lint`
-
-**Pre-commit Hooks:**
-
-We use pre-commit hooks to enforce code quality:
-
-```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install hooks
-pre-commit install
-
-# Run manually
-pre-commit run --all-files
-```
-
-### Pull Request Guidelines
-
-**Before Submitting:**
-- [ ] All tests pass
-- [ ] Code is formatted
-- [ ] No linting errors
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated (for significant changes)
-- [ ] Property-based tests added for new features
-
-**PR Description Should Include:**
-- What changes were made
-- Why the changes were necessary
-- How to test the changes
-- Screenshots (for UI changes)
-- Related issues (if any)
-
-**Review Process:**
-1. Automated checks run (CI/CD)
-2. Code review by maintainer
-3. Address feedback
-4. Approval and merge
-
-### Issue Guidelines
-
-**Bug Reports Should Include:**
-- FlashLearn version
-- Operating system and version
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- Screenshots or logs
-- Diagnostic report (if applicable)
-
-**Feature Requests Should Include:**
-- Clear description of the feature
-- Use case / motivation
-- Proposed implementation (optional)
-- Alternatives considered
-
-### Development Workflow
-
-**Feature Development:**
-1. Create issue describing the feature
-2. Discuss approach in issue comments
-3. Create branch from `main`
-4. Implement feature with tests
-5. Submit PR referencing issue
-6. Address review feedback
-7. Merge when approved
-
-**Bug Fixes:**
-1. Create issue describing the bug
-2. Create branch from `main`
-3. Write failing test that reproduces bug
-4. Fix the bug
-5. Verify test passes
-6. Submit PR referencing issue
-7. Merge when approved
-
-### Documentation
-
-**When to Update Documentation:**
-- Adding new features
-- Changing existing behavior
-- Fixing bugs that affect user experience
-- Adding new configuration options
-- Changing build process
-
-**Documentation Locations:**
-- User-facing: `docs/USER_GUIDE.md`
-- Developer-facing: `docs/DEVELOPER_GUIDE.md`
-- API documentation: Inline docstrings
-- Architecture decisions: `docs/adr/`
-
----
-
-## Release Process
-
-### Version Numbering
-
-We follow [Semantic Versioning](https://semver.org/):
-
-- **MAJOR**: Breaking changes
-- **MINOR**: New features (backward compatible)
-- **PATCH**: Bug fixes (backward compatible)
-
-Example: `1.2.3`
-- 1 = Major version
-- 2 = Minor version
-- 3 = Patch version
-
-### Release Checklist
-
-**Pre-Release:**
-- [ ] All tests passing on CI
-- [ ] Version bumped in all package.json files
-- [ ] CHANGELOG.md updated
-- [ ] Documentation updated
-- [ ] Manual testing completed
-- [ ] Performance benchmarks run
-- [ ] Security review completed
-
-**Release Steps:**
-
-1. **Update Version Numbers**
-   ```bash
-   # Update version in:
-   # - electron/package.json
-   # - frontend/package.json
-   # - backend/pyproject.toml
-   ```
-
-2. **Update CHANGELOG.md**
-   ```markdown
-   ## [1.2.3] - 2024-12-05
-   
-   ### Added
-   - New feature X
-   
-   ### Fixed
-   - Bug Y
-   
-   ### Changed
-   - Improvement Z
-   ```
-
-3. **Create Git Tag**
-   ```bash
-   git add .
-   git commit -m "chore: release v1.2.3"
-   git tag -a v1.2.3 -m "Release v1.2.3"
-   git push origin main --tags
-   ```
-
-4. **GitHub Actions Builds**
-   - CI automatically builds for all platforms
-   - Artifacts uploaded to GitHub release
-   - Release notes generated from CHANGELOG
-
-5. **Verify Release**
-   - Download artifacts from GitHub
-   - Test on each platform
-   - Verify auto-update works
-
-6. **Announce Release**
-   - Update website
-   - Post on social media
-   - Notify users via email/Discord
-
-### Hotfix Process
-
-For critical bugs in production:
-
-1. Create hotfix branch from release tag
-   ```bash
-   git checkout -b hotfix/v1.2.4 v1.2.3
-   ```
-
-2. Fix the bug and test
-
-3. Update version to patch release
-
-4. Merge to main and tag
-   ```bash
-   git checkout main
-   git merge hotfix/v1.2.4
-   git tag -a v1.2.4 -m "Hotfix v1.2.4"
-   git push origin main --tags
-   ```
-
-### Beta Releases
-
-For testing new features:
-
-1. Create pre-release tag
-   ```bash
-   git tag -a v1.3.0-beta.1 -m "Beta release v1.3.0-beta.1"
-   git push origin --tags
-   ```
-
-2. Mark as pre-release on GitHub
-
-3. Announce to beta testers
-
-4. Collect feedback
-
-5. Fix issues and release beta.2, beta.3, etc.
-
-6. Final release when stable
-
----
-
-## Troubleshooting Development Issues
-
-### Backend Issues
-
-**Import Errors:**
-```bash
-# Ensure virtual environment is activated
-source venv/bin/activate  # or venv\Scripts\activate
-
-# Reinstall dependencies
-pip install -r requirements.txt
-```
-
-**Database Issues:**
-```bash
-# Reset database
-rm test_me.db
-python -c "from app.db.database import init_db; init_db()"
-```
-
-**PyInstaller Build Fails:**
-```bash
-# Clean build artifacts
-rm -rf build/ dist/
-
-# Rebuild
-python build_backend.py
-
-# Check for missing imports in backend.spec
-```
-
-### Frontend Issues
-
-**Module Not Found:**
-```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**Build Fails:**
-```bash
-# Clear Vite cache
-rm -rf node_modules/.vite
-
-# Rebuild
-npm run build
-```
-
-**Hot Reload Not Working:**
-- Check Vite config
-- Restart dev server
-- Clear browser cache
-
-### Electron Issues
-
-**Backend Not Starting:**
-- Check backend executable exists in `electron/backend/`
-- Verify executable permissions (macOS/Linux)
-- Check logs in `electron/main/logger.js`
-
-**Window Not Appearing:**
-- Check for JavaScript errors in console
-- Verify renderer files exist
-- Check BrowserWindow configuration
-
-**IPC Not Working:**
-- Verify preload script is loaded
-- Check contextBridge configuration
-- Ensure IPC handlers are registered
-
-**Build Fails:**
-```bash
-# Clean electron-builder cache
-rm -rf dist/ node_modules/.cache
-
-# Rebuild
-npm run build
-```
-
-### Platform-Specific Issues
-
-**Windows:**
-- Ensure Visual Studio Build Tools installed
-- Check Windows SDK version
-- Verify code signing certificate
-
-**macOS:**
-- Ensure Xcode Command Line Tools installed
-- Check Apple Developer certificate
-- Verify notarization credentials
-
-**Linux:**
-- Install missing dependencies: `sudo apt install libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libdrm2 libgbm1 libxcb-dri3-0`
-- Check FUSE installation for AppImage
-
-### Getting Help
-
-**Resources:**
-- GitHub Issues: Report bugs and ask questions
-- GitHub Discussions: General discussions
-- Discord: Real-time chat with community
-- Stack Overflow: Tag questions with `flashlearn`
-
-**When Asking for Help:**
-1. Search existing issues first
-2. Provide clear description
-3. Include error messages and logs
-4. Share minimal reproduction steps
-5. Specify your environment (OS, versions, etc.)
-
----
-
-## Additional Resources
-
-### Documentation
-
-- [Electron Documentation](https://www.electronjs.org/docs)
-- [React Documentation](https://react.dev/)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [PyInstaller Documentation](https://pyinstaller.org/)
-- [electron-builder Documentation](https://www.electron.build/)
-
-### Testing
-
-- [Hypothesis Documentation](https://hypothesis.readthedocs.io/)
-- [fast-check Documentation](https://fast-check.dev/)
-- [Jest Documentation](https://jestjs.io/)
-- [Pytest Documentation](https://docs.pytest.org/)
-
-### Tools
-
-- [VS Code](https://code.visualstudio.com/) - Recommended IDE
-- [GitHub Desktop](https://desktop.github.com/) - Git GUI
-- [Postman](https://www.postman.com/) - API testing
-- [React DevTools](https://react.dev/learn/react-developer-tools) - React debugging
-
----
-
-## License
-
-FlashLearn is licensed under the MIT License. See [LICENSE](../LICENSE) for details.
-
----
-
-## Contact
-
-- **GitHub**: [github.com/yourusername/flashlearn](https://github.com/yourusername/flashlearn)
-- **Email**: support@flashlearn.com
-- **Discord**: [discord.gg/flashlearn](https://discord.gg/flashlearn)
-- **Twitter**: [@flashlearn](https://twitter.com/flashlearn)
-
----
-
-**Last Updated:** December 2024
-**Version:** 1.0.0
+See the [architecture decision record (ADR) index](adr/README.md), especially the workspace, retrieval and OS credential-store records added on 2026-09-30.

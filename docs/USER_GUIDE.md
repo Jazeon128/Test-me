@@ -1,619 +1,166 @@
-# FlashLearn Desktop - User Guide
+# User guide
 
-Welcome to FlashLearn Desktop! This guide will help you install, configure, and use the FlashLearn desktop application.
+Use a notebook to keep a topic's sources, chat and study material together. Start the app with the [README setup steps](../README.md#quick-start).
 
-## Table of Contents
+## Create and open a notebook
 
-- [Installation](#installation)
-  - [Windows](#windows)
-  - [macOS](#macos)
-  - [Linux](#linux)
-- [Getting Started](#getting-started)
-- [API Key Configuration](#api-key-configuration)
-- [Using FlashLearn](#using-flashlearn)
-- [Troubleshooting](#troubleshooting)
-- [FAQ](#faq)
+Open Notebooks in the navigation. Create a notebook with a name. A description and an emoji icon are optional. Open its card to enter the workspace.
 
----
+| Area | Use |
+| --- | --- |
+| Sources | Add material and tick what you want to use |
+| Centre | Chat with your sources, practise a deck or edit a deck |
+| Studio | Generate study material, watch jobs and open artifacts |
 
-## Installation
+An artifact is a saved quiz, flashcards deck or canvas. Older material without a notebook appears in Unsorted.
 
-### Windows
+## Add sources
 
-**System Requirements:**
-- Windows 10 or later (64-bit)
-- 4 GB RAM minimum (8 GB recommended)
-- 500 MB free disk space
+1. Open Sources and choose Add source.
+2. Select one or more files or enter a YouTube uniform resource locator (URL).
+3. Choose Add sources.
+4. Wait for each source to become Ready.
 
-**Installation Steps:**
+| Material | Accepted file names or requirement |
+| --- | --- |
+| Portable Document Format (PDF) | `.pdf` with readable text |
+| HyperText Markup Language (HTML) | `.html` or `.htm` |
+| Markdown | `.md` |
+| Word document | `.docx` |
+| PowerPoint presentation | `.pptx` |
+| YouTube | Video URL with an available transcript |
 
-1. **Download the Installer**
-   - Visit the [FlashLearn Releases](https://github.com/yourusername/flashlearn/releases) page
-   - Download the latest `FlashLearn-Setup-x.x.x.exe` file
+The default file limit is 10,485,760 bytes. Adding sources reads and stores their text. It does not generate a deck. Source names use file names or titles. YouTube titles appear when available.
 
-2. **Run the Installer**
-   - Double-click the downloaded `.exe` file
-   - If Windows SmartScreen appears, click "More info" then "Run anyway"
-   - Follow the installation wizard prompts
-   - Choose your installation location (default is recommended)
+| Status or note | Meaning | Next action |
+| --- | --- | --- |
+| Reading... | The app is reading the source | Wait. You cannot tick it yet |
+| Ready | The source can be used | Tick it for chat or generation |
+| Failed | The app could not read it | Read the error, correct the problem and re-add it to retry |
+| Already in this notebook | The same material is already stored | Use the existing source |
+| May not be worth studying | The pre-flight check doubts that the material contains useful study content | Read the material before generating |
+| Could not check before generating | The optional pre-flight check was unavailable | You can still generate |
 
-3. **Launch FlashLearn**
-   - The installer will create a desktop shortcut
-   - You can also launch from Start Menu → FlashLearn
+The pre-flight note is advice, not a guarantee. It can mistake tooling documents for useful teaching material. A missing TypeSafe key leaves the optional check unavailable.
 
-**Portable Version:**
-- Download `FlashLearn-Portable-x.x.x.exe` for a portable version
-- No installation required - just run the executable
-- All data is stored in the same folder as the executable
+## Tick the material you want to use
 
-### macOS
+Tick a Ready source to include it. Untick it to exclude it. Select all ticks every ready source. Clear unticks all sources. Newly ready sources are ticked automatically, so check the selection before sending a question or generating.
 
-**System Requirements:**
-- macOS 12 (Monterey) or later
-- 4 GB RAM minimum (8 GB recommended)
-- 500 MB free disk space
+The selection controls your next chat question and your next generation request. It does not change an existing deck. Choose only relevant sources when you want a focused answer.
 
-**Installation Steps:**
+## Chat with your sources
 
-1. **Download the DMG**
-   - Visit the [FlashLearn Releases](https://github.com/yourusername/flashlearn/releases) page
-   - Download the latest `FlashLearn-x.x.x.dmg` file
+Choose your sources, then type a question in the centre. Press Enter to send. Press Shift+Enter for a new line. You can ask for a summary, a comparison or an explanation of a specific term.
 
-2. **Install the Application**
-   - Double-click the downloaded `.dmg` file
-   - Drag the FlashLearn icon to the Applications folder
-   - Eject the DMG from Finder
+Open a numbered citation such as `[1]` to see its source name, location and excerpt. Compare the answer with that excerpt. Close the citation with Escape to return focus.
 
-3. **First Launch**
-   - Open Applications folder and double-click FlashLearn
-   - If you see "FlashLearn cannot be opened because it is from an unidentified developer":
-     - Right-click (or Control-click) the FlashLearn icon
-     - Select "Open" from the menu
-     - Click "Open" in the dialog that appears
-   - This only needs to be done once
+| Chat result | Meaning | What to do |
+| --- | --- | --- |
+| I could not find that in the selected sources | The app found too little matching evidence and did not call the answer model | Tick a relevant source or ask a more specific question |
+| Not in your sources | The answer model could not support the answer from the retrieved excerpts | Add the missing material or revise the question |
+| Answer without citations | The answer has no valid source citations | Treat it as unsupported and inspect the source yourself |
+| Removed source | A citation belongs to a source that was deleted | The old excerpt is no longer available. Ask again using current sources |
+| Sources are still processing | A selected source is not ready | Wait and resend. Your draft is retained |
+| Request error | The provider or connection failed | Read the error and use Retry |
 
-4. **Grant Permissions**
-   - macOS may ask for permissions to access files
-   - Click "OK" to grant necessary permissions
+Load earlier shows older messages. Clear chat asks for confirmation before deleting the notebook's chat history. Opening and closing a deck preserves the chat history and draft.
 
-### Linux
+Chat uses selected source text as evidence. Instructions written inside a source should not control the answer. Citations point to excerpts, but they do not prove that every claim is correct.
 
-**System Requirements:**
-- Ubuntu 20.04+ or equivalent distribution
-- 4 GB RAM minimum (8 GB recommended)
-- 500 MB free disk space
+## Generate a quiz or flashcards
 
-**Installation Options:**
+1. Tick at least one ready source.
+2. Choose Quiz or Flashcards in Studio.
+3. Set Number of questions from 1 to 100.
+4. Choose easy, medium, hard or mixed difficulty.
+5. Optionally enter a deck name.
+6. Choose Generate.
 
-#### AppImage (Recommended)
+The number is the total for the deck. The app divides it across the selected sources. It does not request that number from every source.
 
-1. **Download AppImage**
-   - Visit the [FlashLearn Releases](https://github.com/yourusername/flashlearn/releases) page
-   - Download `FlashLearn-x.x.x.AppImage`
+If a source may not be worth studying, Studio asks you to choose Generate anyway or Cancel generation. Cancel generation leaves the source available. If a source is still reading, wait before generating.
 
-2. **Make Executable**
-   ```bash
-   chmod +x FlashLearn-x.x.x.AppImage
-   ```
+## Read the progress card
 
-3. **Run the Application**
-   ```bash
-   ./FlashLearn-x.x.x.AppImage
-   ```
+Studio shows running jobs. The progress card names the current step, reports section counts, shows elapsed time and explains provider retries. Keep the backend running while a job is active.
 
-#### Debian/Ubuntu (.deb)
+Read the final counts and warnings. The app can save fewer questions than requested when sections fail or quality checks hold questions back. A completed job does not promise that every requested question was saved. Continue dismisses completed warnings and held-back notices after you have read them.
 
-```bash
-# Download the .deb file
-wget https://github.com/yourusername/flashlearn/releases/download/vx.x.x/flashlearn_x.x.x_amd64.deb
+OpenRouter waits at most 180 seconds per generation or canvas attempt and 90 seconds per chat attempt. It retries a deadline once. Other provider errors can also cause retries. Credit or quota exhaustion can stop generation.
 
-# Install
-sudo dpkg -i flashlearn_x.x.x_amd64.deb
+## Practise and review due questions
 
-# Install dependencies if needed
-sudo apt-get install -f
+In Studio, choose Practise on a deck. The centre opens practice while Sources and Studio stay available. Close the deck to return to chat.
 
-# Launch
-flashlearn
-```
+| Answer mode | How it works |
+| --- | --- |
+| Multiple choice | Choose an answer within 30 seconds. Timing stops when you choose. Read the explanation before continuing |
+| Written answer | Untimed. Type an answer. A wrong first answer gives a hint and one more try. Requires TypeSafe |
+| Explain it | Explain the idea in your own words. The first check flags unclear or wrong sentences. Requires TypeSafe |
 
-#### Fedora/RHEL (.rpm)
+If grading is unavailable, the app records no attempt. Written grading reports a score from 0 to 5. A correct second try is capped at 3.
 
-```bash
-# Download the .rpm file
-wget https://github.com/yourusername/flashlearn/releases/download/vx.x.x/flashlearn-x.x.x.x86_64.rpm
+Home shows Review due when at least 1 question is due. Open it to review due questions across notebooks at `/review`. When 0 questions are due, the card is hidden. Review scheduling uses SuperMemo 2 (SM-2) to choose when questions return.
 
-# Install
-sudo rpm -i flashlearn-x.x.x.x86_64.rpm
+Home's Progress section shows learning statistics. Studio shows notebook answered, correct and due counts. Each deck artifact shows its question count, due count and held-back count.
 
-# Or using dnf
-sudo dnf install flashlearn-x.x.x.x86_64.rpm
+## Edit a deck and review held-back questions
 
-# Launch
-flashlearn
-```
+Choose Open on a deck in Studio. The centre becomes the deck editor. Edit questions and answer options, save changes, add questions or manage tags. Close the editor to return to chat.
 
----
+Quality checks keep suspicious questions out of practice. Held-back questions retain the reason for the check. Read each question, its answer and its source before deciding.
 
-## Getting Started
+| Action | Result |
+| --- | --- |
+| Restore | Add the held-back question to the deck for practice |
+| Discard | Reject the held-back question |
 
-### First Launch
+A deck with held-back questions can remain available even when it has no accepted questions. Review the held-back questions before assuming generation saved nothing.
 
-When you first launch FlashLearn, you'll see a welcome screen that guides you through initial setup:
+## Make and use a canvas
 
-1. **Welcome Screen**
-   - Read the brief introduction to FlashLearn
-   - Click "Get Started" to continue
+Tick the source you want, then choose Canvas in Studio. Canvas currently uses the first ticked source, so tick only one source for this task. Describe the diagram you want on the canvas screen.
 
-2. **API Key Configuration**
-   - You'll be prompted to configure an AI provider API key
-   - This is required for generating flashcards from documents
-   - See [API Key Configuration](#api-key-configuration) below for details
+The app can choose a diagram template with the optional TypeSafe check. When it cannot choose, it asks you to select a template. Read the job status while the diagram is generated. Saved canvases appear under Artifacts in Studio.
 
-3. **Main Interface**
-   - Once configured, you'll see the main FlashLearn interface
-   - The application is now ready to use!
+Open a saved canvas to explore it. Select a node to inspect its source information and related questions. Drag nodes to adjust the layout. A diagram is a study aid. Check its source before relying on its claims.
 
-### Quick Start Tutorial
+## Configure Settings
 
-1. **Upload a Document**
-   - Click "Upload Document" or press `Ctrl+O` (Windows/Linux) or `Cmd+O` (macOS)
-   - Select a PDF, DOCX, Markdown, or other supported file
-   - Wait for the document to be processed
+Choose Settings in the navigation.
 
-2. **Generate Flashcards**
-   - Click "Generate Questions" on your uploaded document
-   - Choose the number of questions you want
-   - Wait for AI to generate your flashcards
+| Setting | Task |
+| --- | --- |
+| Question generation | Choose the provider and model used to generate questions |
+| Chat | Choose the provider and model used to answer chat questions |
+| Provider keys | Save and test a key for each provider you use |
+| OpenRouter catalog | Search available models and compare input and output prices |
+| OpenRouter credit | Check remaining credit when a limit exists. Without a limit, the app shows usage |
+| TypeSafe | Configure optional pre-flight, quality checks and written grading |
 
-3. **Start Studying**
-   - Navigate to your deck
-   - Click "Study" to begin
-   - Answer questions and rate your confidence
-   - FlashLearn uses spaced repetition to optimize your learning
+Supported providers are Anthropic, OpenAI, Gemini and OpenRouter. Recommended: start with OpenRouter or Gemini. Check free allowances first. Catalog prices and remaining credit do not guarantee that a model request will succeed.
 
-### System Tray
+Keys entered here go to the operating system (OS) credential store. On Windows, this is Windows Credential Manager. The app reports whether a key exists and where it is stored. It never displays saved key characters.
 
-FlashLearn runs in the system tray for quick access:
+If the credential store is unavailable, use a private `backend/.env` as described in the README. Never commit it. Real keys must never go into `.env.example`, shared screenshots or bug reports.
 
-- **Closing the Window**: Minimizes to tray (app keeps running)
-- **Tray Icon Click**: Restores the main window
-- **Right-Click Tray Icon**: Shows menu with options:
-  - Show Window
-  - Quit Application
+The app tries the credential store first, then environment configuration, then old database values read only. Removing a credential-store key can reveal a lower-priority key. Check the reported storage source if a key still appears configured.
 
-To completely quit FlashLearn:
-- Right-click the tray icon and select "Quit"
-- Or use `Ctrl+Q` (Windows/Linux) or `Cmd+Q` (macOS)
+For an older installation, follow the README's key migration instructions. Database backups can contain old keys. Keep them private even after migration.
 
----
+| Component | Monthly fixed service cost | Usage |
+| --- | ---: | --- |
+| Local workspace and credential store | $0 | Existing device and electricity |
+| Multiple-choice practice | $0 | No model calls |
+| Generation, chat and optional checks | $0 app subscription | Provider charges depend on your account and model |
 
-## API Key Configuration
+Selected source text is sent to external providers for model calls. Store only material you are allowed to send to those providers.
 
-FlashLearn requires an API key from an AI provider to generate flashcards. We support three providers:
+## Use a phone or a narrow window
 
-### Supported Providers
+Below 1,024 pixels, Sources and Studio open as drawers from the top bar. Only one drawer opens at a time. Close it using Escape, its close button or the backdrop. The centre stays available for chat or the open deck.
 
-1. **OpenAI** (GPT-4, GPT-3.5)
-2. **Anthropic** (Claude)
-3. **Google** (Gemini)
+At 1,024 pixels and above, both side columns can collapse. Expand them when you need to change sources or open an artifact. Keyboard focus moves into opened decks and returns when they close.
 
-### Getting an API Key
-
-#### OpenAI
-
-1. Visit [platform.openai.com](https://platform.openai.com)
-2. Sign up or log in
-3. Navigate to API Keys section
-4. Click "Create new secret key"
-5. Copy the key (starts with `sk-`)
-
-#### Anthropic
-
-1. Visit [console.anthropic.com](https://console.anthropic.com)
-2. Sign up or log in
-3. Navigate to API Keys
-4. Click "Create Key"
-5. Copy the key (starts with `sk-ant-`)
-
-#### Google
-
-1. Visit [makersuite.google.com](https://makersuite.google.com)
-2. Sign up or log in
-3. Click "Get API Key"
-4. Create a new API key
-5. Copy the key
-
-### Configuring in FlashLearn
-
-1. **Open Settings**
-   - Click the gear icon in the top-right
-   - Or press `Ctrl+,` (Windows/Linux) or `Cmd+,` (macOS)
-
-2. **Select Provider**
-   - Choose your AI provider from the dropdown
-
-3. **Enter API Key**
-   - Paste your API key in the text field
-   - The key format will be validated automatically
-
-4. **Save Settings**
-   - Click "Save"
-   - Your API key is encrypted and stored securely
-
-5. **Test Connection** (Optional)
-   - Click "Test Connection" to verify your API key works
-   - You should see a success message
-
-### Security Notes
-
-- API keys are encrypted before being stored on your computer
-- Keys are never transmitted except to the official AI provider APIs
-- You can clear your API key at any time from Settings
-- If you suspect your key is compromised, revoke it from the provider's website
-
----
-
-## Using FlashLearn
-
-### Uploading Documents
-
-**Supported Formats:**
-- PDF (.pdf)
-- Microsoft Word (.docx)
-- Markdown (.md)
-- HTML (.html)
-- PowerPoint (.pptx)
-- Plain Text (.txt)
-
-**Upload Process:**
-1. Click "Upload Document" or use `Ctrl+O` / `Cmd+O`
-2. Select one or more files
-3. Wait for processing (progress shown in UI)
-4. Documents appear in your library
-
-**Tips:**
-- Larger documents take longer to process
-- Clear, well-formatted documents produce better flashcards
-- You can upload multiple documents at once
-
-### Generating Flashcards
-
-1. **Select a Document**
-   - Click on a document in your library
-
-2. **Generate Questions**
-   - Click "Generate Questions"
-   - Choose number of questions (5-50 recommended)
-   - Select difficulty level if desired
-
-3. **Review Generated Cards**
-   - Review the generated flashcards
-   - Edit any cards that need refinement
-   - Delete cards you don't want
-
-4. **Add to Deck**
-   - Cards are automatically added to a deck
-   - You can organize cards into custom decks
-
-### Studying with Spaced Repetition
-
-FlashLearn uses the SM-2 algorithm for optimal learning:
-
-1. **Start a Study Session**
-   - Click "Study" on a deck
-   - Cards due for review are shown first
-
-2. **Answer Questions**
-   - Read the question
-   - Think of your answer
-   - Click "Show Answer" to reveal
-
-3. **Rate Your Confidence**
-   - **Again**: Didn't remember - card shown again soon
-   - **Hard**: Barely remembered - shorter interval
-   - **Good**: Remembered correctly - normal interval
-   - **Easy**: Very easy - longer interval
-
-4. **Complete Session**
-   - Study until no cards are due
-   - Come back tomorrow for the next session
-
-### Managing Decks
-
-- **Create Deck**: Click "New Deck" button
-- **Rename Deck**: Right-click deck → Rename
-- **Delete Deck**: Right-click deck → Delete
-- **Move Cards**: Drag cards between decks
-- **Export Deck**: Right-click deck → Export to Anki/CSV
-
-### Keyboard Shortcuts
-
-| Action | Windows/Linux | macOS |
-|--------|---------------|-------|
-| New Flashcard | `Ctrl+N` | `Cmd+N` |
-| Upload Document | `Ctrl+O` | `Cmd+O` |
-| Settings | `Ctrl+,` | `Cmd+,` |
-| Fullscreen | `F11` | `F11` |
-| Quit | `Ctrl+Q` | `Cmd+Q` |
-| Show Answer | `Space` | `Space` |
-| Rate: Again | `1` | `1` |
-| Rate: Hard | `2` | `2` |
-| Rate: Good | `3` | `3` |
-| Rate: Easy | `4` | `4` |
-
----
-
-## Troubleshooting
-
-### Application Won't Start
-
-**Windows:**
-- Check if Windows Defender is blocking the app
-- Try running as Administrator (right-click → Run as administrator)
-- Ensure you have .NET Framework 4.7.2 or later installed
-- Check antivirus software isn't quarantining the app
-
-**macOS:**
-- Verify you're running macOS 12 or later
-- Try the right-click → Open method described in installation
-- Check System Preferences → Security & Privacy for blocks
-- Ensure you have sufficient disk space
-
-**Linux:**
-- Verify the AppImage is executable: `chmod +x FlashLearn.AppImage`
-- Install FUSE if needed: `sudo apt install fuse libfuse2`
-- Check for missing dependencies: `ldd FlashLearn.AppImage`
-- Try running from terminal to see error messages
-
-### Backend Server Fails to Start
-
-**Symptoms:**
-- "Backend server not responding" error
-- Application hangs on splash screen
-- Connection errors when generating flashcards
-
-**Solutions:**
-
-1. **Check Port Availability**
-   - FlashLearn tries ports 8000-8010
-   - Close other applications using these ports
-   - On Windows: `netstat -ano | findstr :8000`
-   - On macOS/Linux: `lsof -i :8000`
-
-2. **Check Firewall**
-   - Allow FlashLearn through your firewall
-   - The backend only listens on localhost (127.0.0.1)
-
-3. **View Logs**
-   - Open Help → View Logs
-   - Look for backend startup errors
-   - Share logs when reporting issues
-
-4. **Reset Application Data**
-   - Close FlashLearn completely
-   - Delete the data directory:
-     - Windows: `%APPDATA%\FlashLearn`
-     - macOS: `~/Library/Application Support/FlashLearn`
-     - Linux: `~/.config/FlashLearn`
-   - Restart FlashLearn (will recreate fresh data)
-
-### API Key Issues
-
-**"Invalid API Key" Error:**
-- Verify you copied the entire key (no spaces)
-- Check the key hasn't been revoked on the provider's website
-- Ensure you selected the correct provider
-- Try generating a new key
-
-**"API Rate Limit Exceeded":**
-- You've exceeded your provider's rate limits
-- Wait a few minutes and try again
-- Consider upgrading your API plan
-- Check your usage on the provider's dashboard
-
-**"API Connection Failed":**
-- Check your internet connection
-- Verify the AI provider's service status
-- Check if a firewall is blocking outbound connections
-- Try using a different network
-
-### Database Issues
-
-**"Database Locked" Error:**
-- Another instance of FlashLearn might be running
-- Check system tray for FlashLearn icon
-- Restart your computer if issue persists
-
-**"Database Corrupted" Error:**
-- FlashLearn will offer to create a backup
-- Accept the backup option
-- A new database will be created
-- You can try to recover data from the backup later
-
-**Missing Data:**
-- Check if you're looking in the right deck
-- Use the search function to find cards
-- Check Help → View Logs for any errors
-- Restore from backup if available
-
-### Performance Issues
-
-**Slow Startup:**
-- First launch is slower (database initialization)
-- Subsequent launches should be faster
-- Check available disk space
-- Close other resource-intensive applications
-
-**High Memory Usage:**
-- Normal during AI generation (processing documents)
-- Memory is released after generation completes
-- Restart FlashLearn if memory doesn't decrease
-- Consider processing smaller documents
-
-**Slow Document Processing:**
-- Large documents take longer to process
-- PDF files with images are slower
-- Check your internet connection (affects AI generation)
-- Be patient - complex documents need more time
-
-### Update Issues
-
-**Update Download Fails:**
-- Check your internet connection
-- Verify you have sufficient disk space
-- Try downloading manually from GitHub releases
-- Check if antivirus is blocking the download
-
-**Update Installation Fails:**
-- Close FlashLearn completely before updating
-- Run installer as Administrator (Windows)
-- Check you have write permissions to installation directory
-- Try uninstalling and reinstalling
-
-### Getting Help
-
-If you're still experiencing issues:
-
-1. **Check Logs**
-   - Help → View Logs
-   - Look for error messages
-   - Note any error codes
-
-2. **Generate Diagnostic Report**
-   - Help → Generate Diagnostic Report
-   - Save the report file
-   - Include it when reporting issues
-
-3. **Report an Issue**
-   - Visit [GitHub Issues](https://github.com/yourusername/flashlearn/issues)
-   - Search for existing issues
-   - Create a new issue with:
-     - Your operating system and version
-     - FlashLearn version (Help → About)
-     - Steps to reproduce the problem
-     - Diagnostic report (if applicable)
-     - Relevant log excerpts
-
-4. **Community Support**
-   - Join our Discord server
-   - Check the FAQ on our website
-   - Browse existing GitHub discussions
-
----
-
-## FAQ
-
-### General Questions
-
-**Q: Is FlashLearn free?**
-A: Yes, FlashLearn is free and open-source. However, you need to provide your own AI API key, which may have costs from the provider.
-
-**Q: Do I need an internet connection?**
-A: You need internet to generate flashcards (AI API calls). Studying existing flashcards works offline.
-
-**Q: Where is my data stored?**
-A: All data is stored locally on your computer in the application data directory. Nothing is sent to FlashLearn servers (we don't have any!).
-
-**Q: Can I use FlashLearn on multiple computers?**
-A: Yes, but data doesn't sync automatically. You can export/import decks to transfer data between computers.
-
-**Q: How much does AI generation cost?**
-A: Costs depend on your AI provider and usage. Typically a few cents per document. Check your provider's pricing.
-
-### Technical Questions
-
-**Q: What AI models are supported?**
-A: OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), and Google (Gemini).
-
-**Q: Can I use my own AI model?**
-A: Not currently, but this is planned for a future release.
-
-**Q: Is my API key secure?**
-A: Yes, API keys are encrypted before storage and never logged or transmitted except to the official AI provider.
-
-**Q: Can I export my flashcards?**
-A: Yes, you can export to Anki format or CSV for use in other applications.
-
-**Q: Does FlashLearn support images in flashcards?**
-A: Not yet, but this feature is planned for a future release.
-
-**Q: Can I customize the spaced repetition algorithm?**
-A: Not currently, but we're considering adding customization options in the future.
-
-### Troubleshooting Questions
-
-**Q: Why is the app using so much memory?**
-A: Memory usage increases during document processing and AI generation. It's released afterward. If it stays high, try restarting the app.
-
-**Q: Can I change where data is stored?**
-A: Not currently through the UI, but you can set the `FLASHLEARN_DATA_DIR` environment variable before launching.
-
-**Q: How do I completely uninstall FlashLearn?**
-A: Uninstall the application, then delete the data directory (see locations in Troubleshooting section).
-
-**Q: Why does Windows Defender flag the app?**
-A: This can happen with new releases. The app is safe - we'll work on getting it whitelisted. You can add an exception in Windows Defender.
-
----
-
-## Data and Privacy
-
-### What Data is Collected?
-
-FlashLearn does NOT collect any personal data. All data stays on your computer:
-
-- Flashcards and study progress: Stored locally in SQLite database
-- Uploaded documents: Stored locally in application data directory
-- API keys: Encrypted and stored locally
-- Settings: Stored locally in configuration file
-
-### What Data is Sent to AI Providers?
-
-When generating flashcards:
-- Document text is sent to your chosen AI provider
-- Your API key is used to authenticate
-- No other data is transmitted
-
-### Automatic Updates
-
-The auto-updater checks for new versions by:
-- Connecting to GitHub releases API
-- Comparing your version with the latest release
-- No personal data is transmitted
-- You can disable auto-updates in Settings
-
----
-
-## Credits and License
-
-FlashLearn is open-source software licensed under the MIT License.
-
-**Developed by:** [Your Name/Team]
-
-**Built with:**
-- Electron
-- React
-- FastAPI
-- SQLite
-- OpenAI/Anthropic/Google AI APIs
-
-**Contributing:**
-We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for details.
-
-**Support the Project:**
-- Star us on GitHub
-- Report bugs and suggest features
-- Contribute code or documentation
-- Share FlashLearn with others
-
----
-
-## Version History
-
-See [CHANGELOG.md](../CHANGELOG.md) for detailed version history and release notes.
-
----
-
-**Last Updated:** December 2024
-**Version:** 1.0.0
+The responsive layout does not provide public hosting. Use the local app setup. Live public hosting remains deferred. See the [roadmap](ROADMAP.md).

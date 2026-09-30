@@ -150,12 +150,18 @@ describe('Performance Tests', () => {
     test('should load settings quickly', () => {
       const SettingsManager = require('../settings-manager');
       
-      const startTime = Date.now();
-      const manager = new SettingsManager(testDataDir);
-      manager.get('theme');
-      const endTime = Date.now();
-      
-      const duration = endTime - startTime;
+      // One load warms the disk cache. A single wall-clock sample on a shared
+      // CI runner is noisy (101 ms failed CI once), so assert on the median of 5.
+      new SettingsManager(testDataDir).get('theme');
+      const samples = [];
+      for (let i = 0; i < 5; i++) {
+        const startTime = Date.now();
+        const manager = new SettingsManager(testDataDir);
+        manager.get('theme');
+        samples.push(Date.now() - startTime);
+      }
+      samples.sort((a, b) => a - b);
+      const duration = samples[2];
       
       // Settings loading should be very fast (< 100ms)
       expect(duration).toBeLessThan(100);

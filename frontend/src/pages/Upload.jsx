@@ -1,9 +1,68 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
+import PropTypes from 'prop-types'
 import Spinner from '../components/Spinner'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
 import { Upload as UploadIcon, CheckCircle, AlertCircle, AlertTriangle, Loader2, Book, FileType, Youtube } from 'lucide-react'
+
+function GenerationProgress({ status }) {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  const done = status.current_question || 0
+  const total = status.total_questions || 0
+  const fraction = total ? Math.min(1, done / total) : 0
+  const seconds = status.started_at
+    ? Math.max(0, Math.floor((now - new Date(status.started_at).getTime()) / 1000)) : 0
+  const elapsed = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+  return (
+    <>
+      <style>{`
+        @keyframes generation-shimmer {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(400%); }
+        }
+        .generation-shimmer { animation: generation-shimmer 2s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .generation-shimmer, .generation-spinner { animation: none; }
+          .generation-fill { transition: none; }
+        }
+      `}</style>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-full">
+          <Loader2 className="generation-spinner h-6 w-6 text-primary-600 dark:text-primary-300 animate-spin" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Generating questions</h3>
+          <p className="text-primary-600 dark:text-primary-300 font-medium">{status.current_step}</p>
+          {total > 0 && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Section {done} of {total}</p>}
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Elapsed {elapsed}</p>
+        </div>
+      </div>
+      <div role="progressbar" aria-label="Sections completed" aria-valuemin={0}
+        aria-valuemax={total} aria-valuenow={done}
+        className="relative w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-8 overflow-hidden">
+        <div className="generation-fill absolute inset-0 bg-primary-600 origin-left transition-transform duration-500 ease-out"
+          style={{ transform: `scaleX(${fraction})` }} />
+        {fraction < 1 && <div className="absolute inset-y-0 right-0 overflow-hidden" style={{ left: `${fraction * 100}%` }}>
+          <div className="generation-shimmer h-full w-1/4 bg-gradient-to-r from-transparent via-primary-300/50 to-transparent" />
+        </div>}
+      </div>
+    </>
+  )
+}
+
+GenerationProgress.propTypes = {
+  status: PropTypes.shape({
+    current_step: PropTypes.string,
+    current_question: PropTypes.number,
+    total_questions: PropTypes.number,
+    started_at: PropTypes.string,
+  }).isRequired,
+}
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -507,7 +566,7 @@ export default function Upload() {
                     <ul className="mt-4 space-y-2">
                       {pendingJob.preflight.map(item => (
                         <li key={item.document_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm">
-                          <span className="font-medium text-gray-900 dark:text-white break-all">{item.filename}</span>
+                          <span className="font-medium text-gray-900 dark:text-white break-all">{item.display_name || item.filename}</span>
                           <span className={item.worth_generating ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}>
                             {!item.checked
                               ? 'Not checked'
@@ -535,13 +594,13 @@ export default function Upload() {
             {/* Pre-flight could not run for these sources. Generation continues regardless. */}
             {uncheckedSources.length > 0 && (
               <p className="text-sm text-gray-600 dark:text-gray-300" role="status">
-                Could not check {uncheckedSources.map(item => item.filename).join(', ')} before generating.
+                Could not check {uncheckedSources.map(item => item.display_name || item.filename).join(', ')} before generating.
                 Generation is going ahead anyway.
               </p>
             )}
 
             {/* Success Message */}
-            {result && !generating && (
+            {result && !generating && generationStatus?.status !== 'failed' && (
               <div className="card bg-success-50 dark:bg-success-900/30 border-success-200 animate-fade-in">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-success-100 dark:bg-success-900/30 rounded-full">
@@ -571,31 +630,8 @@ export default function Upload() {
 
             {/* Generation Progress */}
             {generationStatus && (generating || generationStatus.status === 'completed') && (
-              <div className="card border-primary-100 shadow-lg animate-slide-up">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-full animate-pulse-slow">
-                    <Loader2 className="h-6 w-6 text-primary-600 dark:text-primary-300 animate-spin" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 dark:text-white text-lg">Generating questions</h3>
-                    <p className="text-primary-600 dark:text-primary-300 font-medium">{generationStatus.current_step}</p>
-                    {/* Question counter */}
-                    {generationStatus.current_question > 0 && generationStatus.total_questions > 0 && (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                        Generating question {generationStatus.current_question} of {generationStatus.total_questions}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-2xl font-bold text-primary-600 dark:text-primary-300">{generationStatus.progress}%</span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-8 overflow-hidden">
-                  <div
-                    className="bg-primary-600 h-3 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${generationStatus.progress}%` }}
-                  ></div>
-                </div>
+              <div className="card border-primary-100 shadow-lg">
+                <GenerationProgress status={generationStatus} />
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-4 mb-6">

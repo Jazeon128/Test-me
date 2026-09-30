@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..services.source_names import display_name
 from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.canvas import Canvas
@@ -110,7 +111,8 @@ async def get_notebook(notebook_id: int, db: Session = Depends(get_db)):
         "documents": [
             {
                 "id": d.id,
-                "name": d.title or d.original_filename,
+                "name": display_name(d),
+                "display_name": display_name(d),
                 "file_type": d.file_type.value if d.file_type else None,
                 "num_pages": d.num_pages,
                 "created_at": d.created_at.isoformat() if d.created_at else None,

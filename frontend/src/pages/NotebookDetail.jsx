@@ -133,7 +133,7 @@ export default function NotebookDetail() {
               <FileText size={18} className="flex-none text-gray-400" />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-gray-900 dark:text-white">
-                  {document.name}
+                  {document.display_name || document.name}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {document.file_type?.toUpperCase()}

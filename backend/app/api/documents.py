@@ -29,7 +29,7 @@ from ..services.ai import QuestionGenerator, sourcing
 from ..config import settings
 from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
-from ..utils.progress import calculate_generation_progress
+from ..services.source_names import display_name
 from .questions import _typesafe_key
 from ..exceptions import (
     FileUploadError,
@@ -163,6 +163,10 @@ async def upload_document(
             content_hash=content_hash,
         )
 
+        if document.file_type == DocumentType.YOUTUBE:
+            document.title = await run_in_threadpool(
+                YouTubeParser.fetch_title, content.decode("utf-8").strip()
+            )
         db.add(document)
         db.commit()
         invalidate_stats_cache()
@@ -172,6 +176,7 @@ async def upload_document(
             {
                 "id": document.id,
                 "filename": file.filename,
+                "display_name": display_name(document),
                 "file_path": file_path,
                 "file_type": type_mapping[file_ext],
             }
@@ -215,11 +220,16 @@ async def upload_document(
     if api_key and not skip_preflight:
         preflight = await run_in_threadpool(assess_sources, uploaded_documents, api_key)
 
+    source_names = {d["id"]: d["display_name"] for d in uploaded_documents}
+    for item in preflight:
+        item["display_name"] = source_names.get(item["document_id"])
+
     base_response = {
         "job_id": job_id,
         "deck_id": deck.id,
         "deck_name": deck.name,
-        "documents": [{"id": d["id"], "filename": d["filename"]} for d in uploaded_documents],
+        "documents": [{"id": d["id"], "filename": d["filename"],
+                       "display_name": d["display_name"]} for d in uploaded_documents],
         "regenerate": regenerate,
         "preflight": preflight,
     }
@@ -438,7 +448,8 @@ def process_document(
         gen_status = db.query(GenerationStatus).filter(GenerationStatus.job_id == job_id).first()
         if gen_status:
             gen_status.status = "processing"
-            gen_status.started_at = datetime.now()
+            if not gen_status.started_at:
+                gen_status.started_at = datetime.now()
             gen_status.progress = 10
             gen_status.current_step = "Parsing document"
             gen_status.add_log(f"Started processing document {document_id}")
@@ -473,31 +484,19 @@ def process_document(
             status=case((terminal, case((GenerationStatus.documents_completed > 0, "completed"), else_="failed")), else_="processing"),
             current_step=case((terminal, case((GenerationStatus.documents_completed > 0, "Complete"), else_="Failed")), else_=f"Finished document {finished} of {gen_status.total_documents}"),
             progress=case((terminal, 100), else_=GenerationStatus.progress),
+            step_started_at=datetime.now(),
             completed_at=case((terminal, datetime.now()), else_=None),
         ))
         db.commit()
         db.refresh(gen_status)
 
-    # Define progress callback function for question generation
-    def progress_callback(current: int, total: int):
-        """Update generation status with current question progress"""
+    def step_callback(step: str, done: int, total: int):
         if gen_status:
-            try:
-                gen_status.current_question = current
-                gen_status.total_questions = total
-                # Calculate progress using utility function
-                progress_pct = calculate_generation_progress(current, total)
-                gen_status.progress = progress_pct
-                gen_status.current_step = f"Generating question {current} of {total}"
-                db.commit()
-            except Exception as e:
-                # Log error but don't fail generation
-                logger.error(
-                    "progress_callback_error",
-                    error_message=str(e),
-                    current_question=current,
-                    total_questions=total,
-                )
+            gen_status.current_step = step
+            gen_status.current_question = done
+            gen_status.total_questions = total
+            gen_status.progress = int(100 * done / max(total, 1))
+            db.commit()
 
     try:
         logger.info(
@@ -543,7 +542,8 @@ def process_document(
         document = db.query(Document).filter(Document.id == document_id).first()
         if document:
             document.content = parsed_doc.full_text
-            document.title = parsed_doc.title
+            if file_type != DocumentType.YOUTUBE:
+                document.title = parsed_doc.title
             document.num_pages = parsed_doc.num_pages
             db.commit()
             invalidate_stats_cache()
@@ -573,7 +573,7 @@ def process_document(
                 num_questions=num_questions,
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
-                progress_callback=progress_callback,
+                step_callback=step_callback,
             )
 
             # Capture the logs
@@ -680,6 +680,7 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
         "file_type": document.file_type.value,
         "file_size": document.file_size,
         "title": document.title,
+        "display_name": display_name(document),
         "num_pages": document.num_pages,
         "num_questions": len(document.questions),
         "created_at": document.created_at,
@@ -697,6 +698,7 @@ async def list_documents(skip: int = 0, limit: int = 100, db: Session = Depends(
             "filename": doc.original_filename,
             "file_type": doc.file_type.value,
             "title": doc.title,
+            "display_name": display_name(doc),
             "num_questions": len(doc.questions),
             "created_at": doc.created_at,
         }
@@ -811,15 +813,12 @@ def regenerate_deck_questions(
             except Exception as error:
                 raise ValueError(f"{document.original_filename}: {error}") from error
 
-            def progress_callback(current: int, total: int):
+            def step_callback(step: str, done: int, total: int):
                 if gen_status:
-                    gen_status.current_question = index * num_questions_per_doc + current
-                    gen_status.progress = 20 + int(
-                        60 * (index + current / max(total, 1)) / len(source_documents)
-                    )
-                    gen_status.current_step = (
-                        f"Generating question {current} of {total} for document {index + 1}"
-                    )
+                    gen_status.current_step = step
+                    gen_status.current_question = done
+                    gen_status.total_questions = total
+                    gen_status.progress = int(100 * done / max(total, 1))
                     db.commit()
 
             if gen_status:
@@ -833,7 +832,7 @@ def regenerate_deck_questions(
                     num_questions=num_questions_per_doc,
                     difficulty=difficulty,
                     custom_prompt=custom_prompt,
-                    progress_callback=progress_callback,
+                    step_callback=step_callback,
                 )
                 current_flagged = getattr(generator, "flagged_questions", [])
                 failures = getattr(generator, "failed_batches", [])

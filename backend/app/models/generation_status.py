@@ -1,5 +1,7 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
 from sqlalchemy.sql import func
+from sqlalchemy.orm import validates
 from sqlalchemy.ext.mutable import MutableList
 from .base import Base
 
@@ -38,7 +40,14 @@ class GenerationStatus(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     started_at = Column(DateTime(timezone=True), nullable=True)
+    step_started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    @validates("current_step")
+    def track_step_start(self, key, value):
+        if value != self.current_step:
+            self.step_started_at = datetime.now()
+        return value
 
     def add_log(self, message: str, level: str = "info") -> None:
         """Add a log message with timestamp"""
@@ -54,7 +63,7 @@ class GenerationStatus(Base):
         }
         self.logs.append(log_entry)
 
-    def to_dict(self) -> dict:  # type: ignore[type-arg]  # noqa
+    def to_dict(self) -> dict:
         """Convert to dictionary for API response"""
         return {
             "job_id": self.job_id,
@@ -77,5 +86,6 @@ class GenerationStatus(Base):
             "total_questions": self.total_questions,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
+            "step_started_at": self.step_started_at.isoformat() if self.step_started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }

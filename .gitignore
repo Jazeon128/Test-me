@@ -83,3 +83,6 @@ apikey figma.txt
 
 # Codex sandbox test temp folders (created under the sandbox user, remove as admin)
 .test-tmp/
+
+# Database backups, any name
+backend/backups/

@@ -1,4 +1,5 @@
 import json
+import random
 import re
 import time
 import traceback
@@ -38,11 +39,18 @@ def passage_from(text: str) -> str:
 #: Per-request timeout for Gemini, in milliseconds as google-genai expects.
 GEMINI_TIMEOUT_MS = 180_000
 
-#: google-genai does not retry unless asked. The free tier returns 503 "high
-#: demand" routinely, and one of those would otherwise fail a whole generation
-#: job. 4 attempts, backing off 2, 4 and 8 s plus jitter. Measured 2026-09-29
-#: against an overloaded model, all 4 attempts took 58 s before giving up.
-GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=4, initial_delay=2.0, max_delay=20.0)
+#: Retries are reported by the generator, so the SDK makes one attempt.
+GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=1)
+
+
+def explain_provider_error(message: str) -> str:
+    """Turn a raw provider error into a sentence a user can act on."""
+    if "RESOURCE_EXHAUSTED" in message or message.startswith("429"):
+        return ("The free-tier quota is used up (429). Wait for it to reset, "
+                "or add a paid key in Settings.")
+    if "UNAVAILABLE" in message or message.startswith("503"):
+        return "The model is overloaded (503). Try again in a few minutes."
+    return message
 
 
 def get_setting(db: Session, key: str) -> Optional[str]:
@@ -132,7 +140,13 @@ class QuestionGenerator:
     - Success/failure rates
     """
 
-    def __init__(self, db: Optional[Session] = None):
+    def __init__(
+        self, db: Optional[Session] = None,
+        step_callback: Optional[Callable[[str, int, int], None]] = None,
+    ):
+        self.step_callback = step_callback
+        self._sections_done = 0
+        self._sections_total = 0
         # Questions discarded by verification during the last run, each carrying
         # the reasons it was flagged. Read by the caller for reporting.
         self.flagged_questions: List[Dict] = []
@@ -206,6 +220,7 @@ class QuestionGenerator:
         custom_prompt: Optional[str] = None,
         example_questions: Optional[List[Dict]] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
+        step_callback: Optional[Callable[[str, int, int], None]] = None,
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -218,10 +233,13 @@ class QuestionGenerator:
             example_questions: Optional list of example questions to inspire style
             progress_callback: Optional callback function invoked as (current, total)
                              after each question completes. Allows real-time progress tracking.
+            step_callback: Optional callback invoked as (step, sections_done, sections_total).
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
         """
+        if step_callback is not None:
+            self.step_callback = step_callback
         start_time = time.time()
         self.failed_batches = []
         self.flagged_questions = []
@@ -283,6 +301,8 @@ class QuestionGenerator:
 
         selected_sections = self._select_sections(parsed_doc.sections, sections_needed)
 
+        self._sections_done = 0
+        self._sections_total = len(selected_sections)
         all_questions = []
 
         # Calculate how many questions to generate per section
@@ -312,6 +332,7 @@ class QuestionGenerator:
                 questions_target=num_questions,
             )
 
+            self._report_step("Asking Gemini")
             questions = self._generate_batch_questions(
                 section,
                 batch_size,
@@ -324,6 +345,7 @@ class QuestionGenerator:
             )
 
             if questions:
+                self._report_step("Checking questions")
                 questions = self._verify_batch(section, questions)
                 all_questions.extend(questions)
                 logger.debug(
@@ -339,12 +361,15 @@ class QuestionGenerator:
                     section_text_length=len(section.text),
                 )
 
+            self._sections_done = i
+
         # Limit to requested number
         final_questions = all_questions[:num_questions]
         if not final_questions and not self.flagged_questions and self.failed_batches:
             raise AIServiceError(
                 message=(f"Gemini failed on {len(self.failed_batches)} of "
-                         f"{len(selected_sections)} section(s): {self.failed_batches[-1]['message']}"),
+                         f"{len(selected_sections)} section(s): "
+                         f"{explain_provider_error(self.failed_batches[-1]['message'])}"),
                 provider=self.provider,
             )
         elapsed_time = time.time() - start_time
@@ -368,7 +393,34 @@ class QuestionGenerator:
             success=True,
         )
 
+        self._report_step("Finishing generation")
         return final_questions
+
+    def _report_step(self, step: str) -> None:
+        callback = getattr(self, "step_callback", None)
+        if callback is not None:
+            callback(step, self._sections_done, self._sections_total)
+
+    def _gemini_generate(self, prompt: str):
+        for attempt in range(1, 5):
+            try:
+                return self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        max_output_tokens=8192,
+                        temperature=0.7,
+                        automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(
+                            disable=True
+                        ),
+                    ),
+                )
+            except Exception as error:
+                status = getattr(error, "code", None) or getattr(error, "status_code", None)
+                if status not in {429, 500, 502, 503, 504} or attempt == 4:
+                    raise
+                self._report_step(f"Gemini is busy, retrying (attempt {attempt + 1} of 4)")
+                time.sleep(min(20.0, 2 ** attempt + random.uniform(0, 1)))
 
     def _select_sections(
         self, sections: List[ParsedSection], num_needed: int
@@ -502,18 +554,7 @@ class QuestionGenerator:
                     output_tokens = response.usage.completion_tokens
 
             elif self.provider == "gemini":
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=prompt,
-                    config=genai_types.GenerateContentConfig(
-                        max_output_tokens=8192,
-                        temperature=0.7,
-                        # No tools are sent, so function calling only adds a warning.
-                        automatic_function_calling=genai_types.AutomaticFunctionCallingConfig(
-                            disable=True
-                        ),
-                    ),
-                )
+                response = self._gemini_generate(prompt)
                 content = response.text
                 # Extract token usage from response
                 if hasattr(response, "usage_metadata"):

@@ -1,3 +1,4 @@
+from ..services.source_names import display_name
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
@@ -95,6 +96,7 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
                     "id": question.document.id,
                     "filename": question.document.original_filename,
                     "title": question.document.title,
+                    "display_name": display_name(question.document),
                 }
 
     documents = list(documents_dict.values())

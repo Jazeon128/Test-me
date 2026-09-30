@@ -132,9 +132,9 @@ class TestQuestionGeneratorInitialization:
             # The timeout is required, not incidental: without it a stalled TLS
             # handshake hangs the generation job. google-genai wants milliseconds.
             assert kwargs["http_options"].timeout == 180_000
-            # Retries are off by default in google-genai. The free tier's
-            # routine 503s would otherwise fail whole generation jobs.
-            assert kwargs["http_options"].retry_options.attempts == 4
+            # The generator runs its own 4-attempt retry loop so it can report
+            # each retry. The SDK must try once, or the two loops multiply.
+            assert kwargs["http_options"].retry_options.attempts == 1
 
     def test_init_no_api_key_raises_error(self):
         """Test that initialization fails without API key"""

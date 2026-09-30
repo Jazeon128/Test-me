@@ -1,5 +1,6 @@
 import os
 import re
+import requests
 from youtube_transcript_api import YouTubeTranscriptApi
 from typing import Optional
 from .base_parser import BaseParser, ParsedDocument, ParsedSection
@@ -21,6 +22,23 @@ class YouTubeParser(BaseParser):
         if match:
             return match.group(1)
         return None
+
+    @classmethod
+    def fetch_title(cls, url: str) -> str:
+        video_id = cls.extract_video_id(url)
+        try:
+            response = requests.get(
+                "https://www.youtube.com/oembed",
+                params={"url": url, "format": "json"},
+                timeout=10,
+            )
+            response.raise_for_status()
+            title = response.json()["title"].strip()
+            if not title:
+                raise ValueError("Empty YouTube title")
+            return title
+        except Exception:
+            return f"YouTube video {video_id}"
 
     def get_transcript(self, video_id: str) -> str:
         """

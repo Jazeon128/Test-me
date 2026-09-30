@@ -46,7 +46,7 @@ def test_partial_failure_is_recorded_and_reset(generator):
 
 def test_all_failures_raise(generator):
     generator.client.models.generate_content.side_effect = ServerError("503 UNAVAILABLE")
-    with pytest.raises(AIServiceError, match="Gemini failed on 2 of 2 section.*503 UNAVAILABLE"):
+    with pytest.raises(AIServiceError, match=r"Gemini failed on 2 of 2 section.*overloaded \(503\)"):
         generator.generate_questions(document(), 2)
     assert len(generator.failed_batches) == 2
 

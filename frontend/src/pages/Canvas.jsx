@@ -13,7 +13,7 @@ import { Loader2, Sparkles, AlertCircle, ChevronRight, Wand2, Hand } from 'lucid
 import PropTypes from 'prop-types'
 
 import { canvasAPI, statusAPI } from '../services/api'
-import { nodeTypes } from '../canvas/nodes'
+import { nodeTypes } from '../canvas/nodeTypes'
 import { layout, toGraph } from '../canvas/layout'
 import TemplatePicker from '../canvas/TemplatePicker'
 import NodePanel from '../canvas/NodePanel'

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { TrendingUp, BookOpen, Layers, Upload, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/useTheme'
 import SearchModal from './SearchModal'
 
 const links = [

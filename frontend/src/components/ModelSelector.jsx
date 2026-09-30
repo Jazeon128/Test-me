@@ -107,37 +107,39 @@ export default function ModelSelector({
     }
   }
 
-  // Handle mouse enter on option elements
-  const handleOptionMouseEnter = (e, modelId) => {
-    const model = availableModels.find(m => m.id === modelId)
-    if (model && selectRef.current) {
-      setHoveredModel(model)
-      // Position tooltip near the select element
-      const rect = selectRef.current.getBoundingClientRect()
-      setTooltipPosition({
-        x: rect.left,
-        y: rect.bottom + 8
-      })
-    }
-  }
-
-  // Handle mouse leave from option elements
-  const handleOptionMouseLeave = () => {
-    setHoveredModel(null)
-  }
-
   // Add event listeners to option elements
   useEffect(() => {
+    // Handle mouse enter on option elements
+    const handleOptionMouseEnter = (e, modelId) => {
+      const model = availableModels.find(m => m.id === modelId)
+      if (model && selectRef.current) {
+        setHoveredModel(model)
+        // Position tooltip near the select element
+        const rect = selectRef.current.getBoundingClientRect()
+        setTooltipPosition({
+          x: rect.left,
+          y: rect.bottom + 8
+        })
+      }
+    }
+
+    // Handle mouse leave from option elements
+    const handleOptionMouseLeave = () => {
+      setHoveredModel(null)
+    }
+
     if (!isCustom && selectRef.current) {
       const options = selectRef.current.querySelectorAll('option')
-      options.forEach(option => {
-        option.addEventListener('mouseenter', (e) => handleOptionMouseEnter(e, option.value))
+      const listeners = Array.from(options, option => {
+        const handleMouseEnter = (e) => handleOptionMouseEnter(e, option.value)
+        option.addEventListener('mouseenter', handleMouseEnter)
         option.addEventListener('mouseleave', handleOptionMouseLeave)
+        return { option, handleMouseEnter }
       })
 
       return () => {
-        options.forEach(option => {
-          option.removeEventListener('mouseenter', (e) => handleOptionMouseEnter(e, option.value))
+        listeners.forEach(({ option, handleMouseEnter }) => {
+          option.removeEventListener('mouseenter', handleMouseEnter)
           option.removeEventListener('mouseleave', handleOptionMouseLeave)
         })
       }

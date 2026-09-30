@@ -25,7 +25,6 @@ const UpdateNotification = () => {
 
     // Listen for update available event
     const handleUpdateAvailable = (event, info) => {
-      console.log('Update available:', info);
       setUpdateInfo(info);
       setIsVisible(true);
       setIsDownloading(false);
@@ -35,20 +34,17 @@ const UpdateNotification = () => {
 
     // Listen for download progress
     const handleDownloadProgress = (event, progress) => {
-      console.log('Download progress:', progress);
       setDownloadProgress(progress.percent);
     };
 
     // Listen for update downloaded
-    const handleUpdateDownloaded = (event, info) => {
-      console.log('Update downloaded:', info);
+    const handleUpdateDownloaded = () => {
       setIsDownloading(false);
       setIsDownloaded(true);
     };
 
     // Listen for update errors
     const handleUpdateError = (event, errorInfo) => {
-      console.error('Update error:', errorInfo);
       setError(errorInfo.message);
       setIsDownloading(false);
     };
@@ -80,7 +76,6 @@ const UpdateNotification = () => {
         setIsDownloading(false);
       }
     } catch (err) {
-      console.error('Error downloading update:', err);
       setError(err.message || 'Failed to start download');
       setIsDownloading(false);
     }
@@ -91,7 +86,6 @@ const UpdateNotification = () => {
       await window.electronAPI.installUpdate();
       // App will restart, so no need to update state
     } catch (err) {
-      console.error('Error installing update:', err);
       setError(err.message || 'Failed to install update');
     }
   };

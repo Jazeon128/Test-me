@@ -17,8 +17,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Commit recovered passages")
     args = parser.parse_args(argv)
-    checked = filled = no_match = missing_file = 0
+    checked = filled = no_match = missing_file = parse_failed = 0
     sections_by_document = {}
+    failed_documents = set()
     with SessionLocal() as db:
         for question in db.query(Question).order_by(Question.id):
             reference = question.source_reference or {}
@@ -30,9 +31,16 @@ def main(argv=None):
                 if document is None or not Path(document.file_path).is_file():
                     sections_by_document[question.document_id] = None
                 else:
-                    sections_by_document[question.document_id] = get_parser_for_type(
-                        document.file_type
-                    ).parse(document.file_path).sections
+                    try:
+                        sections_by_document[question.document_id] = get_parser_for_type(
+                            document.file_type
+                        ).parse(document.file_path).sections
+                    except Exception:
+                        failed_documents.add(question.document_id)
+                        sections_by_document[question.document_id] = None
+            if question.document_id in failed_documents:
+                parse_failed += 1
+                continue
             sections = sections_by_document[question.document_id]
             if sections is None:
                 missing_file += 1
@@ -52,7 +60,7 @@ def main(argv=None):
             db.commit()
     print(
         f"questions checked: {checked}, filled: {filled}, "
-        f"no match: {no_match}, missing file: {missing_file}"
+        f"no match: {no_match}, missing file: {missing_file}, parse failed: {parse_failed}"
     )
 
 

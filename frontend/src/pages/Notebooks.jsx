@@ -1,3 +1,4 @@
+import { displayIcon } from '../utils/displayIcon'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, Network, Layers, Loader2, Flame, ArrowUpRight } from 'lucide-react'
@@ -11,10 +12,6 @@ import { notebooksAPI, progressAPI } from '../services/api'
  */
 
 const ICONS = ['📘', '🧠', '⚙️', '🔬', '🗺️', '📊', '🧩', '🏛️', '💡', '🧪', '📐', '🔐']
-
-export function displayIcon(icon) {
-  return icon && [...icon].some((character) => character.codePointAt(0) > 127) ? icon : '📘'
-}
 
 export default function Notebooks() {
   const navigate = useNavigate()

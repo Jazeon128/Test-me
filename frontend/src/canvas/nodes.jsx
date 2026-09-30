@@ -181,14 +181,3 @@ export function MessageNode({ data, selected }) {
 
 ActorNode.propTypes = nodeShape
 MessageNode.propTypes = nodeShape
-
-export const nodeTypes = {
-  StepNode,
-  ActorNode,
-  MessageNode,
-  ServiceNode,
-  MilestoneNode,
-  BoneNode,
-  MatrixCell,
-  GroupNode,
-}

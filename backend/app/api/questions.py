@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..db import get_db
 from ..models.question import Question, QuestionOption
+from ..models.deck import Deck, DeckQuestion
 from ..models.tag import Tag
 from ..services.ai import curation
 from ..services.typesafe_key import typesafe_key as _typesafe_key
@@ -123,6 +124,12 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
     if correct_count != 1:
         raise HTTPException(status_code=400, detail="Question must have exactly one correct option")
 
+    deck = None
+    if request.deck_id is not None:
+        deck = db.query(Deck).filter(Deck.id == request.deck_id).first()
+        if deck is None:
+            raise HTTPException(status_code=404, detail="Deck not found")
+
     # Create question
     question = Question(
         document_id=request.document_id,
@@ -135,12 +142,9 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
     db.flush()
 
     # Add to deck if specified
-    if request.deck_id:
-        from ..models.test import Test
-
-        deck = db.query(Test).filter(Test.id == request.deck_id).first()
-        if deck:
-            deck.questions.append(question)
+    if deck is not None:
+        next_order = max((link.order for link in deck.deck_questions), default=-1) + 1
+        deck.deck_questions.append(DeckQuestion(question_id=question.id, order=next_order))
 
     # Create options
     for i, opt_data in enumerate(request.options):

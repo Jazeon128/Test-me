@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayIcon } from '../Notebooks'
+import { displayIcon } from '../../utils/displayIcon'
 
 describe('displayIcon', () => {
   it.each([null, '', '??', 'ab'])('uses the fallback for %j', (icon) => {

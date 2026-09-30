@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
 from sqlalchemy.sql import func
+from sqlalchemy.ext.mutable import MutableList
 from .base import Base
 
 
@@ -15,7 +16,7 @@ class GenerationStatus(Base):
     status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100
     current_step = Column(String(200), default="")
-    logs = Column(JSON, default=list)  # List of log messages with timestamps
+    logs = Column(MutableList.as_mutable(JSON), default=list)  # List of log messages with timestamps
     error_message = Column(Text, nullable=True)
 
     # For awaiting_confirmation: the stored upload request to generate.

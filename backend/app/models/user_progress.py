@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, Boolean, JSON, Index
 from sqlalchemy.orm import backref, relationship
+from sqlalchemy.ext.mutable import MutableList
 from datetime import datetime, timezone
 from .base import Base, TimestampMixin
 
@@ -44,7 +45,7 @@ class UserProgress(Base, TimestampMixin):
     last_attempt_time_seconds = Column(Float, nullable=True)
 
     # History (for analytics)
-    attempt_history = Column(JSON, nullable=True)  # List of {date, correct, time_seconds, quality}
+    attempt_history = Column(MutableList.as_mutable(JSON), nullable=True)  # List of {date, correct, time_seconds, quality}
 
     # Relationships
     question = relationship("Question", backref=backref("user_progress", cascade="all, delete-orphan"))

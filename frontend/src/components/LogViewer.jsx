@@ -25,7 +25,25 @@ export default function LogViewer({ isOpen, onClose }) {
 
   // Filter logs when search term or level filter changes
   useEffect(() => {
-    filterLogs()
+    let filtered = [...logs]
+
+    // Apply level filter
+    if (levelFilter !== 'all') {
+      filtered = filtered.filter(log => {
+        const logStr = typeof log === 'string' ? log : JSON.stringify(log)
+        return logStr.toLowerCase().includes(levelFilter.toLowerCase())
+      })
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(log => {
+        const logStr = typeof log === 'string' ? log : JSON.stringify(log)
+        return logStr.toLowerCase().includes(searchTerm.toLowerCase())
+      })
+    }
+
+    setFilteredLogs(filtered)
   }, [logs, searchTerm, levelFilter])
 
   const loadLogs = async () => {
@@ -50,28 +68,6 @@ export default function LogViewer({ isOpen, onClose }) {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const filterLogs = () => {
-    let filtered = [...logs]
-
-    // Apply level filter
-    if (levelFilter !== 'all') {
-      filtered = filtered.filter(log => {
-        const logStr = typeof log === 'string' ? log : JSON.stringify(log)
-        return logStr.toLowerCase().includes(levelFilter.toLowerCase())
-      })
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(log => {
-        const logStr = typeof log === 'string' ? log : JSON.stringify(log)
-        return logStr.toLowerCase().includes(searchTerm.toLowerCase())
-      })
-    }
-
-    setFilteredLogs(filtered)
   }
 
   const handleExport = async () => {

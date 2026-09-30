@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Server, DollarSign, Zap, Moon, Sun, Monitor } from 'lucide-react'
 import axios from 'axios'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/useTheme'
 import ModelSelector from '../components/ModelSelector'
 import TypeSafeKeyCard from '../components/TypeSafeKeyCard'
 import { serverMessage } from '../utils/serverMessage'

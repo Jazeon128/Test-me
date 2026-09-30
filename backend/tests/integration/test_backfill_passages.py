@@ -40,7 +40,7 @@ def test_backfill_markdown_apply_and_dry_run(backfill_db, tmp_path, capsys, appl
     question_id = add_question(backfill_db, path, original)
     backfill_passages.main(["--apply"] if apply else [])
     assert capsys.readouterr().out.strip() == (
-        "questions checked: 1, filled: 1, no match: 0, missing file: 0"
+        "questions checked: 1, filled: 1, no match: 0, missing file: 0, parse failed: 0"
     )
     with backfill_db() as db:
         reference = db.get(Question, question_id).source_reference
@@ -51,7 +51,7 @@ def test_missing_file_is_counted(backfill_db, tmp_path, capsys):
     question_id = add_question(backfill_db, tmp_path / "missing.md", {"text": "Missing source..."})
     backfill_passages.main(["--apply"])
     assert capsys.readouterr().out.strip() == (
-        "questions checked: 1, filled: 0, no match: 0, missing file: 1"
+        "questions checked: 1, filled: 0, no match: 0, missing file: 1, parse failed: 0"
     )
     with backfill_db() as db:
         assert db.get(Question, question_id).source_reference == {"text": "Missing source..."}
@@ -87,9 +87,51 @@ def test_backfill_normalises_prefix_and_parses_each_document_once(
     backfill_passages.main(["--apply"])
     assert calls == [str(path)]
     assert capsys.readouterr().out.strip() == (
-        "questions checked: 3, filled: 2, no match: 1, missing file: 0"
+        "questions checked: 3, filled: 2, no match: 1, missing file: 0, parse failed: 0"
     )
     with backfill_db() as db:
         assert db.get(Question, question_id).source_reference["passage"] == first
         assert db.query(Question).filter_by(question_text="Second?").one().source_reference["passage"] == second
         assert db.query(Question).filter_by(question_text="Existing?").one().source_reference["passage"] == "Keep this."
+
+
+@pytest.mark.parametrize("apply", [False, True])
+def test_parse_failure_continues_to_next_document(
+    backfill_db, tmp_path, monkeypatch, capsys, apply
+):
+    bad_path = tmp_path / "bad.md"
+    bad_path.write_text("Bad document", encoding="utf-8")
+    bad_reference = {"text": "Bad document..."}
+    bad_id = add_question(backfill_db, bad_path, bad_reference)
+    with backfill_db() as db:
+        document_id = db.get(Question, bad_id).document_id
+        db.add(Question(document_id=document_id, question_text="Another bad question?",
+                        source_reference=bad_reference))
+        db.commit()
+    good_path = tmp_path / "good.md"
+    passage = "A valid source paragraph with enough content for parsing."
+    good_path.write_text("# Source\n\n" + passage, encoding="utf-8")
+    good_reference = {"text": passage[:30] + "..."}
+    good_id = add_question(backfill_db, good_path, good_reference)
+    parser = backfill_passages.get_parser_for_type(DocumentType.MARKDOWN)
+    original_parse = parser.parse
+    calls = []
+
+    def parse(file_path):
+        calls.append(file_path)
+        if file_path == str(bad_path):
+            raise ValueError("Cannot parse document")
+        return original_parse(file_path)
+
+    monkeypatch.setattr(parser, "parse", parse)
+    monkeypatch.setattr(backfill_passages, "get_parser_for_type", lambda file_type: parser)
+    backfill_passages.main(["--apply"] if apply else [])
+    assert calls == [str(bad_path), str(good_path)]
+    assert capsys.readouterr().out.strip() == (
+        "questions checked: 3, filled: 1, no match: 0, missing file: 0, parse failed: 2"
+    )
+    with backfill_db() as db:
+        assert db.get(Question, bad_id).source_reference == bad_reference
+        assert db.get(Question, good_id).source_reference == (
+            {**good_reference, "passage": passage} if apply else good_reference
+        )

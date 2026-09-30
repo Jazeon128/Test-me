@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { documentsAPI, decksAPI, statusAPI } from '../services/api'
 import { Upload as UploadIcon, CheckCircle, AlertCircle, AlertTriangle, Loader2, Book, FileType, Youtube } from 'lucide-react'
@@ -70,9 +70,11 @@ export default function Upload() {
         // Return to the notebook the upload came from, where the new source,
         // its deck and any canvas of it all sit together. Only fall through to
         // the deck when the upload was not started from a notebook.
-        setTimeout(() => {
-          navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${status.deck_id}`)
-        }, 2000)
+        if (!(status.total_questions_flagged > 0)) {
+          setTimeout(() => {
+            navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${status.deck_id}`)
+          }, 2000)
+        }
       } else if (status.status === 'failed') {
         stopPolling()
         setGenerating(false)
@@ -547,14 +549,21 @@ export default function Upload() {
                   <div>
                     <h3 className="font-bold text-success-900 dark:text-success-200 text-lg">Upload complete!</h3>
                     <p className="text-success-800 dark:text-success-200 mt-1">{result.message}</p>
-                    <p className="text-success-700 dark:text-success-200 text-sm mt-2 font-medium">Redirecting to deck view...</p>
+                    {generationStatus?.status === 'completed' && generationStatus.total_questions_flagged > 0 ? (
+                      <button type="button" className="btn-primary mt-3"
+                        onClick={() => navigate(notebookId ? `/notebooks/${notebookId}` : `/decks/${generationStatus.deck_id}`)}>
+                        Continue
+                      </button>
+                    ) : (
+                      <p className="text-success-700 dark:text-success-200 text-sm mt-2 font-medium">Redirecting to deck view...</p>
+                    )}
                   </div>
                 </div>
               </div>
             )}
 
             {/* Generation Progress */}
-            {generating && generationStatus && (
+            {generationStatus && (generating || generationStatus.status === 'completed') && (
               <div className="card border-primary-100 shadow-lg animate-slide-up">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-full animate-pulse-slow">
@@ -594,6 +603,12 @@ export default function Upload() {
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center border border-gray-100">
                     <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Generated</div>
                     <div className="text-2xl font-bold text-primary-600 dark:text-primary-300">{generationStatus.total_questions_generated}</div>
+                    {generationStatus.status === 'completed' && generationStatus.total_questions_flagged > 0 && (
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        {generationStatus.total_questions_flagged} question(s) held back by the quality check.{' '}
+                        <Link className="text-primary-600 dark:text-primary-300 underline" to={`/decks/${generationStatus.deck_id}`}>Review them on the deck page.</Link>
+                      </p>
+                    )}
                   </div>
                 </div>
 

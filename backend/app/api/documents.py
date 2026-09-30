@@ -14,6 +14,7 @@ from ..models.document import Document, DocumentType
 from ..models.question import Question, QuestionOption
 from ..models.test import Test
 from ..models.generation_status import GenerationStatus
+from ..models.flagged_question import FlaggedQuestion
 from ..services.parsers import (
     PDFParser,
     HTMLParser,
@@ -588,6 +589,18 @@ def process_document(
         for q_data in questions_data:
             _save_generated_question(db, q_data, document_id, deck)
 
+        flagged = getattr(generator, "flagged_questions", [])
+        for q_data in flagged:
+            db.add(FlaggedQuestion(
+                deck_id=deck.id if deck else None, document_id=document_id, job_id=job_id,
+                payload={key: value for key, value in q_data.items() if key != "flags"},
+                reasons=q_data.get("flags", []),
+            ))
+        if gen_status:
+            gen_status.total_questions_flagged = (gen_status.total_questions_flagged or 0) + len(flagged)
+            if flagged:
+                gen_status.add_log(f"{len(flagged)} question(s) held back by the quality check")
+                flag_modified(gen_status, "logs")
         db.commit()
         logger.info(
             "questions_saved",
@@ -676,6 +689,7 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
         os.remove(document.file_path)
 
     # Delete from database (cascade will handle questions)
+    db.query(FlaggedQuestion).filter_by(document_id=document_id).delete(synchronize_session="fetch")
     db.delete(document)
     db.commit()
 
@@ -735,6 +749,7 @@ def regenerate_deck_questions(
             db.commit()
 
         generated = []
+        flagged = []
         generator = QuestionGenerator(db=db)
         for index, document in enumerate(source_documents):
             if gen_status:
@@ -758,6 +773,7 @@ def regenerate_deck_questions(
                 gen_status.current_step = f"Generating questions for document {index + 1}"
                 add_log(f"Starting AI question generation ({num_questions_per_doc} questions)")
                 db.commit()
+            flagged_start = len(getattr(generator, "flagged_questions", []))
             questions_data = generator.generate_questions(
                 parsed_doc,
                 num_questions=num_questions_per_doc,
@@ -766,6 +782,10 @@ def regenerate_deck_questions(
                 progress_callback=progress_callback,
             )
             generated.extend((document.id, q_data) for q_data in questions_data)
+            flagged.extend(
+                (document.id, q_data)
+                for q_data in getattr(generator, "flagged_questions", [])[flagged_start:]
+            )
             if gen_status:
                 add_log(f"Generated {len(questions_data)} questions from {document.original_filename}")
                 db.commit()
@@ -786,8 +806,17 @@ def regenerate_deck_questions(
         db.expire(deck, ["deck_questions"])
         for document_id, q_data in generated:
             _save_generated_question(db, q_data, document_id, deck)
+        for document_id, q_data in flagged:
+            db.add(FlaggedQuestion(
+                deck_id=deck.id, document_id=document_id, job_id=job_id,
+                payload={key: value for key, value in q_data.items() if key != "flags"},
+                reasons=q_data.get("flags", []),
+            ))
 
         if gen_status:
+            gen_status.total_questions_flagged = (gen_status.total_questions_flagged or 0) + len(flagged)
+            if flagged:
+                add_log(f"{len(flagged)} question(s) held back by the quality check")
             gen_status.status = "completed"
             gen_status.progress = 100
             gen_status.current_step = "Complete"

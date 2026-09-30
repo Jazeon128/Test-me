@@ -24,6 +24,7 @@ from app.api import (
     canvas,
     notebooks,
     activity,
+    flagged,
 )
 from app.utils.logging import configure_logging, get_logger
 from app.utils.metrics import application_info
@@ -211,6 +212,7 @@ async def metrics():
 
 # Include routers
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
+app.include_router(flagged.router, prefix="/api/flagged", tags=["flagged"])
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 app.include_router(status.router, prefix="/api/status", tags=["status"])
 app.include_router(decks.router, prefix="/api/decks", tags=["decks"])

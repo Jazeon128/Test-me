@@ -4,6 +4,7 @@ import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
 import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network, Tag } from 'lucide-react'
 import TagManager, { TagBadge } from '../components/TagManager'
 import QuestionTagEditor from '../components/QuestionTagEditor'
+import HeldBackQuestions from '../components/HeldBackQuestions'
 
 export default function DeckDetails() {
     const { deckId } = useParams()
@@ -228,6 +229,7 @@ export default function DeckDetails() {
             </div>
 
             {/* Questions List */}
+            <HeldBackQuestions deckId={deckId} onRestored={loadDeck} />
             <div className="glass-panel bg-white rounded-lg shadow overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 dark:bg-gray-800">
                     <div className="flex justify-between items-center">

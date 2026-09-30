@@ -4,6 +4,7 @@ from .question import Question, QuestionOption
 from .user_progress import UserProgress
 from .settings import Settings
 from .generation_status import GenerationStatus
+from .flagged_question import FlaggedQuestion
 from .tag import Tag, question_tags
 from .canvas import Canvas, CanvasRoutingLog
 from .deck import Deck, DeckQuestion
@@ -18,6 +19,7 @@ __all__ = [
     "UserProgress",
     "Settings",
     "GenerationStatus",
+    "FlaggedQuestion",
     "Tag",
     "question_tags",
     "Canvas",

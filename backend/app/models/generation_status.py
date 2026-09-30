@@ -26,6 +26,7 @@ class GenerationStatus(Base):
     total_documents = Column(Integer, default=0)
     total_questions_requested = Column(Integer, default=0)
     total_questions_generated = Column(Integer, default=0)
+    total_questions_flagged = Column(Integer, default=0)
 
     # Progress tracking fields
     current_question = Column(Integer, default=0)
@@ -63,6 +64,7 @@ class GenerationStatus(Base):
             "total_documents": self.total_documents,
             "total_questions_requested": self.total_questions_requested,
             "total_questions_generated": self.total_questions_generated,
+            "total_questions_flagged": self.total_questions_flagged,
             "current_question": self.current_question,
             "total_questions": self.total_questions,
             "created_at": self.created_at.isoformat() if self.created_at else None,

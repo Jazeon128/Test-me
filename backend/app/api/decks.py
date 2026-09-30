@@ -6,6 +6,7 @@ import os
 
 from ..db import get_db
 from ..models.test import Test
+from ..models.flagged_question import FlaggedQuestion
 
 router = APIRouter()
 
@@ -147,6 +148,7 @@ async def delete_deck(deck_id: int, db: Session = Depends(get_db)):
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
+    db.query(FlaggedQuestion).filter_by(deck_id=deck_id).delete(synchronize_session="fetch")
     db.delete(deck)
     db.commit()
 

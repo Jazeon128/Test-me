@@ -139,3 +139,14 @@ def _hold_lock(directory):
     lock.__enter__()
     _held.add(directory)
     atexit.register(lock.__exit__, None, None, None)
+
+
+def settle_refused(budget, identifier, error):
+    """A request the server answered with an error status was not billed.
+
+    Timeouts and dropped connections have no status: the provider may have run
+    the request, so their reservation stays counted as spent.
+    """
+    status = getattr(error, 'status_code', None)
+    if isinstance(status, int) and 400 <= status < 600:
+        budget.settle(identifier, 0)

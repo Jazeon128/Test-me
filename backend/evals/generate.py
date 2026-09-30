@@ -9,7 +9,7 @@ from openai import OpenAI
 
 from app.services.ai.question_generator import QuestionGenerator
 from app.services.ai.retry import RetryState, _call_with_retry
-from .budget import Budget, BudgetStop, estimate
+from .budget import settle_refused, Budget, BudgetStop, estimate
 from .config import append, digest, rows
 
 # A few upstream providers hang for about 500 s. The SDK default is 600 s.
@@ -108,11 +108,15 @@ def generate_cell(cell, client, budget, model_price):
         identifier = f"generate:{cell['id']}:{attempt}"
         budget.reserve(identifier, estimate(cell['prompt'], model_price))
         reservations.append(identifier)
-        response = client.chat.completions.create(
-            model=cell['model_requested'], temperature=0.7, max_tokens=4096,
-            messages=[{'role': 'user', 'content': cell['prompt']}],
-            extra_body=ROUTING,
-        )
+        try:
+            response = client.chat.completions.create(
+                model=cell['model_requested'], temperature=0.7, max_tokens=4096,
+                messages=[{'role': 'user', 'content': cell['prompt']}],
+                extra_body=ROUTING,
+            )
+        except Exception as error:
+            settle_refused(budget, identifier, error)
+            raise
         budget.settle(identifier, getattr(response.usage, 'cost', None))
         return response
 

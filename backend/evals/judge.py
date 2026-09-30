@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 from decimal import Decimal
 
-from .budget import _hold_lock, Budget, BudgetStop, estimate, price, run_lock
+from .budget import settle_refused, _hold_lock, Budget, BudgetStop, estimate, price, run_lock
 from .config import append, digest, rows, write
 from .generate import response_record
 from app.services.ai.retry import RetryState, _call_with_retry
@@ -177,12 +177,16 @@ def judge_call(item, model, stage, payload, client, budget, model_price, attempt
         attempt += 1
         reservation = f"{record['id']}:{attempt}"
         budget.reserve(reservation, estimate(prompt, model_price))
-        response = client.chat.completions.create(
-            model=model, temperature=0, max_tokens=4096,
-            messages=[{'role': 'user', 'content': prompt}],
-            response_format={'type': 'json_schema', 'json_schema': {
-                'name': 'study_judge_' + stage, 'strict': True, 'schema': schema}},
-            extra_body=ROUTING)
+        try:
+            response = client.chat.completions.create(
+                model=model, temperature=0, max_tokens=4096,
+                messages=[{'role': 'user', 'content': prompt}],
+                response_format={'type': 'json_schema', 'json_schema': {
+                    'name': 'study_judge_' + stage, 'strict': True, 'schema': schema}},
+                extra_body=ROUTING)
+        except Exception as error:
+            settle_refused(budget, reservation, error)
+            raise
         budget.settle(reservation, getattr(response.usage, 'cost', None))
         return response
 

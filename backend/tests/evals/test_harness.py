@@ -341,8 +341,11 @@ def test_retry_reserves_each_attempt(tmp_path, config, passage, prices, question
     record = generate.generate_cell(cell, client, budget, prices['test/model'])
     assert record['attempts'] == 2
     assert len(calls) == 1
-    assert budget.total == estimate(cell['prompt'], prices['test/model']) + Decimal('.001')
+    # The first attempt got a 500 from the server: refused, not billed, settled at 0.
+    # Only the successful attempt's reported cost counts.
+    assert budget.total == Decimal('.001')
     assert Decimal(record['total_cost']) == budget.total
+    assert estimate(cell['prompt'], prices['test/model']) > 0
 
 
 def test_open_reservation_from_a_killed_run_counts_as_spent_and_can_retry(tmp_path):
@@ -387,3 +390,20 @@ def test_a_stale_lock_from_a_dead_process_is_replaced(tmp_path):
     with run_lock(tmp_path):
         assert (tmp_path / 'run.lock').read_text(encoding='utf-8').strip().isdigit()
     assert not (tmp_path / 'run.lock').exists()
+
+
+def test_a_refused_request_costs_nothing_but_a_timeout_stays_counted(tmp_path):
+    from decimal import Decimal
+    from evals.budget import Budget, settle_refused
+
+    class Refused(Exception):
+        status_code = 429
+
+    ledger = tmp_path / 'ledger.jsonl'
+    budget = Budget(ledger, '1.00')
+    budget.reserve('call:1', '0.30')
+    settle_refused(budget, 'call:1', Refused())
+    assert budget.total == Decimal('0')
+    budget.reserve('call:2', '0.30')
+    settle_refused(budget, 'call:2', TimeoutError('no status'))
+    assert budget.total == Decimal('0.30')

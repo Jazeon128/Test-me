@@ -22,7 +22,7 @@ const usage = {
 function mockUsage(data) {
   api.get.mockImplementation((url) => url === usageUrl
     ? Promise.resolve({ data })
-    : Promise.resolve({ data: { configured: true, source: 'settings', preview: 'saved' } }))
+    : Promise.resolve({ data: { configured: true, key_configured: true, key_source: 'keyring' } }))
 }
 
 beforeEach(() => {
@@ -58,7 +58,7 @@ it('shows the empty state', async () => {
 it('keeps the card working when usage fails', async () => {
   api.get.mockImplementation((url) => url === usageUrl
     ? Promise.reject(new Error('Offline'))
-    : Promise.resolve({ data: { configured: true, source: 'settings', preview: 'saved' } }))
+    : Promise.resolve({ data: { configured: true, key_configured: true, key_source: 'keyring' } }))
   api.post.mockResolvedValue({ data: { success: true, message: 'Connected.' } })
   render(<TypeSafeKeyCard />)
   fireEvent.click(await screen.findByRole('button', { name: 'Test TypeSafe key' }))

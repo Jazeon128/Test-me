@@ -8,9 +8,9 @@ vi.mock('../../services/api', () => ({
 }))
 
 const endpoint = '/settings/typesafe'
-const saved = { configured: true, source: 'settings', preview: '…2345' }
-const environment = { configured: true, source: 'environment', preview: '…7890' }
-const empty = { configured: false, source: null, preview: null }
+const saved = { configured: true, key_configured: true, key_source: 'keyring' }
+const environment = { configured: true, key_configured: true, key_source: 'env' }
+const empty = { configured: false, key_configured: false, key_source: null }
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -19,8 +19,8 @@ beforeEach(() => {
 
 describe('TypeSafe key card', () => {
   it.each([
-    [saved, 'Saved in Settings (…2345)'],
-    [environment, 'Using the key from the backend environment (…7890)'],
+    [saved, 'Saved in the system credential store'],
+    [environment, 'Using the key from backend/.env'],
     [empty, 'Not configured'],
   ])('shows status for %j', async (config, status) => {
     api.get.mockResolvedValue({ data: config })
@@ -44,7 +44,7 @@ describe('TypeSafe key card', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('TypeSafe key saved')
     expect(api.put).toHaveBeenCalledWith(endpoint, { api_key: 'ts-test-key-12345' })
     expect(input).toHaveValue('')
-    expect(screen.getByText('Saved in Settings (…2345)')).toBeInTheDocument()
+    expect(screen.getByText('Saved in the system credential store')).toBeInTheDocument()
   })
 
   it('shows the server error.message when testing fails', async () => {
@@ -67,7 +67,7 @@ describe('TypeSafe key card', () => {
   it('hides remove for an environment key', async () => {
     api.get.mockResolvedValue({ data: environment })
     render(<TypeSafeKeyCard />)
-    await screen.findByText('Using the key from the backend environment (…7890)')
+    await screen.findByText('Using the key from backend/.env')
     expect(screen.queryByRole('button', { name: 'Remove TypeSafe key' })).not.toBeInTheDocument()
   })
 
@@ -78,7 +78,7 @@ describe('TypeSafe key card', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Remove TypeSafe key' }))
     expect(await screen.findByRole('status')).toHaveTextContent('TypeSafe key removed')
     expect(api.delete).toHaveBeenCalledWith(endpoint)
-    expect(screen.getByText('Using the key from the backend environment (…7890)')).toBeInTheDocument()
+    expect(screen.getByText('Using the key from backend/.env')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Remove TypeSafe key' })).not.toBeInTheDocument()
   })
 

@@ -66,8 +66,9 @@ export default function TypeSafeKeyCard() {
 
   let status = 'Not configured'
   if (unavailable) status = 'Status unavailable'
-  else if (config?.source === 'settings') status = `Saved in Settings (${config.preview})`
-  else if (config?.source === 'environment') status = `Using the key from the backend environment (${config.preview})`
+  else if (config?.key_source === 'keyring') status = 'Saved in the system credential store'
+  else if (config?.key_source === 'env') status = 'Using the key from backend/.env'
+  else if (config?.key_source === 'database') status = 'Saved in the app database. Save it again to move it to the credential store.'
 
   return (
     <div className="glass-panel bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -106,7 +107,7 @@ export default function TypeSafeKeyCard() {
               className="px-6 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium"
             >Test TypeSafe key</button>
           )}
-          {config?.source === 'settings' && (
+          {['keyring', 'database'].includes(config?.key_source) && (
             <button
               onClick={() => perform('remove')}
               disabled={busy}

@@ -1,5 +1,6 @@
 """Resolve task settings and construct provider clients without SDK retries."""
 
+import httpx
 from anthropic import Anthropic
 from openai import OpenAI
 from google import genai
@@ -16,6 +17,11 @@ DEFAULT_MODELS = {
     "openrouter": "openrouter/auto", "gemini": "gemini-3.8-flash",
 }
 
+OPENROUTER_ROUTING = {"provider": {"sort": "throughput"}}
+OPENROUTER_DEADLINE = 180.0
+OPENROUTER_CHAT_DEADLINE = 90.0
+OPENROUTER_TIMEOUT = httpx.Timeout(180.0, connect=10.0)
+
 
 def setting(db, key):
     row = db.query(Settings).filter(Settings.key == key).first() if db is not None else None
@@ -30,7 +36,7 @@ def build_client(provider, api_key):
     if provider == "openrouter":
         return OpenAI(
             api_key=api_key, base_url="https://openrouter.ai/api/v1",
-            max_retries=0, timeout=180,
+            max_retries=0, timeout=OPENROUTER_TIMEOUT,
             default_headers={"HTTP-Referer": "https://github.com/Jazeon128/Test-me",
                              "X-OpenRouter-Title": "Test Me"},
         )

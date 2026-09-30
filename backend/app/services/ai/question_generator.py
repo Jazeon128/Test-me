@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from ...config import settings
 from ..typesafe_key import typesafe_key
 from ..secrets import NAMES, get_secret
-from .retry import LABELS, RetryState, _call_with_retry
+from .retry import LABELS, RetryState, _call_with_retry, call_with_deadline
+from .clients import OPENROUTER_ROUTING, OPENROUTER_DEADLINE, OPENROUTER_TIMEOUT
 from .ledger import record_call
 from ..parsers.base_parser import ParsedDocument, ParsedSection
 from . import sourcing, verify
@@ -47,6 +48,11 @@ GEMINI_RETRY = genai_types.HttpRetryOptions(attempts=1)
 def explain_provider_error(message: str, provider: str = "gemini") -> str:
     """Turn a raw provider error into a sentence a user can act on."""
     label = LABELS.get(provider, provider)
+    if provider == "openrouter":
+        timeout = re.match(r"OpenRouter took too long to answer \(over (\d+(?:\.\d+)?) s\)", message)
+        if timeout:
+            return (f"OpenRouter took too long to answer (over {timeout[1]} s). "
+                    "Try again, or pick another model in Settings.")
     if "RESOURCE_EXHAUSTED" in message or message.startswith("429"):
         return (f"{label}: the free-tier quota is used up (429). Wait for it to reset, "
                 "or add a paid key in Settings.")
@@ -192,7 +198,7 @@ class QuestionGenerator:
         elif self.provider == "openrouter":
             self.client = OpenAI(
                 api_key=api_key, base_url="https://openrouter.ai/api/v1",
-                max_retries=0, timeout=180,
+                max_retries=0, timeout=OPENROUTER_TIMEOUT,
                 default_headers={
                     "HTTP-Referer": "https://github.com/Jazeon128/Test-me",
                     "X-OpenRouter-Title": "Test Me",
@@ -418,10 +424,17 @@ class QuestionGenerator:
         started = time.monotonic()
         response = None
         error = None
+        bounded_call = (lambda: call_with_deadline(call, OPENROUTER_DEADLINE)
+                        if self.provider == "openrouter" else call())
         try:
             response = _call_with_retry(
-                call, LABELS.get(self.provider, self.provider),
+                bounded_call, LABELS.get(self.provider, self.provider),
                 state=state, on_step=self._report_step,
+                on_timeout=lambda exc, start, attempt: record_call(
+                    db=getattr(self, "db", None), task="generation",
+                    provider=self.provider, model=self.model, started=start,
+                    attempts=attempt, error=exc, job_id=getattr(self, "job_id", None),
+                ),
             )
             return response
         except Exception as exc:
@@ -563,11 +576,15 @@ class QuestionGenerator:
                     output_tokens = response.usage.output_tokens
 
             elif self.provider in {"openai", "openrouter"}:
+                options = ({"extra_body": OPENROUTER_ROUTING, "stream": False,
+                            "timeout": OPENROUTER_TIMEOUT}
+                           if self.provider == "openrouter" else {})
                 response = self._generation_call(lambda: self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7,
                     max_tokens=8192,
+                    **options,
                 ))
                 content = response.choices[0].message.content
                 # Extract token usage from response

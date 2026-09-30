@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import httpx
 import pytest
 
 from app.models.chat_message import ChatMessage
@@ -199,7 +200,7 @@ def test_chat_client_task_and_legacy_resolution(db_session, monkeypatch):
     assert sdk is constructor.return_value
     assert constructor.call_args.kwargs == {
         "api_key": "fake", "base_url": "https://openrouter.ai/api/v1", "max_retries": 0,
-        "timeout": 180, "default_headers": {
+        "timeout": httpx.Timeout(180.0, connect=10.0), "default_headers": {
             "HTTP-Referer": "https://github.com/Jazeon128/Test-me", "X-OpenRouter-Title": "Test Me"},
     }
     assert clients.client_for("generation", db_session)[:2] == ("openrouter", "legacy")

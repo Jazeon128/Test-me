@@ -6,11 +6,13 @@ feature does not need a second set of credentials or a second client.
 """
 
 import time
+import httpx
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from ...exceptions import AIServiceError
-from .retry import LABELS, RetryState, _call_with_retry
+from .retry import LABELS, RetryState, _call_with_retry, call_with_deadline
+from .clients import OPENROUTER_ROUTING, OPENROUTER_DEADLINE, OPENROUTER_CHAT_DEADLINE
 from .ledger import field, record_call
 
 
@@ -62,13 +64,20 @@ def _complete_once(
         )
 
     if provider in {"openai", "openrouter"}:
-        response = client.chat.completions.create(
-            model=model,
-            timeout=timeout,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        options = ({"extra_body": OPENROUTER_ROUTING, "stream": False}
+                   if provider == "openrouter" else {})
+
+        def call():
+            return client.chat.completions.create(
+                model=model,
+                timeout=httpx.Timeout(timeout, connect=10.0) if provider == "openrouter" else timeout,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **options,
+            )
+
+        response = call_with_deadline(call, timeout) if provider == "openrouter" else call()
         usage = getattr(response, "usage", None)
         return Completion(
             raw_response=response,
@@ -117,6 +126,8 @@ def _complete_once(
 def complete(provider, model, client, prompt, max_tokens=8192, temperature=0.2,
              timeout=180.0, *, db=None, task="canvas", job_id=None, on_step=None):
     """Retry one logical completion and record it without exposing credentials."""
+    if provider == "openrouter":
+        timeout = min(timeout, OPENROUTER_CHAT_DEADLINE if task == "chat" else OPENROUTER_DEADLINE)
     state = RetryState()
     started = time.monotonic()
     result = None
@@ -126,6 +137,10 @@ def complete(provider, model, client, prompt, max_tokens=8192, temperature=0.2,
             lambda: _complete_once(provider, model, client, prompt,
                                    max_tokens, temperature, timeout),
             LABELS.get(provider, provider), state=state, on_step=on_step,
+            on_timeout=lambda exc, start, attempt: record_call(
+                db=db, task=task, provider=provider, model=model, started=start,
+                attempts=attempt, error=exc, job_id=job_id,
+            ),
         )
         return result
     except Exception as exc:

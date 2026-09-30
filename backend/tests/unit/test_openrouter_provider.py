@@ -47,7 +47,10 @@ def test_client_and_reported_cost(generator, db_session):
     kwargs = generator.constructor.call_args.kwargs
     assert kwargs["base_url"] == "https://openrouter.ai/api/v1"
     assert kwargs["max_retries"] == 0
-    assert kwargs["timeout"] == 180
+    assert kwargs["timeout"].connect == 10.0
+    assert kwargs["timeout"].read == 180.0
+    assert kwargs["timeout"].write == 180.0
+    assert kwargs["timeout"].pool == 180.0
     assert kwargs["default_headers"] == {"HTTP-Referer": "https://github.com/Jazeon128/Test-me",
                                          "X-OpenRouter-Title": "Test Me"}
     assert generator._generate_batch_questions(ParsedSection("source"), 1, "medium")

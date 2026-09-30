@@ -9,7 +9,7 @@ from hypothesis.stateful import RuleBasedStateMachine, rule, invariant
 import genanki
 
 from app.models.question import Question, QuestionOption
-from app.models.test import Test
+from app.models.test import Test as DeckModel
 from app.services.anki_export import AnkiExporter
 
 
@@ -72,7 +72,7 @@ class TestAnkiExportProperties:
         Validates: Requirements 6.3
         """
         # Create test deck
-        test = Test(name=deck_data["name"], description=deck_data["description"])
+        test = DeckModel(name=deck_data["name"], description=deck_data["description"])
         db_session.add(test)
         db_session.flush()
 
@@ -590,8 +590,8 @@ class TestConcurrentRequestProperties:
         assert len(set(deck_ids)) == 2, "Should create two separate decks"
 
         # Verify decks exist in database
-        from app.models.test import Test
+        from app.models.test import Test as DeckModel
 
         for deck_id in deck_ids:
-            deck = db_session.query(Test).filter(Test.id == deck_id).first()
+            deck = db_session.query(DeckModel).filter(DeckModel.id == deck_id).first()
             assert deck is not None, f"Deck {deck_id} should exist"

@@ -52,7 +52,7 @@ export default function WelcomeScreen({ onComplete }) {
     },
     {
       icon: Key,
-      title: 'Configure Your AI Provider',
+      title: 'Configure your AI provider',
       description: 'To generate flashcards, you\'ll need an API key from an AI provider.',
       content: (
         <div className="space-y-4">

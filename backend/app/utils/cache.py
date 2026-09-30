@@ -9,7 +9,7 @@ from functools import wraps
 from typing import Callable, Any
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # Simple time-based cache decorator
@@ -41,7 +41,7 @@ def timed_cache(seconds: int = 300):
             cache_key = hashlib.md5(json.dumps(key_data, sort_keys=True).encode()).hexdigest()
 
             # Check if cached and not expired
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             if cache_key in cache:
                 cached_time = cache_times.get(cache_key)
                 if cached_time and (now - cached_time).total_seconds() < seconds:
@@ -84,7 +84,7 @@ class StatisticsCache:
         self.ttl_seconds = ttl_seconds
         self._cache = {}
         self._cache_times = {}
-        self._last_invalidation = datetime.utcnow()
+        self._last_invalidation = datetime.now(timezone.utc).replace(tzinfo=None)
 
     def get(self, key: str) -> Any:
         """Get cached value if not expired."""
@@ -95,7 +95,7 @@ class StatisticsCache:
         if not cached_time:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         if (now - cached_time).total_seconds() >= self.ttl_seconds:
             # Expired
             del self._cache[key]
@@ -107,7 +107,7 @@ class StatisticsCache:
     def set(self, key: str, value: Any):
         """Set cached value."""
         self._cache[key] = value
-        self._cache_times[key] = datetime.utcnow()
+        self._cache_times[key] = datetime.now(timezone.utc).replace(tzinfo=None)
 
     def invalidate(self, key: str = None):
         """Invalidate specific key or all cache."""
@@ -117,7 +117,7 @@ class StatisticsCache:
         else:
             self._cache.clear()
             self._cache_times.clear()
-            self._last_invalidation = datetime.utcnow()
+            self._last_invalidation = datetime.now(timezone.utc).replace(tzinfo=None)
 
     def invalidate_all(self):
         """Clear all cached data."""

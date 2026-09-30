@@ -547,7 +547,7 @@ export default function Upload() {
                     <CheckCircle className="h-6 w-6 text-success-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-success-900 dark:text-success-200 text-lg">Upload complete!</h3>
+                    <h3 className="font-bold text-success-900 dark:text-success-200 text-lg">Upload complete</h3>
                     <p className="text-success-800 dark:text-success-200 mt-1">{result.message}</p>
                     {generationStatus?.status === 'completed' && generationStatus.total_questions_flagged > 0 ? (
                       <button type="button" className="btn-primary mt-3"

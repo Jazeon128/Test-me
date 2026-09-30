@@ -5,7 +5,7 @@ from io import BytesIO
 
 from app.models.document import Document
 from app.models.question import Question, QuestionOption
-from app.models.test import Test
+from app.models.test import Test as DeckModel
 
 
 @pytest.mark.integration
@@ -365,9 +365,9 @@ Python has several built-in data types:
         # Content may be None before background processing completes
 
         # Verify deck was created
-        from app.models.test import Test
+        from app.models.test import Test as DeckModel
 
-        deck = db_session.query(Test).filter(Test.id == deck_id).first()
+        deck = db_session.query(DeckModel).filter(DeckModel.id == deck_id).first()
         assert deck is not None
         assert deck.name == "Python Basics Deck"
 

@@ -136,7 +136,7 @@ export default function LogViewer({ isOpen, onClose }) {
               <AlertCircle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Application Logs
+              Application logs
             </h2>
           </div>
           <button

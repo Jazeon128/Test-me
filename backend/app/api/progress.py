@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from ..db import get_db
@@ -213,7 +213,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     progress.next_review_date = next_review
 
     # Update last attempt
-    progress.last_attempt_date = datetime.utcnow()
+    progress.last_attempt_date = datetime.now(timezone.utc).replace(tzinfo=None)
     progress.last_attempt_correct = is_correct
     progress.last_attempt_time_seconds = request.time_taken_seconds
 
@@ -223,7 +223,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
 
     progress.attempt_history.append(
         {
-            "date": datetime.utcnow().isoformat(),
+            "date": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "correct": is_correct,
             "time_seconds": request.time_taken_seconds,
             "quality": quality.value,
@@ -341,7 +341,7 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
             )
 
         due_progress = (
-            query.filter(UserProgress.next_review_date <= datetime.utcnow())
+            query.filter(UserProgress.next_review_date <= datetime.now(timezone.utc).replace(tzinfo=None))
             .order_by(UserProgress.next_review_date.asc())
             .limit(request.num_questions)
             .all()

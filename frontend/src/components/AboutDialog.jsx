@@ -114,7 +114,7 @@ export default function AboutDialog({ isOpen, onClose }) {
               {appInfo && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                    System Information
+                    System information
                   </h4>
                   
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">

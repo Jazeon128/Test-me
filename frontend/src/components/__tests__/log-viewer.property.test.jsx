@@ -44,7 +44,7 @@ describe('Property 25: Log viewer availability', () => {
     render(<LogViewer isOpen={true} onClose={() => {}} />)
 
     // Verify dialog title is displayed
-    expect(screen.getByText('Application Logs')).toBeInTheDocument()
+    expect(screen.getByText('Application logs')).toBeInTheDocument()
 
     // Wait for logs to load
     await waitFor(() => {
@@ -63,7 +63,7 @@ describe('Property 25: Log viewer availability', () => {
     render(<LogViewer isOpen={false} onClose={() => {}} />)
 
     // Verify dialog is not in the document
-    expect(screen.queryByText('Application Logs')).not.toBeInTheDocument()
+    expect(screen.queryByText('Application logs')).not.toBeInTheDocument()
   })
 
   it('should display all log entries from the application', async () => {

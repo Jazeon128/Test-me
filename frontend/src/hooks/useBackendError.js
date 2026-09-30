@@ -14,7 +14,7 @@ export const useBackendError = () => {
 
     const handleBackendError = (errorData) => {
       setError({
-        title: 'Backend Connection Error',
+        title: 'Backend connection error',
         message: errorData.message || 'The backend server failed to start or has stopped responding.',
         troubleshootingSteps: [
           'Check if another instance of FlashLearn is already running',

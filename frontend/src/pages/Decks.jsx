@@ -270,7 +270,7 @@ export default function Decks() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="glass-panel bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New deck</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create new deck</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
@@ -331,7 +331,7 @@ export default function Decks() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="glass-panel bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Import Deck</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Import deck</h2>
               <button
                 onClick={() => setShowImportModal(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
@@ -342,7 +342,7 @@ export default function Decks() {
 
             <div className="p-6 space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
-                <p className="font-bold mb-1">CSV Format:</p>
+                <p className="font-bold mb-1">CSV format:</p>
                 <p>Row 1: Front of card</p>
                 <p>Row 2: Back of card</p>
                 <p className="mt-2 text-xs opacity-80">No header row required.</p>

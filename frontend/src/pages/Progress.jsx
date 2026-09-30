@@ -81,21 +81,21 @@ export default function Progress() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
           icon={<Target className="h-8 w-8" />}
-          title="Questions Seen"
+          title="Questions seen"
           value={stats?.total_questions_seen || 0}
           subtitle={`${stats?.total_attempts || 0} total attempts`}
           color="primary"
         />
         <StatCard
           icon={<TrendingUp className="h-8 w-8" />}
-          title="Success Rate"
+          title="Success rate"
           value={`${Math.round((stats?.overall_success_rate || 0) * 100)}%`}
           subtitle={`${stats?.questions_mastered || 0} mastered`}
           color="success"
         />
         <StatCard
           icon={<Flame className="h-8 w-8" />}
-          title="Current Streak"
+          title="Current streak"
           value={stats?.current_streak || 0}
           subtitle={`Best: ${stats?.best_streak || 0}`}
           color="warning"
@@ -108,7 +108,7 @@ export default function Progress() {
         <div className="card">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
             <Trophy className="h-6 w-6 text-primary-600 dark:text-primary-300" />
-            Mastery Progress
+            Mastery progress
           </h2>
           <div className="space-y-6">
             <div>
@@ -147,7 +147,7 @@ export default function Progress() {
         <div className="card">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
             <Clock className="h-6 w-6 text-primary-600 dark:text-primary-300" />
-            Review Status
+            Review status
           </h2>
           <div className="space-y-6">
             <div className="text-center py-4">

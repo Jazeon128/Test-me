@@ -21,6 +21,11 @@ class NotebookRequest(BaseModel):
     icon: Optional[str] = None
 
 
+def _validate_icon(icon: Optional[str]) -> None:
+    if icon is not None and not (1 <= len(icon) <= 16 and any(ord(c) > 127 for c in icon)):
+        raise HTTPException(status_code=400, detail="Icon must be an emoji.")
+
+
 def _counts(db: Session, notebook_id: int) -> Dict[str, int]:
     document_ids = [
         row[0] for row in db.query(Document.id).filter(Document.notebook_id == notebook_id).all()
@@ -58,6 +63,8 @@ async def create_notebook(request: NotebookRequest, db: Session = Depends(get_db
     name = request.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="A notebook needs a name")
+
+    _validate_icon(request.icon)
 
     notebook = Notebook(name=name, description=request.description, icon=request.icon)
     db.add(notebook)
@@ -141,12 +148,15 @@ async def update_notebook(
     if not notebook:
         raise HTTPException(status_code=404, detail="Notebook not found")
 
+    if request.icon != "":
+        _validate_icon(request.icon)
+
     if request.name is not None and request.name.strip():
         notebook.name = request.name.strip()
     if request.description is not None:
         notebook.description = request.description
     if request.icon is not None:
-        notebook.icon = request.icon
+        notebook.icon = request.icon or None
 
     db.commit()
     db.refresh(notebook)

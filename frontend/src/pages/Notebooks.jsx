@@ -12,6 +12,10 @@ import { notebooksAPI, progressAPI } from '../services/api'
 
 const ICONS = ['📘', '🧠', '⚙️', '🔬', '🗺️', '📊', '🧩', '🏛️', '💡', '🧪', '📐', '🔐']
 
+export function displayIcon(icon) {
+  return icon && [...icon].some((character) => character.codePointAt(0) > 127) ? icon : '📘'
+}
+
 export default function Notebooks() {
   const navigate = useNavigate()
   const [notebooks, setNotebooks] = useState([])
@@ -181,7 +185,7 @@ export default function Notebooks() {
             >
               <ArrowUpRight size={19} className="notebook-arrow" aria-hidden="true" />
               <span className="notebook-icon text-3xl" aria-hidden="true">
-                {notebook.icon || '📘'}
+                {displayIcon(notebook.icon)}
               </span>
               <span className="text-lg font-semibold text-gray-900 dark:text-white">{notebook.name}</span>
               {notebook.description && (

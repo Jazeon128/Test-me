@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..db import get_db
 from ..models.question import Question, QuestionOption
@@ -18,8 +18,7 @@ class QuestionOptionCreate(BaseModel):
     text: str
     is_correct: bool
 
-    class Config:
-        schema_extra = {"example": {"text": "Paris", "is_correct": True}}
+    model_config = ConfigDict(json_schema_extra={"example": {"text": "Paris", "is_correct": True}})
 
 
 class CreateQuestionRequest(BaseModel):
@@ -32,22 +31,21 @@ class CreateQuestionRequest(BaseModel):
     deck_id: Optional[int] = None
     document_id: Optional[int] = None
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "question_text": "What is the capital of France?",
-                "options": [
-                    {"text": "Paris", "is_correct": True},
-                    {"text": "London", "is_correct": False},
-                    {"text": "Berlin", "is_correct": False},
-                    {"text": "Madrid", "is_correct": False},
-                ],
-                "explanation": "Paris is the capital and largest city of France.",
-                "difficulty": "easy",
-                "deck_id": 1,
-                "document_id": 5,
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "question_text": "What is the capital of France?",
+            "options": [
+                {"text": "Paris", "is_correct": True},
+                {"text": "London", "is_correct": False},
+                {"text": "Berlin", "is_correct": False},
+                {"text": "Madrid", "is_correct": False},
+            ],
+            "explanation": "Paris is the capital and largest city of France.",
+            "difficulty": "easy",
+            "deck_id": 1,
+            "document_id": 5,
         }
+    })
 
 
 @router.post(

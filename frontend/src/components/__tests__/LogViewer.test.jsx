@@ -30,12 +30,12 @@ describe('LogViewer', () => {
   describe('Rendering', () => {
     it('should render dialog when open', async () => {
       render(<LogViewer isOpen={true} onClose={() => {}} />)
-      expect(screen.getByText('Application Logs')).toBeInTheDocument()
+      expect(screen.getByText('Application logs')).toBeInTheDocument()
     })
 
     it('should not render when closed', () => {
       render(<LogViewer isOpen={false} onClose={() => {}} />)
-      expect(screen.queryByText('Application Logs')).not.toBeInTheDocument()
+      expect(screen.queryByText('Application logs')).not.toBeInTheDocument()
     })
 
     it('should show loading state initially', () => {
@@ -220,7 +220,7 @@ describe('LogViewer', () => {
       render(<LogViewer isOpen={true} onClose={onClose} />)
       
       await waitFor(() => {
-        expect(screen.getByText('Application Logs')).toBeInTheDocument()
+        expect(screen.getByText('Application logs')).toBeInTheDocument()
       })
 
       const closeButtons = screen.getAllByRole('button')

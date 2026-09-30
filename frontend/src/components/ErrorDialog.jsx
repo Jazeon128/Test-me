@@ -61,7 +61,7 @@ const ErrorDialog = ({
           {troubleshootingSteps && troubleshootingSteps.length > 0 && (
             <div className="mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Troubleshooting Steps:
+                Troubleshooting steps:
               </h3>
               <ol className="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-300">
                 {troubleshootingSteps.map((step, index) => (

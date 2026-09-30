@@ -233,7 +233,7 @@ export default function DeckDetails() {
             <div className="glass-panel bg-white rounded-lg shadow overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 dark:bg-gray-800">
                     <div className="flex justify-between items-center">
-                        <h2 className="font-semibold text-gray-700 dark:text-gray-200">Cards / Questions</h2>
+                        <h2 className="font-semibold text-gray-700 dark:text-gray-200">Cards and questions</h2>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition ${filterTags.length > 0 || showFilters
@@ -347,7 +347,7 @@ export default function DeckDetails() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="glass-panel bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Card</h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add new card</h2>
                             <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
                             </button>

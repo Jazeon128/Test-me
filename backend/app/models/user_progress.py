@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, Boolean, JSON, Index
 from sqlalchemy.orm import backref, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from .base import Base, TimestampMixin
 
 
@@ -25,7 +25,7 @@ class UserProgress(Base, TimestampMixin):
     easiness_factor = Column(Float, default=2.5, nullable=False)  # E-Factor (1.3 - 2.5+)
     interval = Column(Integer, default=0, nullable=False)  # Days until next review
     repetitions = Column(Integer, default=0, nullable=False)  # Consecutive correct answers
-    next_review_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    next_review_date = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
 
     # Performance Metrics
     times_seen = Column(Integer, default=0, nullable=False)

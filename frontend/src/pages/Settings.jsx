@@ -236,7 +236,7 @@ export default function Settings() {
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
         >
-          API Configuration
+          API configuration
         </button>
         <button
           onClick={() => setActiveTab('general')}
@@ -256,7 +256,7 @@ export default function Settings() {
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                 <Server className="h-5 w-5 text-primary-500" />
-                Provider Settings
+                Provider settings
               </h2>
 
               {/* Provider Selection */}

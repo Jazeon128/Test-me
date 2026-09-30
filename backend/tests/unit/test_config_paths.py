@@ -12,7 +12,7 @@ def test_relative_paths_resolve_against_backend(monkeypatch, tmp_path, database_
 
     assert settings.DATABASE_URL == "sqlite:///" + (BACKEND_DIR / "x.db").as_posix()
     assert Path(settings.UPLOAD_DIR) == BACKEND_DIR / "uploads"
-    assert Path(Settings.Config.env_file) == BACKEND_DIR / ".env"
+    assert Path(Settings.model_config["env_file"]) == BACKEND_DIR / ".env"
 
 
 @pytest.mark.parametrize("database_url", [

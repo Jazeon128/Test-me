@@ -129,7 +129,7 @@ const UpdateNotification = () => {
               />
             </svg>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Update Available
+              Update available
             </h3>
           </div>
           <button

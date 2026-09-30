@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
 from pathlib import Path, PurePosixPath
 from typing import List
@@ -137,10 +137,11 @@ class Settings(BaseSettings):
                 + "\n\nCheck your .env file. See .env.example for reference."
             )
 
-    class Config:
-        env_file = str(BACKEND_DIR / ".env")
-        case_sensitive = True
-        extra = "ignore"  # Ignore extra fields in .env file
+    model_config = SettingsConfigDict(
+        env_file=str(BACKEND_DIR / ".env"),
+        case_sensitive=True,
+        extra="ignore",  # Ignore extra fields in .env file
+    )
 
 
 settings = Settings()

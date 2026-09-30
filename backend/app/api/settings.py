@@ -517,9 +517,9 @@ async def get_models_info():
         "last_updated": "2025-12-05",
         "total_models": len(AVAILABLE_MODELS),
         "models_by_provider": {
-            "anthropic": [m.dict() for m in AVAILABLE_MODELS if m.provider == "anthropic"],
-            "openai": [m.dict() for m in AVAILABLE_MODELS if m.provider == "openai"],
-            "gemini": [m.dict() for m in AVAILABLE_MODELS if m.provider == "gemini"],
+            "anthropic": [m.model_dump() for m in AVAILABLE_MODELS if m.provider == "anthropic"],
+            "openai": [m.model_dump() for m in AVAILABLE_MODELS if m.provider == "openai"],
+            "gemini": [m.model_dump() for m in AVAILABLE_MODELS if m.provider == "gemini"],
         },
         "provider_counts": {
             "anthropic": len([m for m in AVAILABLE_MODELS if m.provider == "anthropic"]),

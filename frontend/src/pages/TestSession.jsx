@@ -159,7 +159,7 @@ export default function TestSession() {
     return (
       <div className="max-w-2xl mx-auto px-4">
         <div className="glass-panel bg-white rounded-lg shadow p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Questions Available</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No questions available</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">Upload a document to generate questions first.</p>
           <button
             onClick={() => navigate('/upload')}
@@ -325,7 +325,7 @@ export default function TestSession() {
                 )}
                 <div>
                   <h3 className={`font-bold mb-2 ${result.correct ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'}`}>
-                    {result.correct ? 'Correct!' : 'Incorrect'}
+                    {result.correct ? 'Correct' : 'Incorrect'}
                   </h3>
                   <p className={`text-sm mb-2 ${result.correct ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                     {result.explanation}

@@ -40,7 +40,7 @@ describe('Property 14: Settings dialog availability', () => {
     })
 
     // Verify dialog is displayed
-    expect(screen.getByText('API Key Configuration')).toBeInTheDocument()
+    expect(screen.getByText('API key configuration')).toBeInTheDocument()
 
     // Verify provider selection is available
     expect(screen.getByText('OpenAI')).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('Property 14: Settings dialog availability', () => {
     render(<SettingsDialog isOpen={false} onClose={() => {}} />)
 
     // Verify dialog is not in the document
-    expect(screen.queryByText('API Key Configuration')).not.toBeInTheDocument()
+    expect(screen.queryByText('API key configuration')).not.toBeInTheDocument()
   })
 
   it('should display all three provider options for API key configuration', async () => {

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -25,7 +25,7 @@ class ReviewData:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class SM2Algorithm:
@@ -56,7 +56,7 @@ class SM2Algorithm:
     Example Usage:
     --------------
     ```python
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.services.spaced_repetition.sm2_algorithm import SM2Algorithm, ReviewResult
 
     # Initial state for a new card
@@ -141,7 +141,7 @@ class SM2Algorithm:
             - next_review_date: Calculated datetime for the next review
 
         Example:
-            >>> from datetime import datetime
+            >>> from datetime import datetime, timezone
             >>> ef, interval, reps, next_date = SM2Algorithm.calculate_next_review(
             ...     easiness_factor=2.5,
             ...     interval=0,
@@ -185,7 +185,7 @@ class SM2Algorithm:
                 new_interval = round(interval * new_ef)
 
         # Calculate next review date
-        next_review_date = datetime.utcnow() + timedelta(days=new_interval)
+        next_review_date = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=new_interval)
 
         return new_ef, new_interval, new_repetitions, next_review_date
 
@@ -224,7 +224,7 @@ class SM2Algorithm:
     @staticmethod
     def get_due_questions_count(next_review_date: datetime) -> bool:
         """Check if a question is due for review"""
-        return datetime.utcnow() >= next_review_date
+        return datetime.now(timezone.utc).replace(tzinfo=None) >= next_review_date
 
     @staticmethod
     def calculate_mastery_level(

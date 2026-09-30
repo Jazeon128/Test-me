@@ -24,13 +24,13 @@ describe('SettingsDialog', () => {
       render(<SettingsDialog isOpen={true} onClose={() => {}} />)
       
       await waitFor(() => {
-        expect(screen.getByText('API Key Configuration')).toBeInTheDocument()
+        expect(screen.getByText('API key configuration')).toBeInTheDocument()
       })
     })
 
     it('should not render when closed', () => {
       render(<SettingsDialog isOpen={false} onClose={() => {}} />)
-      expect(screen.queryByText('API Key Configuration')).not.toBeInTheDocument()
+      expect(screen.queryByText('API key configuration')).not.toBeInTheDocument()
     })
 
     it('should render all provider buttons', async () => {
@@ -239,7 +239,7 @@ describe('SettingsDialog', () => {
       render(<SettingsDialog isOpen={true} onClose={onClose} />)
       
       await waitFor(() => {
-        expect(screen.getByText('API Key Configuration')).toBeInTheDocument()
+        expect(screen.getByText('API key configuration')).toBeInTheDocument()
       })
 
       const closeButtons = screen.getAllByRole('button')

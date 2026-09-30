@@ -24,7 +24,7 @@ describe('Property 15: Backend failure handling', () => {
     // Property: For any backend startup failure, an error dialog should be displayed
     
     const mockError = {
-      title: 'Backend Connection Error',
+      title: 'Backend connection error',
       message: 'The backend server failed to start.',
       troubleshootingSteps: [
         'Check if another instance is running',
@@ -45,7 +45,7 @@ describe('Property 15: Backend failure handling', () => {
     );
 
     // Verify error dialog is displayed
-    expect(screen.getByText('Backend Connection Error')).toBeInTheDocument();
+    expect(screen.getByText('Backend connection error')).toBeInTheDocument();
     expect(screen.getByText('The backend server failed to start.')).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe('Property 15: Backend failure handling', () => {
     });
 
     // Verify troubleshooting section header
-    expect(screen.getByText('Troubleshooting Steps:')).toBeInTheDocument();
+    expect(screen.getByText('Troubleshooting steps:')).toBeInTheDocument();
   });
 
   it('should provide retry functionality for backend failures', async () => {
@@ -315,6 +315,6 @@ describe('Property 15: Backend failure handling', () => {
     expect(screen.getByText('Backend failed to start')).toBeInTheDocument();
     
     // Troubleshooting section should not be rendered
-    expect(screen.queryByText('Troubleshooting Steps:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Troubleshooting steps:')).not.toBeInTheDocument();
   });
 });

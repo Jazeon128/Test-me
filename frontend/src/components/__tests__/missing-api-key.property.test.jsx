@@ -25,7 +25,7 @@ const goToProviderStep = async () => {
   }, { timeout: 3000 })
   fireEvent.click(screen.getByRole('button', { name: 'Next' }))
   await waitFor(() => {
-    expect(screen.getByText(/Configure Your AI Provider/)).toBeInTheDocument()
+    expect(screen.getByText(/Configure your AI provider/)).toBeInTheDocument()
   })
 }
 

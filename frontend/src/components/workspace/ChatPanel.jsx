@@ -145,13 +145,13 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
     {newReply && <button type="button" onClick={scrollDown}>New reply</button>}
     <form className="chat-composer" onSubmit={event => { event.preventDefault(); send() }}>
       <label htmlFor={`chat-input-${notebookId}`}>Ask about your sources</label>
-      <textarea id={`chat-input-${notebookId}`} value={draft} disabled={disabled} maxLength={2000}
+      <div className="chat-input-field"><textarea id={`chat-input-${notebookId}`} value={draft} disabled={disabled} maxLength={2000}
         aria-describedby={`chat-feedback-${notebookId}`} onChange={event => { setDraft(event.target.value); setRetry(null) }}
         onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send() }
         }} />
+      <button className="btn-primary" type="submit" disabled={disabled || !draft.trim()}>Send</button></div>
       {draft.length >= 1800 && <span className="chat-note">{draft.length}/2000</span>}
-      <button type="submit" disabled={disabled || !draft.trim()}>Send</button>
       <div id={`chat-feedback-${notebookId}`}>
         {!sourceIds.length && <p>Tick at least one source to chat.</p>}
         {error && <p role="alert">{error}</p>}

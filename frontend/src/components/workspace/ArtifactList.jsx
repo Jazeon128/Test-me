@@ -1,21 +1,22 @@
+import { Layers, ListChecks, Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function ArtifactList({ artifacts, progress, open }) {
   return <>
     <h3 className="font-bold mt-6 mb-3">Artifacts</h3>
     <ul className="space-y-4">
-      {artifacts.decks.map(deck => <li key={deck.id}>
+      {artifacts.decks.map(deck => <li key={deck.id} className="workspace-artifact">
+        {deck.kind === 'flashcards' ? <Layers aria-hidden="true" size={20} /> : <ListChecks aria-hidden="true" size={20} />}
         <p className="font-medium">{deck.name}</p>
-        <span className="rounded bg-primary-100 text-primary-900 px-2 text-xs">{deck.kind === 'flashcards' ? 'Flashcards' : 'Quiz'}</span>
-        <p className="text-sm">{deck.question_count} questions</p>
-        {deck.due_count > 0 && <p className="text-sm">{deck.due_count} due</p>}
+        <span className="workspace-badge">{deck.kind === 'flashcards' ? 'Flashcards' : 'Quiz'}</span>
+        <p className="workspace-artifact-meta">{deck.question_count} questions &middot; {deck.due_count || 0} due</p>
         {deck.held_back_count > 0 && <p className="text-sm">{deck.held_back_count} held back</p>}
         <div className="flex gap-3">
-          <button onClick={() => open(deck.id, 'practice')}>Practise</button>
-          <button onClick={() => open(deck.id, 'edit')}>Open</button>
+          <button className="btn-primary workspace-small-button" onClick={event => open(deck.id, 'practice', event.currentTarget)}>Practise</button>
+          <button className="btn-secondary workspace-small-button" onClick={event => open(deck.id, 'edit', event.currentTarget)}>Open</button>
         </div>
       </li>)}
-      {artifacts.canvases.map(canvas => <li key={canvas.id}><Link to={`/canvas/${canvas.id}`}>{canvas.title}</Link></li>)}
+      {artifacts.canvases.map(canvas => <li key={canvas.id} className="workspace-artifact"><Network aria-hidden="true" size={20} /><Link to={`/canvas/${canvas.id}`}>{canvas.title}</Link></li>)}
     </ul>
     <div className="mt-6 text-sm" aria-label="Notebook progress">
       <p>{progress.answered_count} answered</p>

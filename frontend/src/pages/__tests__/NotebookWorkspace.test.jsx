@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import NotebookWorkspace from '../NotebookWorkspace'
+import { readFileSync } from 'node:fs'
 import { notebooksAPI, statusAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -41,6 +42,7 @@ const click = name => fireEvent.click(screen.getByRole('button', { name, exact: 
 const loaded = () => screen.findByText('Biology')
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })
   localStorage.clear()
   notebooksAPI.workspace.mockResolvedValue({ data: fixture() })
   notebooksAPI.chatHistory.mockResolvedValue({ data: [] })
@@ -63,7 +65,7 @@ describe('Notebook workspace', () => {
     expect(screen.getByText('May not be worth studying')).toBeInTheDocument()
     expect(screen.getByText('Cell quiz')).toBeInTheDocument()
     expect(screen.getByText('Quiz', { selector: 'span' })).toBeInTheDocument()
-    expect(screen.getByText('10 questions')).toBeInTheDocument()
+    expect(screen.getByText('10 questions \u00b7 2 due')).toBeInTheDocument()
     expect(screen.getByText('1 held back')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Cell diagram' })).toHaveAttribute('href', '/canvas/5')
     expect(screen.getByText('4 answered')).toBeInTheDocument()
@@ -141,8 +143,8 @@ describe('Notebook workspace', () => {
   it('collapses to rails with persisted aria-expanded state', async () => {
     const rendered = mount(); await loaded(); click('Collapse sources'); click('Collapse studio')
     expect(screen.getByRole('button', { name: 'Expand sources' })).toHaveAttribute('aria-expanded', 'false')
-    expect(within(screen.getByLabelText('Sources panel')).getAllByRole('button')).toHaveLength(1)
-    expect(screen.getByLabelText('Sources panel')).toHaveClass('workspace-rail')
+    expect(within(screen.getByLabelText('Sources')).getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByLabelText('Sources')).toHaveClass('workspace-rail')
     expect(JSON.parse(localStorage.getItem('testme.workspace.collapsed'))).toEqual({ sources: true, studio: true })
     rendered.unmount(); mount(); await loaded()
     expect(screen.getByRole('button', { name: 'Expand studio' })).toHaveAttribute('aria-expanded', 'false')
@@ -194,5 +196,107 @@ describe('Notebook workspace', () => {
     notebooksAPI.workspace.mockResolvedValue({ data }); mount(); await loaded()
     expect(screen.getByRole('alert')).toHaveTextContent('Generation exhausted')
     expect(screen.getByText('No answers yet')).toBeInTheDocument()
+  })
+})
+
+
+describe('Workspace accessibility', () => {
+  it('names landmarks and moves focus for both collapse controls', async () => {
+    mount(); await loaded()
+    expect(screen.getByRole('complementary', { name: 'Sources' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Studio' })).toBeInTheDocument()
+    for (const side of ['sources', 'studio']) {
+      click(`Collapse ${side}`)
+      expect(screen.getByRole('button', { name: `Expand ${side}` })).toHaveFocus()
+      click(`Expand ${side}`)
+      expect(screen.getByRole('button', { name: `Collapse ${side}` })).toHaveFocus()
+    }
+  })
+  it('focuses each deck header and returns to its opening button', async () => {
+    mount(); await loaded()
+    for (const [button, title] of [['Practise', 'Practising Cell quiz'], ['Open', 'Editing Cell quiz']]) {
+      const opener = screen.getByRole('button', { name: button })
+      fireEvent.click(opener)
+      expect(screen.getByRole('heading', { name: title }).parentElement).toHaveFocus()
+      expect(screen.getByRole('region', { name: title })).toBeInTheDocument()
+      await act(async () => click('Close'))
+      expect(opener).toHaveFocus()
+    }
+  })
+  it('focuses a deck opened through URL parameters', async () => {
+    mount('?deck=9&view=edit'); await screen.findByText('Editing Cell quiz')
+    expect(screen.getByRole('heading', { name: 'Editing Cell quiz' }).parentElement).toHaveFocus()
+    await act(async () => click('Close'))
+    expect(screen.getByLabelText('Ask about your sources')).toHaveFocus()
+  })
+  it('uses drawers regardless of stored collapse state, traps focus and returns it on both close paths', async () => {
+    window.matchMedia.mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    localStorage.setItem('testme.workspace.collapsed', JSON.stringify({ sources: true, studio: true }))
+    mount(); await loaded()
+    expect(screen.queryByRole('button', { name: 'Expand sources' })).not.toBeInTheDocument()
+    for (const side of ['Sources', 'Studio']) {
+      const trigger = screen.getByRole('button', { name: new RegExp(`^${side} `) })
+      trigger.focus(); fireEvent.click(trigger)
+      const dialog = screen.getByRole('dialog', { name: side })
+      expect(dialog).toHaveAttribute('aria-modal', 'true')
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      const close = within(dialog).getByRole('button', { name: `Close ${side.toLowerCase()}` })
+      expect(close).toHaveFocus()
+      const controls = [...dialog.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')]
+      fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+      expect(controls.at(-1)).toHaveFocus()
+      fireEvent.keyDown(document.activeElement, { key: 'Tab' })
+      expect(close).toHaveFocus()
+      fireEvent.keyDown(close, { key: 'Escape' })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(trigger).toHaveFocus())
+      fireEvent.click(trigger)
+      fireEvent.click(screen.getByRole('dialog').parentElement)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(trigger).toHaveFocus())
+    }
+    expect(JSON.parse(localStorage.getItem('testme.workspace.collapsed'))).toEqual({ sources: true, studio: true })
+  })
+  it('closes a drawer with its Close button and falls back to chat after a mobile deck closes', async () => {
+    window.matchMedia.mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    mount(); await loaded()
+    const sources = screen.getByRole('button', { name: 'Sources 2' })
+    sources.focus(); fireEvent.click(sources)
+    click('Close sources')
+    await waitFor(() => expect(sources).toHaveFocus())
+    const studio = screen.getByRole('button', { name: 'Studio 0' })
+    studio.focus(); fireEvent.click(studio)
+    expect(screen.queryByRole('dialog', { name: 'Sources' })).not.toBeInTheDocument()
+    click('Practise')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Practising Cell quiz' }).parentElement).toHaveFocus()
+    await act(async () => click('Close'))
+    expect(screen.getByLabelText('Ask about your sources')).toHaveFocus()
+  })
+  it('responds to media changes and removes its listener', async () => {
+    let listener
+    const media = { matches: true, addEventListener: vi.fn((event, callback) => { listener = callback }), removeEventListener: vi.fn() }
+    window.matchMedia.mockReturnValue(media)
+    const rendered = mount(); await loaded()
+    act(() => { media.matches = false; listener() })
+    const trigger = screen.getByRole('button', { name: 'Sources 2' })
+    trigger.focus(); fireEvent.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'Sources' })).toBeInTheDocument()
+    act(() => { media.matches = true; listener() })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Collapse sources' })).toBeInTheDocument()
+    rendered.unmount()
+    expect(media.removeEventListener).toHaveBeenCalledWith('change', listener)
+  })
+  it('works without matchMedia and disables workspace motion through its media rule', async () => {
+    window.matchMedia.mockRestore()
+    const original = window.matchMedia
+    window.matchMedia = undefined
+    try { mount(); await loaded(); expect(screen.getByRole('button', { name: 'Collapse sources' })).toBeInTheDocument() }
+    finally { window.matchMedia = original }
+    const css = readFileSync('src/index.css', 'utf8')
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.notebook-workspace/)
+    expect(css).toContain('animation: none !important; transition: none !important;')
   })
 })

@@ -29,6 +29,7 @@ async function mount(props = {}) {
 }
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })
   localStorage.clear()
   notebooksAPI.chatHistory.mockResolvedValue({ data: [] })
   notebooksAPI.chat.mockResolvedValue({ data: answer() })

@@ -6,6 +6,10 @@ import DeckEditor from '../components/DeckEditor'
 import SourcesPanel from '../components/workspace/SourcesPanel'
 import StudioPanel from '../components/workspace/StudioPanel'
 import ChatPanel from '../components/workspace/ChatPanel'
+import WorkspacePanel from '../components/workspace/WorkspacePanel'
+import WorkspaceDrawer from '../components/workspace/WorkspaceDrawer'
+import useMediaQuery from '../hooks/useMediaQuery'
+import { FileText, Sparkles, X } from 'lucide-react'
 
 const storageKey = 'testme.workspace.collapsed'
 const jobId = job => job.job_id || job.id
@@ -18,8 +22,28 @@ export default function NotebookWorkspace() {
 
 function Workspace({ notebookId }) {
   const navigate = useNavigate()
+  const desktop = useMediaQuery('(min-width: 1024px)')
+  const [drawer, setDrawer] = useState(null)
+  const deckHeader = useRef(null)
+  const opener = useRef(null)
+  const centre = useRef(null)
+
   const [params, setParams] = useSearchParams()
+  const deckId = Number(params.get('deck'))
+  const view = params.get('view')
+  const hasOpenDeck = Number.isInteger(deckId) && deckId > 0 && ['practice', 'edit'].includes(view)
   const [workspace, setWorkspace] = useState(null)
+  const loaded = Boolean(workspace)
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (hasOpenDeck) deckHeader.current?.focus()
+    else if (wasOpen.current) {
+      if (opener.current?.isConnected && !opener.current.closest('[hidden]')) opener.current.focus()
+      else centre.current?.querySelector('textarea')?.focus()
+    }
+    wasOpen.current = hasOpenDeck
+  }, [hasOpenDeck, deckId, view, loaded])
+  useEffect(() => { if (desktop) setDrawer(null) }, [desktop])
   const [selected, setSelected] = useState({})
   const seenReady = useRef(new Set())
   const localJobs = useRef(new Map())
@@ -93,7 +117,9 @@ function Workspace({ notebookId }) {
     })
     refresh()
   }, [setParams, refresh])
-  const open = useCallback((id, view) => {
+  const open = useCallback((id, view, trigger) => {
+    if (trigger) opener.current = trigger
+    setDrawer(null)
     setParams(current => {
       const next = new URLSearchParams(current)
       next.set('deck', String(id)); next.set('view', view)
@@ -108,37 +134,44 @@ function Workspace({ notebookId }) {
   }
   if (!workspace) return <div className="notebook-workspace">{error ? <p role="alert">{error}</p> : <p>Loading notebook...</p>}</div>
   const sourceIds = workspace.sources.filter(source => source.status === 'ready' && selected[source.id]).map(source => source.id)
-  const deckId = Number(params.get('deck'))
-  const view = params.get('view')
-  const hasOpenDeck = Number.isInteger(deckId) && deckId > 0 && ['practice', 'edit'].includes(view)
+  const deckName = workspace.artifacts.decks.find(deck => deck.id === deckId)?.name || 'deck'
+  const panels = {
+    sources: <SourcesPanel notebookId={notebookId} sources={workspace.sources}
+      selected={selected} setSelected={setSelected} refresh={refresh} />,
+    studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} jobs={jobs}
+      artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas}
+      onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
+  }
+  const counts = { sources: workspace.sources.filter(source => source.status === 'ready').length,
+    studio: workspace.artifacts.decks.length + workspace.artifacts.canvases.length }
+  const panel = side => <WorkspacePanel side={side} count={counts[side]} collapsed={desktop && collapsed[side]}
+    toggle={desktop ? () => toggle(side) : null}>{panels[side]}</WorkspacePanel>
   return <div className="notebook-workspace" style={{ '--sources-width': collapsed.sources ? '44px' : '280px', '--studio-width': collapsed.studio ? '44px' : '320px' }}>
-    <aside className={`workspace-panel ${collapsed.sources ? 'workspace-rail' : ''}`} aria-label="Sources panel">
-      <button aria-label={collapsed.sources ? 'Expand sources' : 'Collapse sources'} aria-expanded={!collapsed.sources}
-        onClick={() => toggle('sources')}>{collapsed.sources ? '>' : '<'}</button>
-      {!collapsed.sources && <SourcesPanel notebookId={notebookId} sources={workspace.sources}
-        selected={selected} setSelected={setSelected} refresh={refresh} />}
-    </aside>
-    <section className="workspace-centre" aria-label="Current work">
-      {error && <p role="alert" className="text-red-600">{error}</p>}
+    {!desktop && <div className="workspace-topbar" inert={drawer ? '' : undefined}>
+      <button className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{sourceIds.length}</span></button>
+      <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{jobs.filter(running).length}</span></button>
+    </div>}
+    {desktop && panel('sources')}
+    <section ref={centre} className="workspace-centre" aria-label={hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
+      {error && <p role="alert" className="workspace-error">{error}</p>}
       <div className="workspace-chat" hidden={hasOpenDeck}>
-        <h1 className="text-3xl font-bold">{workspace.notebook.name}</h1>
-        <p className="mt-3">{workspace.notebook.description}</p>
+        <p className="eyebrow">Notebook</p>
+        <h1>{workspace.notebook.name}</h1>
+        <p className="page-intro mt-3">{workspace.notebook.description}</p>
         <ChatPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} />
       </div>
       {hasOpenDeck && <>
-        <button onClick={close} className="mb-4">Close</button>
-        {view === 'practice' ? <PracticeSession key={`practice-${deckId}`} deckId={deckId}
+        <header ref={deckHeader} tabIndex={-1} className="workspace-deck-header">
+          <h1>{view === 'practice' ? 'Practising' : 'Editing'} {deckName}</h1>
+          <button onClick={close} className="icon-button" aria-label="Close"><X size={20} aria-hidden="true" /></button>
+        </header>
+        {view === 'practice' ? <PracticeSession embedded key={`practice-${deckId}`} deckId={deckId}
           onExit={close} onFinished={close} onEmpty={close} />
-          : <DeckEditor key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}
+          : <DeckEditor embedded key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}
             onPractice={id => open(id, 'practice')} onOpenCanvas={onCanvas} />}
       </>}
     </section>
-    <aside className={`workspace-panel ${collapsed.studio ? 'workspace-rail' : ''}`} aria-label="Studio panel">
-      <button aria-label={collapsed.studio ? 'Expand studio' : 'Collapse studio'} aria-expanded={!collapsed.studio}
-        onClick={() => toggle('studio')}>{collapsed.studio ? '<' : '>'}</button>
-      {!collapsed.studio && <StudioPanel notebookId={notebookId} sourceIds={sourceIds} jobs={jobs}
-        artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas}
-        onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />}
-    </aside>
+    {desktop && panel('studio')}
+    {!desktop && drawer && <WorkspaceDrawer side={drawer} onClose={() => setDrawer(null)}>{panel(drawer)}</WorkspaceDrawer>}
   </div>
 }

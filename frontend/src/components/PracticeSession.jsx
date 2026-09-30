@@ -4,7 +4,7 @@ import { progressAPI } from '../services/api'
 import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, Lightbulb } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function PracticeSession({ deckId, onExit, onFinished, onEmpty }) {
+export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, embedded = false }) {
 
   const [mode, setMode] = useState('choice')
   const [writtenAnswer, setWrittenAnswer] = useState('')
@@ -162,13 +162,13 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty })
       <div className="max-w-2xl mx-auto px-4">
         <div className="glass-panel bg-white rounded-lg shadow p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No questions available</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">Upload a document to generate questions first.</p>
-          <button
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{embedded ? 'This deck has no questions yet. Generate some in the Studio.' : 'Upload a document to generate questions first.'}</p>
+          {!embedded && <button
             onClick={() => onEmpty()}
             className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition"
           >
             Upload Document
-          </button>
+          </button>}
         </div>
       </div>
     )

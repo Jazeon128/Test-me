@@ -6,7 +6,7 @@ import TagManager, { TagBadge } from './TagManager'
 import QuestionTagEditor from './QuestionTagEditor'
 import HeldBackQuestions from './HeldBackQuestions'
 
-export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, onOpenCanvas, onBack }) {
+export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, onOpenCanvas, onBack, embedded = false }) {
     const [deck, setDeck] = useState(null)
     const [loading, setLoading] = useState(true)
     const [showAddModal, setShowAddModal] = useState(false)
@@ -173,13 +173,13 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
         <div className="max-w-4xl mx-auto px-4">
             {/* Header */}
             <div className="mb-8">
-                <button
+                {!embedded && <button
                     onClick={() => onBack()}
                     className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 mb-4"
                 >
                     <ArrowLeft size={20} className="mr-2" />
                     Back to Decks
-                </button>
+                </button>}
 
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div>
@@ -335,7 +335,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                     </div>
                 ) : (
                     <div className="p-12 text-center text-gray-500 dark:text-gray-400">
-                        No questions in this deck yet. Add one manually or upload a document!
+                        {embedded ? 'No questions in this deck yet. Add one manually or add a source!' : 'No questions in this deck yet. Add one manually or upload a document!'}
                     </div>
                 )}
             </div>

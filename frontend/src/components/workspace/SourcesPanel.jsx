@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Youtube, Loader2 } from 'lucide-react'
+import { FileText, Youtube, Loader2, FileType, FileCode, Presentation, BookOpen } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
 
 export default function SourcesPanel({ notebookId, sources, selected, setSelected, refresh }) {
@@ -26,39 +26,38 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
     } finally { setBusy(false) }
   }
   return <>
-    <h2 className="text-xl font-bold">Sources</h2>
     <div className="flex gap-3 my-3">
       <button onClick={() => setSelected(Object.fromEntries(sources.filter(s => s.status === 'ready').map(s => [s.id, true])))}>Select all</button>
       <button onClick={() => setSelected(Object.fromEntries(sources.map(s => [s.id, false])))}>Clear</button>
     </div>
     <ul className="space-y-4">
       {sources.map(source => {
-        const Icon = source.file_type === 'youtube' ? Youtube : FileText
-        return <li key={source.id}>
-          <label className="flex gap-2 items-start">
+        const Icon = ({ youtube: Youtube, pdf: FileText, md: BookOpen, markdown: BookOpen, html: FileCode, docx: FileType, pptx: Presentation })[source.file_type] || FileText
+        return <li key={source.id} className="workspace-source">
+          <label className="workspace-source-label">
             <input type="checkbox" aria-label={source.display_name} disabled={source.status !== 'ready'}
               checked={source.status === 'ready' && Boolean(selected[source.id])}
               onChange={event => setSelected(current => ({ ...current, [source.id]: event.target.checked }))} />
             <Icon size={18} aria-label={source.file_type} />
-            <span>{source.display_name}</span>
+            <span className="workspace-source-name" title={source.display_name}>{source.display_name}</span>
           </label>
-          {source.status === 'processing' ? <p className="flex gap-1 text-sm"><Loader2 size={14} className="animate-spin" />Reading...</p>
-            : source.status === 'failed' ? <p className="text-red-600 text-sm">{source.error_message || 'Failed'}</p>
-              : <p className="text-sm">Ready</p>}
+          {source.status === 'processing' ? <p className="workspace-badge"><Loader2 size={14} className="workspace-reading" />Reading...</p>
+            : source.status === 'failed' ? <div className="workspace-error"><span className="workspace-badge">Failed</span><p className="text-sm">{source.error_message || 'Failed'}</p></div>
+              : <p className="workspace-badge">Ready</p>}
           {source.status === 'ready' && source.preflight?.worth_generating === false &&
-            <p className="text-amber-700 text-sm">May not be worth studying</p>}
+            <p className="workspace-badge workspace-warning">May not be worth studying</p>}
         </li>
       })}
     </ul>
-    <button className="mt-4" onClick={() => setAdding(value => !value)}>Add source</button>
+    <button className="btn-secondary workspace-add-source" onClick={() => setAdding(value => !value)}>Add source</button>
     {adding && <form onSubmit={submit} className="space-y-3 mt-3">
       <label className="block">Files<input type="file" multiple accept=".pdf,.html,.htm,.md,.docx,.pptx"
         onChange={event => setFiles(Array.from(event.target.files))} /></label>
       <label className="block">YouTube URL<input className="input-field" type="url" value={youtube}
         onChange={event => setYoutube(event.target.value)} /></label>
-      <button disabled={busy || (!files.length && !youtube.trim())}>{busy ? 'Adding...' : 'Add sources'}</button>
+      <button className="btn-primary" disabled={busy || (!files.length && !youtube.trim())}>{busy ? 'Adding...' : 'Add sources'}</button>
     </form>}
     {duplicates.map((name, index) => <p key={index}>{name}: Already in this notebook</p>)}
-    {error && <p role="alert" className="text-red-600">{error}</p>}
+    {error && <p role="alert" className="workspace-error">{error}</p>}
   </>
 }

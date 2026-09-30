@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ListChecks, Layers, Network } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
 import GenerationProgress from '../GenerationProgress'
 import ArtifactList from './ArtifactList'
@@ -33,13 +34,12 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
     } finally { setBusy(false) }
   }
   return <>
-    <h2 className="text-xl font-bold">Studio</h2>
-    <div className="flex flex-wrap gap-3 my-3">
-      <button onClick={() => { setKind('quiz'); setPending(null); setError('') }}>Quiz</button>
-      <button onClick={() => { setKind('flashcards'); setPending(null); setError('') }}>Flashcards</button>
-      <button disabled={!sourceIds.length} onClick={() => onCanvas(sourceIds[0])}>Canvas</button>
+    <div className="workspace-tiles">
+      <button aria-label="Quiz" onClick={() => { setKind('quiz'); setPending(null); setError('') }}><ListChecks aria-hidden="true" /><strong>Quiz</strong><span>Test recall</span></button>
+      <button aria-label="Flashcards" onClick={() => { setKind('flashcards'); setPending(null); setError('') }}><Layers aria-hidden="true" /><strong>Flashcards</strong><span>Review terms</span></button>
+      <button aria-label="Canvas" disabled={!sourceIds.length} onClick={() => onCanvas(sourceIds[0])}><Network aria-hidden="true" /><strong>Canvas</strong><span>Connect ideas</span></button>
     </div>
-    {kind && <form className="space-y-3" onSubmit={event => {
+    {kind && <form className="card workspace-generate space-y-3" onSubmit={event => {
       event.preventDefault()
       generate({ source_ids: sourceIds, kind, num_questions: Number(count), difficulty, custom_prompt: '', deck_name: name, allow_unteachable: false })
     }}>
@@ -51,16 +51,16 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
       </select></label>
       <label className="block">Deck name (optional)<input className="input-field" value={name}
         onChange={event => { setName(event.target.value); setPending(null) }} /></label>
-      <button disabled={busy || !sourceIds.length}>{!sourceIds.length ? 'Tick at least one source' : busy ? 'Generating...' : 'Generate'}</button>
+      <button className="btn-primary" disabled={busy || !sourceIds.length}>{!sourceIds.length ? 'Tick at least one source' : busy ? 'Generating...' : 'Generate'}</button>
     </form>}
-    {pending && <div role="alert" className="text-amber-700 mt-3">
+    {pending && <div role="alert" className="workspace-warning mt-3">
       {unteachable.map(source => <p key={source.id}>{source.display_name}: {source.is_teachable}</p>)}
-      <button disabled={busy || !sourceIds.length} onClick={() => generate({ ...pending, allow_unteachable: true })}>Generate anyway</button>
+      <button className="btn-primary" disabled={busy || !sourceIds.length} onClick={() => generate({ ...pending, allow_unteachable: true })}>Generate anyway</button>
     </div>}
-    {error && <p role="alert" className="text-red-600 mt-3">{error}</p>}
+    {error && <p role="alert" className="workspace-error mt-3">{error}</p>}
     <div className="mt-4">
       {jobs.map(job => <div key={job.job_id || job.id}>
-        {job.status === 'failed' ? <p role="alert" className="text-red-600">{job.error_message || 'Generation failed'}</p>
+        {job.status === 'failed' ? <p role="alert" className="workspace-error">{job.error_message || 'Generation failed'}</p>
           : <GenerationProgress status={job} />}
         {job.warnings?.map((warning, index) => <p key={index}>{warning}</p>)}
       </div>)}

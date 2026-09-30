@@ -92,17 +92,17 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Should show the toggle button
-      expect(screen.getByRole('button', { name: /Use Custom/i })).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })).toBeInTheDocument()
       
       // Should show predefined dropdown initially
-      expect(screen.getByLabelText(/AI Model/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByLabelText(/AI Model/i)).toBeInTheDocument()
     })
 
     it('should display predefined models in dropdown', async () => {
       renderSettings()
       await waitForLoaded()
 
-      const modelSelect = screen.getByLabelText(/AI Model/i)
+      const modelSelect = within(screen.getByRole('region', { name: 'Question generation' })).getByLabelText(/AI Model/i)
       expect(modelSelect).toHaveValue('gpt-4o')
       
       // Check that options are present
@@ -117,19 +117,19 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Initially should show predefined dropdown
-      expect(screen.getByLabelText(/AI Model/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByLabelText(/AI Model/i)).toBeInTheDocument()
 
       // Click toggle to custom
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       // Should now show custom input
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Enter custom openai model name/i)).toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).getByPlaceholderText(/Enter custom openai model name/i)).toBeInTheDocument()
       })
 
       // Button text should change
-      expect(screen.getByRole('button', { name: /Use Predefined/i })).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Predefined/i })).toBeInTheDocument()
     })
 
     it('should show format examples in custom mode', async () => {
@@ -137,12 +137,12 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Toggle to custom
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       // Should show format examples
       await waitFor(() => {
-        expect(screen.getByText(/Format Examples/i)).toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).getByText(/Format Examples/i)).toBeInTheDocument()
       })
     })
   })
@@ -153,20 +153,20 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Toggle to custom
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Enter custom openai model name/i)).toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).getByPlaceholderText(/Enter custom openai model name/i)).toBeInTheDocument()
       })
 
       // Toggle back to predefined
-      const toggleBackButton = screen.getByRole('button', { name: /Use Predefined/i })
+      const toggleBackButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Predefined/i })
       fireEvent.click(toggleBackButton)
 
       // Should show dropdown again
       await waitFor(() => {
-        expect(screen.getByLabelText(/AI Model/i)).toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).getByLabelText(/AI Model/i)).toBeInTheDocument()
       })
     })
   })
@@ -199,13 +199,13 @@ describe('Settings - ModelSelector Integration', () => {
 
       // Should automatically show custom input mode
       await waitFor(() => {
-        const customInput = screen.getByPlaceholderText(/Enter custom openai model name/i)
+        const customInput = within(screen.getByRole('region', { name: 'Question generation' })).getByPlaceholderText(/Enter custom openai model name/i)
         expect(customInput).toBeInTheDocument()
         expect(customInput).toHaveValue('gpt-5-custom')
       }, { timeout: 5000 })
 
       // Should show "Use Predefined" button
-      expect(screen.getByRole('button', { name: /Use Predefined/i })).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Predefined/i })).toBeInTheDocument()
     })
 
     it('should display predefined model normally when loaded', async () => {
@@ -213,12 +213,12 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Should show predefined dropdown
-      const modelSelect = screen.getByLabelText(/AI Model/i)
+      const modelSelect = within(screen.getByRole('region', { name: 'Question generation' })).getByLabelText(/AI Model/i)
       expect(modelSelect).toBeInTheDocument()
       expect(modelSelect).toHaveValue('gpt-4o')
 
       // Should show "Use Custom" button
-      expect(screen.getByRole('button', { name: /Use Custom/i })).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })).toBeInTheDocument()
     })
   })
 
@@ -232,12 +232,12 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Toggle to custom mode
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       // Enter custom model
       await waitFor(() => {
-        const customInput = screen.getByPlaceholderText(/Enter custom openai model name/i)
+        const customInput = within(screen.getByRole('region', { name: 'Question generation' })).getByPlaceholderText(/Enter custom openai model name/i)
         fireEvent.change(customInput, { target: { value: 'gpt-5-preview' } })
       })
 
@@ -246,15 +246,15 @@ describe('Settings - ModelSelector Integration', () => {
       fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } })
 
       // Save
-      const saveButton = screen.getByRole('button', { name: /Save Configuration/i })
+      const saveButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Save Configuration/i })
       fireEvent.click(saveButton)
 
       // Should call API with custom model
       await waitFor(() => {
         expect(api.post).toHaveBeenCalledWith('/settings/ai-config', {
           provider: 'openai',
-          api_key: 'sk-test-key',
-          model: 'gpt-5-preview'
+          model: 'gpt-5-preview',
+          task: 'generation'
         })
       })
     })
@@ -264,12 +264,12 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Toggle to custom mode
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       // Clear the input
       await waitFor(() => {
-        const customInput = screen.getByPlaceholderText(/Enter custom openai model name/i)
+        const customInput = within(screen.getByRole('region', { name: 'Question generation' })).getByPlaceholderText(/Enter custom openai model name/i)
         fireEvent.change(customInput, { target: { value: '' } })
         fireEvent.blur(customInput)
       })
@@ -279,12 +279,12 @@ describe('Settings - ModelSelector Integration', () => {
       fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } })
 
       // Try to save
-      const saveButton = screen.getByRole('button', { name: /Save Configuration/i })
+      const saveButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Save Configuration/i })
       fireEvent.click(saveButton)
 
       // Should show validation error
       await waitFor(() => {
-        expect(screen.getByText(/Please enter a valid model name/i)).toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).getByText(/Please enter a valid model name/i)).toBeInTheDocument()
       })
 
       // Should not call API
@@ -298,8 +298,8 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Should show model details
-      expect(screen.getByText(/Context Window/i)).toBeInTheDocument()
-      expect(screen.getByText(/128,000 tokens/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByText(/Context Window/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Question generation' })).getByText(/128,000 tokens/i)).toBeInTheDocument()
     })
 
     it('should hide model details for custom models', async () => {
@@ -307,12 +307,12 @@ describe('Settings - ModelSelector Integration', () => {
       await waitForLoaded()
 
       // Toggle to custom mode
-      const toggleButton = screen.getByRole('button', { name: /Use Custom/i })
+      const toggleButton = within(screen.getByRole('region', { name: 'Question generation' })).getByRole('button', { name: /Use Custom/i })
       fireEvent.click(toggleButton)
 
       // Model details should not be visible
       await waitFor(() => {
-        expect(screen.queryByText(/Context Window/i)).not.toBeInTheDocument()
+        expect(within(screen.getByRole('region', { name: 'Question generation' })).queryByText(/Context Window/i)).not.toBeInTheDocument()
       })
     })
   })

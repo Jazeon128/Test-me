@@ -16,7 +16,9 @@ _cached_at = 0.0
 def price(value, multiplier=1):
     try:
         number = Decimal(str(value)) * multiplier
-        if not number.is_finite():
+        # Routers such as openrouter/auto report -1: the price depends on the
+        # model they pick, so it is unknown, not negative.
+        if not number.is_finite() or number < 0:
             return None
         text = format(number, "f")
         return text.rstrip("0").rstrip(".") if "." in text else text
@@ -41,6 +43,12 @@ def model_info(model):
     }
 
 
+def writes_text(model):
+    """Question generation needs text out. Music and image models are left out."""
+    outputs = (model.get("architecture") or {}).get("output_modalities")
+    return not outputs or "text" in outputs
+
+
 def get_models(refresh=False):
     global _cache, _cached_at
     if not refresh and _cache is not None and time.monotonic() - _cached_at < CACHE_SECONDS:
@@ -48,7 +56,7 @@ def get_models(refresh=False):
     try:
         response = requests.get(f"{BASE_URL}/models", timeout=20)
         response.raise_for_status()
-        models = [model_info(model) for model in response.json()["data"]]
+        models = [model_info(model) for model in response.json()["data"] if writes_text(model)]
     except (requests.RequestException, ValueError, KeyError, TypeError):
         if _cache is not None:
             return {**_cache, "stale": True}

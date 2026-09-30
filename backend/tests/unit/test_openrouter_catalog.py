@@ -94,3 +94,20 @@ def test_key_proxy_failure_redacts_upstream_error(client, monkeypatch):
     result = client.get("/api/settings/openrouter/key")
     assert result.status_code == 502
     assert key not in result.text
+
+
+def test_router_prices_are_unknown_and_non_text_models_are_dropped(client, monkeypatch):
+    models = [
+        {"id": "openrouter/auto", "pricing": {"prompt": "-1", "completion": "-1"},
+         "architecture": {"output_modalities": ["text"]}},
+        {"id": "google/lyria-3-pro-preview", "pricing": {"prompt": "0", "completion": "0"},
+         "architecture": {"output_modalities": ["audio"]}},
+        {"id": "plain", "pricing": {"prompt": "0.000001", "completion": "0.000002"}},
+    ]
+    monkeypatch.setattr(catalog.requests, "get", Mock(return_value=response(models)))
+    listed = {model["id"]: model for model in client.get("/api/settings/openrouter/models").json()["models"]}
+    assert set(listed) == {"openrouter/auto", "plain"}
+    assert listed["openrouter/auto"]["prompt_per_million"] is None
+    assert listed["openrouter/auto"]["completion_per_million"] is None
+    assert listed["openrouter/auto"]["free"] is False
+    assert listed["plain"]["prompt_per_million"] == "1"

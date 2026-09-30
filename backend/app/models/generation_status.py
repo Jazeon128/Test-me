@@ -11,15 +11,15 @@ class GenerationStatus(Base):
     id = Column(Integer, primary_key=True, index=True)
     job_id = Column(String(100), unique=True, index=True, nullable=False)
     deck_id = Column(Integer, nullable=True)
-    # pending, awaiting_confirmation, processing, completed, failed, cancelled
+    # pending, awaiting_confirmation, needs_choice, processing, completed, failed, cancelled
     status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100
     current_step = Column(String(200), default="")
     logs = Column(JSON, default=list)  # List of log messages with timestamps
     error_message = Column(Text, nullable=True)
 
-    # What to generate once the user confirms a source that failed pre-flight.
-    # Set only while status is awaiting_confirmation.
+    # For awaiting_confirmation: the stored upload request to generate.
+    # For needs_choice: the routing_log_id holding this canvas job's choices.
     pending_request = Column(JSON, nullable=True)
 
     # Metadata

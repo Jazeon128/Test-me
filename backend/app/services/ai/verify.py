@@ -19,7 +19,7 @@ four lets a single serious problem sink into the middle of a mean.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from ...utils.logging import get_logger
 from .. import jev
@@ -101,15 +101,23 @@ class QuestionVerdict:
 def build_state(section_text: str, question: Dict) -> Dict:
     """Named fields, so each check can point at the part it judges."""
     options = question.get("options") or []
+    correct_answer = question.get("correct_answer")
     correct = next(
-        (option.get("text") for option in options if option.get("is_correct")),
+        (
+            option.get("text")
+            for option in options
+            if option.get("is_correct")
+            or (correct_answer is not None and option.get("option") == correct_answer)
+        ),
         None,
     )
 
     return {
         "section_text": jev.trim(section_text, MAX_SECTION_CHARS),
         "question": {
-            "text": question.get("question_text") or question.get("text") or "",
+            "text": (
+                question.get("question_text") or question.get("question") or question.get("text") or ""
+            ),
             "options": [option.get("text", "") for option in options],
             "correct_option": correct or "",
             "explanation": question.get("explanation") or "",

@@ -43,7 +43,7 @@ export default function Canvas() {
   const { canvasId } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const documentId = searchParams.get('document')
+  const sourceDocumentId = searchParams.get('document')
 
   const [request, setRequest] = useState('')
   const [phase, setPhase] = useState(canvasId ? 'loading' : 'idle')
@@ -51,6 +51,7 @@ export default function Canvas() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState(null)
   const [canvas, setCanvas] = useState(null)
+  const documentId = canvasId ? canvas?.document_id : sourceDocumentId
   const [picker, setPicker] = useState(null)
   const [selected, setSelected] = useState(null)
   const [source, setSource] = useState(null)
@@ -426,4 +427,3 @@ function TemplateBadge({ canvas }) {
 TemplateBadge.propTypes = {
   canvas: PropTypes.object.isRequired,
 }
-

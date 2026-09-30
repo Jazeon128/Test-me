@@ -92,11 +92,12 @@ async def list_templates():
     ]
 
 
-def _ask_for_a_choice(db, status, message: str) -> None:
+def _ask_for_a_choice(db, status, message: str, routing_log_id: int) -> None:
     """Hand the decision back to the person."""
     status.status = "needs_choice"
     status.current_step = "Pick how this should be drawn"
     status.error_message = None
+    status.pending_request = {"routing_log_id": routing_log_id}
     status.add_log(message)
     db.commit()
 
@@ -122,16 +123,17 @@ def _decide_template(db, request, document, sections, status, step):
         )
     except viz_router.RoutingUnavailable as exc:
         logger.info("canvas_routing_unavailable", reason=str(exc))
-        _log_routing(db, request, None, None, needs_choice=True)
-        _ask_for_a_choice(db, status, f"Routing unavailable: {exc}")
+        routing_log_id = _log_routing(db, request, None, None, needs_choice=True)
+        _ask_for_a_choice(db, status, f"Routing unavailable: {exc}", routing_log_id)
         return None
 
     if not routing.is_confident:
-        _log_routing(db, request, routing, None, needs_choice=True)
+        routing_log_id = _log_routing(db, request, routing, None, needs_choice=True)
         _ask_for_a_choice(
             db,
             status,
             f"Not confident enough to choose ({routing.confidence:.0%}); asking instead",
+            routing_log_id,
         )
         return None
 
@@ -233,7 +235,7 @@ def _log_routing(
     routing: Optional[viz_router.Routing],
     canvas_id: Optional[int],
     needs_choice: bool,
-) -> Optional[int]:
+) -> int:
     """Record one routing decision. Returns the row id so a canvas can be linked."""
     row = CanvasRoutingLog(
         canvas_id=canvas_id,
@@ -282,7 +284,13 @@ async def generate_canvas(
 @router.get("/candidates/{job_id}")
 async def routing_candidates(job_id: str, db: Session = Depends(get_db)):
     """The templates to offer when routing was not confident enough."""
-    log = db.query(CanvasRoutingLog).order_by(CanvasRoutingLog.created_at.desc()).first()
+    status = db.query(GenerationStatus).filter(GenerationStatus.job_id == job_id).first()
+    if not status:
+        raise HTTPException(status_code=404, detail="Generation job not found")
+    if status.status != "needs_choice":
+        raise HTTPException(status_code=409, detail="This job is not waiting for a canvas choice")
+    routing_log_id = (status.pending_request or {}).get("routing_log_id")
+    log = db.query(CanvasRoutingLog).filter(CanvasRoutingLog.id == routing_log_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="No routing decision found")
 

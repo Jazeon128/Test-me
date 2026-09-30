@@ -39,6 +39,7 @@ def complete(
     if provider == "anthropic":
         response = client.messages.create(
             model=model,
+            timeout=timeout,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -52,6 +53,7 @@ def complete(
     if provider == "openai":
         response = client.chat.completions.create(
             model=model,
+            timeout=timeout,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens,

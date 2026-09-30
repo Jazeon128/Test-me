@@ -14,6 +14,10 @@ class GenerationStatus(Base):
     id = Column(Integer, primary_key=True, index=True)
     job_id = Column(String(100), unique=True, index=True, nullable=False)
     deck_id = Column(Integer, nullable=True)
+    notebook_id = Column(Integer, nullable=True, index=True)
+    source_ids = Column(JSON, nullable=True)
+    kind = Column(String(20), nullable=True)
+    result_id = Column(Integer, nullable=True)
     # pending, awaiting_confirmation, needs_choice, processing, completed, failed, cancelled
     status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100
@@ -68,6 +72,10 @@ class GenerationStatus(Base):
         return {
             "job_id": self.job_id,
             "deck_id": self.deck_id,
+            "notebook_id": self.notebook_id,
+            "source_ids": self.source_ids,
+            "kind": self.kind,
+            "result_id": self.result_id,
             "status": self.status,
             "progress": self.progress,
             "current_step": self.current_step,

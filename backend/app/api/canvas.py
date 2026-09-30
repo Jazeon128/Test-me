@@ -204,7 +204,7 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         status.status = "completed"
         status.progress = 100
         status.current_step = "Done"
-        status.deck_id = canvas.id  # reused as the result id for this job type
+        status.result_id = canvas.id
         status.add_log(f"Drew {template.title.lower()} #{canvas.id}")
         db.commit()
 
@@ -263,7 +263,9 @@ async def generate_canvas(
         raise HTTPException(status_code=400, detail=f"Unknown template: {request.template}")
 
     job_id = f"canvas-{uuid.uuid4().hex[:12]}"
-    status = GenerationStatus(job_id=job_id, status="pending", progress=0)
+    status = GenerationStatus(job_id=job_id, status="pending", progress=0,
+                              kind="canvas", notebook_id=document.notebook_id,
+                              source_ids=[document.id])
     status.add_log("Queued")
     db.add(status)
     db.commit()

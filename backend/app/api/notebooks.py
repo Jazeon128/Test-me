@@ -1,9 +1,11 @@
 """Notebooks: the topic a set of sources and everything made from them belongs to."""
 
 from typing import Dict, List, Optional
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,11 +16,64 @@ from ..models.canvas import Canvas
 from ..models.deck import Deck
 from ..models.document import Document
 from ..models.notebook import Notebook
+from ..models.generation_status import GenerationStatus
+from ..services.generation import GenerateRequest, selected_sources, question_split
+from ..services.workspace import notebook_workspace
+from .documents import process_document
 from ..services.ingest import save_source, parse_source_task, passage_counts, source_fields
 from ..services.parsers import YouTubeParser
 from ..utils.file_validation import validate_upload_file
 
 router = APIRouter()
+
+
+@router.post("/{notebook_id}/generate", status_code=202)
+async def generate_artifact(
+    notebook_id: int, request: GenerateRequest, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    if not db.get(Notebook, notebook_id):
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    try:
+        sources = selected_sources(db, notebook_id, request)
+    except HTTPException as error:
+        if isinstance(error.detail, dict):
+            return JSONResponse(status_code=error.status_code, content=error.detail)
+        raise
+    counts = passage_counts(db, [source.id for source in sources])
+    split = question_split({source.id: counts.get(source.id, 0) for source in sources},
+                           request.num_questions)
+    name = display_name(sources[0])
+    if len(sources) > 1:
+        name += f" + {len(sources) - 1} more"
+    deck = Deck(notebook_id=notebook_id, kind=request.kind,
+                source_ids=[source.id for source in sources], name=request.deck_name or name)
+    db.add(deck)
+    db.flush()
+    job = GenerationStatus(job_id=str(uuid.uuid4()), status="pending", notebook_id=notebook_id,
+                           source_ids=deck.source_ids, kind=request.kind, deck_id=deck.id,
+                           result_id=deck.id, total_documents=sum(s["num_questions"] > 0 for s in split),
+                           total_questions_requested=request.num_questions)
+    job.add_log(f"Question split: {split}")
+    db.add(job)
+    db.commit()
+    invalidate_stats_cache()
+    by_id = {source.id: source for source in sources}
+    for share in split:
+        if share["num_questions"]:
+            source = by_id[share["source_id"]]
+            background_tasks.add_task(process_document, source.id, source.file_path, source.file_type,
+                                      share["num_questions"], request.difficulty, deck.id,
+                                      request.custom_prompt, job.job_id)
+    return dict(job_id=job.job_id, deck_id=deck.id, split=split)
+
+
+@router.get("/{notebook_id}/workspace")
+async def get_workspace(notebook_id: int, db: Session = Depends(get_db)):
+    notebook = db.get(Notebook, notebook_id)
+    if notebook is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    return notebook_workspace(db, notebook)
 
 
 @router.post("/{notebook_id}/sources", status_code=202)

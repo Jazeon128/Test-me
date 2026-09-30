@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { vi, it, expect, beforeEach } from 'vitest'
 import Canvas from '../Canvas'
-import { canvasAPI } from '../../services/api'
+import { canvasAPI, statusAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
   canvasAPI: { get: vi.fn(), generate: vi.fn() },
@@ -42,4 +42,19 @@ it('draws another answer from the source of a reopened canvas', async () => {
   fireEvent.change(screen.getByLabelText('What do you want to see?'), { target: { value: 'Show the next step' } })
   fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
   await waitFor(() => expect(canvasAPI.generate).toHaveBeenCalledWith(42, 'Show the next step', null))
+})
+
+it.each([
+  [{ result_id: 19, deck_id: 7 }, 19],
+  [{ deck_id: 7 }, 7],
+])('loads a completed canvas from its result id with legacy fallback', async (ids, expected) => {
+  statusAPI.get.mockResolvedValueOnce({ data: { status: 'completed', ...ids } })
+  render(<MemoryRouter initialEntries={['/canvas/7']}>
+    <Routes><Route path="/canvas/:canvasId" element={<Canvas />} /></Routes>
+  </MemoryRouter>)
+  await screen.findByText('Existing canvas')
+  fireEvent.change(screen.getByLabelText('What do you want to see?'), { target: { value: 'Draw next' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
+  await waitFor(() => expect(statusAPI.get).toHaveBeenCalledWith('fixture-job'))
+  await waitFor(() => expect(canvasAPI.get).toHaveBeenLastCalledWith(expected))
 })

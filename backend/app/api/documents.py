@@ -30,6 +30,7 @@ from ..config import settings
 from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
 from ..services.source_names import display_name
+from ..services.notebooks import resolve_notebook_id
 from ..services.ingest import store_passages, passage_counts, source_fields
 from .questions import _typesafe_key
 from ..exceptions import (
@@ -84,6 +85,7 @@ async def upload_document(
         ".youtube": DocumentType.YOUTUBE,
     }
 
+    notebook_id = resolve_notebook_id(db, notebook_id)
     uploaded_documents = []
 
     # Get or create deck
@@ -184,10 +186,17 @@ async def upload_document(
         )
 
     # Create generation status record
+    source_ids = [document["id"] for document in uploaded_documents]
+    if deck_created:
+        deck.source_ids = source_ids
     job_id = str(uuid.uuid4())
     gen_status = GenerationStatus(
         job_id=job_id,
         deck_id=deck.id,
+        result_id=deck.id,
+        notebook_id=notebook_id,
+        source_ids=source_ids,
+        kind="regenerate" if regenerate and not deck_created else "quiz",
         status="pending",
         total_documents=len(uploaded_documents),
         total_questions_requested=num_questions * len(uploaded_documents),
@@ -808,6 +817,7 @@ def regenerate_deck_questions(
         total_requested = num_questions_per_doc * len(source_documents)
 
         if gen_status:
+            gen_status.source_ids = document_ids
             gen_status.status = "processing"
             gen_status.started_at = datetime.now()
             gen_status.progress = 10
@@ -830,7 +840,20 @@ def regenerate_deck_questions(
             try:
                 parsed_doc = _parser_for(document.file_type).parse(document.file_path)
             except Exception as error:
+                document.status = "failed"
+                document.error_message = str(error) or type(error).__name__
+                db.commit()
                 raise ValueError(f"{document.original_filename}: {error}") from error
+
+            store_passages(db, document, parsed_doc)
+            document.content = parsed_doc.full_text
+            if document.file_type != DocumentType.YOUTUBE:
+                document.title = parsed_doc.title
+            document.num_pages = parsed_doc.num_pages
+            document.status = "ready"
+            document.error_message = None
+            document.parsed_at = datetime.now()
+            db.commit()
 
             def step_callback(step: str, done: int, total: int):
                 if gen_status:

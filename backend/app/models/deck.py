@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON
 from sqlalchemy.orm import backref, relationship
 from .base import Base, TimestampMixin
 
@@ -10,6 +10,8 @@ class Deck(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=True, index=True)
+    kind = Column(String(20), nullable=False, default="quiz", server_default="quiz")
+    source_ids = Column(JSON, nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
 

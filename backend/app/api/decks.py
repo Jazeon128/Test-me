@@ -1,4 +1,5 @@
 from ..services.source_names import display_name
+from ..services.notebooks import resolve_notebook_id
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
@@ -18,6 +19,7 @@ router = APIRouter()
 class CreateDeckRequest(BaseModel):
     name: str
     description: Optional[str] = ""
+    notebook_id: Optional[int] = None
 
 
 class UpdateDeckRequest(BaseModel):
@@ -28,7 +30,8 @@ class UpdateDeckRequest(BaseModel):
 @router.post("/")
 async def create_deck(request: CreateDeckRequest, db: Session = Depends(get_db)):
     """Create a new empty deck"""
-    deck = Test(name=request.name, description=request.description or "")
+    deck = Test(name=request.name, description=request.description or "",
+                notebook_id=resolve_notebook_id(db, request.notebook_id))
     db.add(deck)
     db.commit()
     invalidate_stats_cache()
@@ -165,7 +168,8 @@ async def delete_deck(deck_id: int, db: Session = Depends(get_db)):
 
 @router.post("/import/csv")
 async def import_csv(
-    file: UploadFile = File(...), deck_name: Optional[str] = None, db: Session = Depends(get_db)
+    file: UploadFile = File(...), deck_name: Optional[str] = None,
+    notebook_id: Optional[int] = None, db: Session = Depends(get_db)
 ):
     """Import a deck from a CSV file (Front, Back format)"""
     import csv
@@ -182,7 +186,8 @@ async def import_csv(
 
     # Create Deck
     name = deck_name or file.filename.replace(".csv", "").replace("_", " ").title()
-    deck = Test(name=name, description="Imported from CSV")
+    deck = Test(name=name, description="Imported from CSV",
+                notebook_id=resolve_notebook_id(db, notebook_id))
     db.add(deck)
     db.flush()  # Get ID
 

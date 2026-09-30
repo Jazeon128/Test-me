@@ -134,7 +134,7 @@ export default function Canvas() {
         setProgress(data.progress || 0)
 
         if (data.status === 'completed') {
-          const response = await canvasAPI.get(data.deck_id)
+          const response = await canvasAPI.get(data.result_id ?? data.deck_id)
           await draw(response.data)
           return
         }

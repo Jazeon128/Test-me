@@ -2,7 +2,8 @@
 
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -13,8 +14,44 @@ from ..models.canvas import Canvas
 from ..models.deck import Deck
 from ..models.document import Document
 from ..models.notebook import Notebook
+from ..services.ingest import save_source, parse_source_task, passage_counts, source_fields
+from ..services.parsers import YouTubeParser
+from ..utils.file_validation import validate_upload_file
 
 router = APIRouter()
+
+
+@router.post("/{notebook_id}/sources", status_code=202)
+async def add_sources(
+    notebook_id: int,
+    background_tasks: BackgroundTasks,
+    files: Optional[List[UploadFile]] = File(None),
+    youtube_url: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not db.get(Notebook, notebook_id):
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if not files and not youtube_url:
+        raise HTTPException(status_code=422, detail="Provide files or a YouTube URL")
+    if youtube_url and not YouTubeParser.extract_video_id(youtube_url):
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+    inputs = []
+    for file in files or []:
+        inputs.append((file.filename, await validate_upload_file(file)))
+    if youtube_url:
+        inputs.append(("video.youtube", youtube_url.encode("utf-8")))
+    sources = []
+    for filename, content in inputs:
+        document, created = await run_in_threadpool(
+            save_source, db, notebook_id=notebook_id, filename=filename, content=content,
+        )
+        sources.append(dict(id=document.id, display_name=display_name(document),
+                            file_type=document.file_type.value, status=document.status,
+                            duplicate=not created))
+        # A duplicate that failed before is parsed again, so re-adding retries it.
+        if created or document.status == "failed":
+            background_tasks.add_task(parse_source_task, document.id)
+    return {"sources": sources}
 
 
 class NotebookRequest(BaseModel):
@@ -89,6 +126,7 @@ async def get_notebook(notebook_id: int, db: Session = Depends(get_db)):
         .all()
     )
     document_ids = [d.id for d in documents]
+    counts = passage_counts(db, document_ids)
 
     canvases = (
         db.query(Canvas)
@@ -115,6 +153,7 @@ async def get_notebook(notebook_id: int, db: Session = Depends(get_db)):
                 "display_name": display_name(d),
                 "file_type": d.file_type.value if d.file_type else None,
                 "num_pages": d.num_pages,
+                **source_fields(d, counts),
                 "created_at": d.created_at.isoformat() if d.created_at else None,
             }
             for d in documents

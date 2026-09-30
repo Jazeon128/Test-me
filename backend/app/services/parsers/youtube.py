@@ -1,7 +1,9 @@
 import os
 import re
 import requests
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import (
+    NoTranscriptFound, TranscriptsDisabled, VideoUnavailable, YouTubeTranscriptApi,
+)
 from typing import Optional
 from .base_parser import BaseParser, ParsedDocument, ParsedSection
 
@@ -51,6 +53,10 @@ class YouTubeParser(BaseParser):
             # call raised AttributeError and no YouTube source ever parsed.
             fetched = YouTubeTranscriptApi().fetch(video_id)
             return " ".join(snippet.text for snippet in fetched)
+        except (TranscriptsDisabled, NoTranscriptFound):
+            raise Exception("This video has no captions, so there is no transcript to study from.")
+        except VideoUnavailable:
+            raise Exception("This video is unavailable or private.")
         except Exception as e:
             raise Exception(f"Failed to fetch transcript: {str(e)}")
 

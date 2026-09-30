@@ -30,6 +30,7 @@ from ..config import settings
 from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
 from ..services.source_names import display_name
+from ..services.ingest import store_passages, passage_counts, source_fields
 from .questions import _typesafe_key
 from ..exceptions import (
     FileUploadError,
@@ -523,7 +524,22 @@ def process_document(
         }
 
         parser = parser_map[file_type]
-        parsed_doc = parser.parse(file_path)
+        try:
+            parsed_doc = parser.parse(file_path)
+        except Exception as error:
+            document = db.get(Document, document_id)
+            if document:
+                document.status = "failed"
+                document.error_message = str(error) or type(error).__name__
+                db.commit()
+            raise
+
+        document = db.get(Document, document_id)
+        if document:
+            store_passages(db, document, parsed_doc)
+            document.status = "ready"
+            document.error_message = None
+            document.parsed_at = datetime.now()
 
         logger.info(
             "document_parsed",
@@ -676,6 +692,7 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
 
     return {
         "id": document.id,
+        **source_fields(document, passage_counts(db, [document.id])),
         "filename": document.original_filename,
         "file_type": document.file_type.value,
         "file_size": document.file_size,
@@ -691,10 +708,12 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
 async def list_documents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all documents"""
     documents = db.query(Document).offset(skip).limit(limit).all()
+    counts = passage_counts(db, [doc.id for doc in documents])
 
     return [
         {
             "id": doc.id,
+            **source_fields(doc, counts),
             "filename": doc.original_filename,
             "file_type": doc.file_type.value,
             "title": doc.title,

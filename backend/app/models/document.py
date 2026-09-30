@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, JSON, DateTime
 from sqlalchemy.orm import relationship
 
 from .base import Base, TimestampMixin
@@ -34,6 +34,15 @@ class Document(Base, TimestampMixin):
     # Metadata
     title = Column(String(512), nullable=True)
     num_pages = Column(Integer, nullable=True)  # For PDFs and DOCX
+    status = Column(String(20), nullable=False, default="processing", server_default="ready")
+    error_message = Column(Text, nullable=True)
+    preflight = Column(JSON, nullable=True)
+    parsed_at = Column(DateTime, nullable=True)
+
+    passages = relationship(
+        "DocumentPassage", back_populates="document", order_by="DocumentPassage.ordinal",
+        cascade="all, delete-orphan",
+    )
 
     notebook = relationship("Notebook", back_populates="documents")
 

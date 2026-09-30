@@ -8,7 +8,7 @@ from typing import Optional
 
 from ..db import get_db
 from ..models.settings import Settings
-from ..services import jev
+from ..services import jev, jev_usage
 from ..services.typesafe_key import SETTING_KEY, typesafe_key, typesafe_key_source
 
 router = APIRouter()
@@ -216,6 +216,13 @@ def set_setting(db: Session, key: str, value: str):
 
 class TypeSafeKeyRequest(BaseModel):
     api_key: str
+
+
+@router.get("/typesafe/usage")
+def get_typesafe_usage(days: int = 30, db: Session = Depends(get_db)):
+    if not 1 <= days <= 365:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+    return {"days": days, **jev_usage.summary(db, days)}
 
 
 @router.get("/typesafe")

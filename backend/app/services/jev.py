@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 import requests
 
 from ..utils.logging import get_logger
+from .jev_usage import record
 
 logger = get_logger(__name__)
 
@@ -97,15 +98,17 @@ def ask(
 ) -> Answers:
     """Put one set of questions to Jev over one piece of state.
 
-    `label` only names the call in the logs, so a slow or failing feature can be
+    `label` names the call in the logs and usage records, so a failing feature can be
     told apart from the others.
     """
+    started = time.time()
+    input_tokens = 0
     if not api_key:
+        record(label, len(questions), 0, 0, False, "No TypeSafe API key configured")
         raise JevUnavailable("No TypeSafe API key configured")
 
     payload = {"state": state, "model": MODEL, "questions": questions}
 
-    started = time.time()
     try:
         response = requests.post(
             API_URL,
@@ -115,6 +118,8 @@ def ask(
         )
         response.raise_for_status()
     except requests.RequestException as exc:
+        record(label, len(questions), input_tokens, int((time.time() - started) * 1000),
+               False, str(exc).replace(api_key, "[redacted]")[:200])
         logger.warning("jev_unavailable", label=label, error=str(exc))
         raise JevUnavailable(str(exc)) from exc
 
@@ -128,6 +133,8 @@ def ask(
         answers = Answers(raw=raw, duration_ms=duration_ms, input_tokens=input_tokens)
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
         error = f"Malformed Jev response: {exc}"
+        record(label, len(questions), input_tokens, int((time.time() - started) * 1000),
+               False, error.replace(api_key, "[redacted]")[:200])
         logger.warning("jev_unavailable", label=label, error=error)
         raise JevUnavailable(error) from exc
 
@@ -139,6 +146,7 @@ def ask(
         input_tokens=input_tokens,
     )
 
+    record(label, len(questions), input_tokens, duration_ms, True)
     return answers
 
 

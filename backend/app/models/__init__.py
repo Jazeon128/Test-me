@@ -10,6 +10,7 @@ from .canvas import Canvas, CanvasRoutingLog
 from .deck import Deck, DeckQuestion
 from .notebook import Notebook
 from .activity import Award, StudyDay
+from .jev_call import JevCall
 
 __all__ = [
     "Base",
@@ -29,4 +30,5 @@ __all__ = [
     "Notebook",
     "Award",
     "StudyDay",
+    "JevCall",
 ]

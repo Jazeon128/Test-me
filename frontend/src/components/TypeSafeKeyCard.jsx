@@ -11,6 +11,22 @@ export default function TypeSafeKeyCard() {
   const [apiKey, setApiKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
+  const [usage, setUsage] = useState(null)
+  const [usageReload, setUsageReload] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      try {
+        const { data } = await axios.get(`${endpoint}/usage?days=30`)
+        if (active) setUsage(Array.isArray(data?.features) && data?.totals ? data : null)
+      } catch {
+        if (active) setUsage(null)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [usageReload])
 
   useEffect(() => {
     let active = true
@@ -34,6 +50,7 @@ export default function TypeSafeKeyCard() {
         response = await axios.delete(endpoint)
       } else {
         response = await axios.post(`${endpoint}/test`)
+        setUsageReload((value) => value + 1)
       }
       if (action !== 'test') {
         setConfig(response.data)
@@ -97,6 +114,43 @@ export default function TypeSafeKeyCard() {
             >Remove TypeSafe key</button>
           )}
         </div>
+        {usage && (
+          <section className="mt-6 text-sm text-gray-700 dark:text-gray-300">
+            <h3 className="font-semibold mb-3">Usage, last 30 days</h3>
+            {usage.features.length === 0 ? <p>No Jev calls yet.</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="text-left py-2 pr-4">Feature</th>
+                      {['Calls', 'Failed', 'Input tokens'].map((heading) => (
+                        <th key={heading} scope="col" className="text-right tabular-nums py-2 px-2 whitespace-nowrap">{heading}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usage.features.map((feature) => (
+                      <tr key={feature.label}>
+                        <th scope="row" className="text-left font-normal py-2 pr-4">{feature.label}</th>
+                        {[feature.calls, feature.failures, feature.input_tokens].map((number, index) => (
+                          <td key={index} className="text-right tabular-nums py-2 px-2">{number.toLocaleString()}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t border-gray-200 dark:border-gray-700 font-semibold">
+                    <tr>
+                      <th scope="row" className="text-left py-2 pr-4">Total</th>
+                      {[usage.totals.calls, usage.totals.failures, usage.totals.input_tokens].map((number, index) => (
+                        <td key={index} className="text-right tabular-nums py-2 px-2">{number.toLocaleString()}</td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
         {message && (
           <div
             role={message.type === 'success' ? 'status' : 'alert'}

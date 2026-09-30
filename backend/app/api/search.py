@@ -6,20 +6,11 @@ from pydantic import BaseModel
 
 from app.db.database import get_db
 from app.models.question import Question
-from app.models.settings import Settings
 from app.models.test import Test as Deck
-from app.config import settings as config_settings
 from app.services.ai import rerank as rerank_service
+from ..services.typesafe_key import typesafe_key as _typesafe_key
 
 router = APIRouter()
-
-
-def _typesafe_key(db: Session) -> str:
-    """The TypeSafe key, from settings first and the environment second."""
-    row = db.query(Settings).filter(Settings.key == "typesafe_api_key").first()
-    if row and row.value:
-        return row.value
-    return getattr(config_settings, "TYPESAFE_API_KEY", "") or ""
 
 
 class SearchResult(BaseModel):

@@ -3,11 +3,8 @@ import { Settings as SettingsIcon, Key, CheckCircle, AlertCircle, Server, Dollar
 import axios from 'axios'
 import { useTheme } from '../context/ThemeContext'
 import ModelSelector from '../components/ModelSelector'
-
-// The backend's error handler nests the reason under error.message. Plain
-// FastAPI responses use detail. Settings calls axios directly, so read both.
-const serverMessage = (error) =>
-  error.response?.data?.error?.message || error.response?.data?.detail
+import TypeSafeKeyCard from '../components/TypeSafeKeyCard'
+import { serverMessage } from '../utils/serverMessage'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('api')
@@ -386,6 +383,8 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          <TypeSafeKeyCard />
 
           {/* Message Display - Requirement 3.4: Confirmation message */}
           {message && (

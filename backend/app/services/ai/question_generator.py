@@ -10,6 +10,7 @@ from google.genai import types as genai_types
 from sqlalchemy.orm import Session
 from ...config import settings
 from ...config import settings as config_settings
+from ..typesafe_key import typesafe_key
 from ..parsers.base_parser import ParsedDocument, ParsedSection
 from . import sourcing, verify
 from ...utils.logging import get_logger
@@ -398,23 +399,15 @@ class QuestionGenerator:
         return passed
 
     def _typesafe_key(self) -> str:
-        """The TypeSafe key, from settings first and the environment second.
+        """Use the shared settings lookup, or the environment without a session.
 
-        Mirrors how the canvas router resolves it, so one configured key serves
-        every System One feature.
-
-        Only a real non-empty string counts. The lookup goes through whatever
-        session it was handed, and anything else it returns means no key rather
-        than a key-shaped object.
+        Only real non-empty strings count, including for mock sessions.
         """
         db = getattr(self, "db", None)
         if db is not None:
-            stored = get_setting(db, "typesafe_api_key")
-            if isinstance(stored, str) and stored.strip():
-                return stored
-
-        configured = getattr(config_settings, "TYPESAFE_API_KEY", "")
-        return configured if isinstance(configured, str) else ""
+            return typesafe_key(db)
+        configured = config_settings.TYPESAFE_API_KEY
+        return configured.strip() if isinstance(configured, str) else ""
 
     def _generate_batch_questions(
         self,

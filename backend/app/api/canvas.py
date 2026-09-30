@@ -12,15 +12,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..config import settings as config_settings
 from ..db import SessionLocal, get_db
 from ..models.canvas import Canvas, CanvasRoutingLog
 from ..models.document import Document
 from ..models.generation_status import GenerationStatus
-from ..models.settings import Settings
 from ..services.ai.question_generator import QuestionGenerator
 from ..services import activity
 from ..services.parsers import get_parser_for_type
+from ..services.typesafe_key import typesafe_key as _typesafe_key
 from ..services.viz import generator as viz_generator
 from ..services.viz import router as viz_router
 from ..services.viz import templates as viz_templates
@@ -42,14 +41,6 @@ class GenerateCanvasRequest(BaseModel):
 class UpdateCanvasRequest(BaseModel):
     layout: Optional[Dict] = None
     title: Optional[str] = None
-
-
-def _typesafe_key(db: Session) -> str:
-    """The settings table first, then the environment, like the AI key."""
-    row = db.query(Settings).filter(Settings.key == "typesafe_api_key").first()
-    if row and row.value:
-        return row.value
-    return config_settings.TYPESAFE_API_KEY
 
 
 def _sections_for(document: Document) -> List[Dict]:

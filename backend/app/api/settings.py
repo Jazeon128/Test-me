@@ -8,6 +8,8 @@ from typing import Optional
 
 from ..db import get_db
 from ..models.settings import Settings
+from ..services import jev
+from ..services.typesafe_key import SETTING_KEY, typesafe_key, typesafe_key_source
 
 router = APIRouter()
 
@@ -210,6 +212,84 @@ def set_setting(db: Session, key: str, value: str):
         setting = Settings(key=key, value=value)
         db.add(setting)
     db.commit()
+
+
+class TypeSafeKeyRequest(BaseModel):
+    api_key: str
+
+
+@router.get("/typesafe")
+async def get_typesafe_config(db: Session = Depends(get_db)):
+    api_key = typesafe_key(db)
+    return {
+        "configured": bool(api_key),
+        "source": typesafe_key_source(db),
+        "preview": "…" + api_key[-4:] if api_key else None,
+    }
+
+
+@router.put("/typesafe")
+async def save_typesafe_config(config: TypeSafeKeyRequest, db: Session = Depends(get_db)):
+    api_key = config.api_key.strip()
+    if len(api_key) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid TypeSafe API key. Key must be at least 10 characters",
+        )
+    set_setting(db, SETTING_KEY, api_key)
+    return {**await get_typesafe_config(db), "message": "TypeSafe key saved"}
+
+
+@router.delete("/typesafe")
+async def delete_typesafe_config(db: Session = Depends(get_db)):
+    db.query(Settings).filter(Settings.key == SETTING_KEY).delete()
+    db.commit()
+    return {**await get_typesafe_config(db), "message": "TypeSafe key removed"}
+
+
+@router.post("/typesafe/test")
+async def test_typesafe_config(db: Session = Depends(get_db)):
+    api_key = typesafe_key(db)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No TypeSafe API key is configured.")
+    started = time.monotonic()
+    try:
+        await run_in_threadpool(
+            jev.ask,
+            state={"text": "The sky is blue."},
+            questions={
+                "connection_check": {
+                    "type": "noul",
+                    "instructions": "Does `text` describe a colour?",
+                    "criteria": {
+                        "true": "The text describes a colour",
+                        "false": "The text does not describe a colour",
+                    },
+                },
+            },
+            api_key=api_key,
+            timeout=20.0,
+            label="settings_test",
+        )
+    except jev.JevUnavailable as error:
+        response = getattr(error.__cause__, "response", None)
+        status = getattr(response, "status_code", None)
+        if status in (401, 403):
+            message = "TypeSafe rejected the API key. Check it was copied in full and is still active."
+        elif status == 429:
+            message = "The key works, but TypeSafe refused the call: rate limit or quota reached."
+        elif status is not None:
+            message = f"TypeSafe returned HTTP {status}."
+        else:
+            reason = str(error).replace(api_key, "[redacted]")[:200]
+            message = f"Could not reach TypeSafe: {reason}"
+        raise HTTPException(status_code=400, detail=message) from error
+    latency_ms = int((time.monotonic() - started) * 1000)
+    return {
+        "success": True,
+        "latency_ms": latency_ms,
+        "message": f"Connected to TypeSafe ({latency_ms} ms).",
+    }
 
 
 @router.get("/ai-config/models")

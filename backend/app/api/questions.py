@@ -3,12 +3,11 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from pydantic import BaseModel
 
-from ..config import settings as config_settings
 from ..db import get_db
 from ..models.question import Question, QuestionOption
-from ..models.settings import Settings as SettingsModel
 from ..models.tag import Tag
 from ..services.ai import curation
+from ..services.typesafe_key import typesafe_key as _typesafe_key
 
 router = APIRouter()
 
@@ -351,14 +350,6 @@ def format_question(question: Question) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _typesafe_key(db: Session) -> str:
-    """The TypeSafe key, from settings first and the environment second."""
-    row = db.query(SettingsModel).filter(SettingsModel.key == "typesafe_api_key").first()
-    if row and row.value:
-        return row.value
-    return getattr(config_settings, "TYPESAFE_API_KEY", "") or ""
-
-
 class GradeAnswerRequest(BaseModel):
     """A written answer to grade against the expected one."""
 
@@ -376,7 +367,7 @@ def require_typesafe_key(db: Session) -> str:
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Grading needs a TypeSafe API key. Configure TYPESAFE_API_KEY on the backend.",
+            detail="Grading needs a TypeSafe API key. Add one in Settings.",
         )
     return api_key
 

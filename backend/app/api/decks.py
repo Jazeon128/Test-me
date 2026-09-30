@@ -7,6 +7,7 @@ import os
 from ..db import get_db
 from ..models.test import Test
 from ..models.flagged_question import FlaggedQuestion
+from ..utils.http_headers import content_disposition
 
 router = APIRouter()
 
@@ -202,7 +203,7 @@ async def import_csv(
         db.add(option)
 
         # Link to Deck
-        test_question = TestQuestion(test_id=deck.id, question_id=question.id, order=count)
+        test_question = TestQuestion(deck_id=deck.id, question_id=question.id, order=count)
         db.add(test_question)
         count += 1
 
@@ -252,7 +253,7 @@ async def export_deck_to_anki(deck_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:
@@ -300,7 +301,7 @@ async def export_deck_to_csv(deck_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:
@@ -348,7 +349,7 @@ async def export_deck_to_anki_csv(deck_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:

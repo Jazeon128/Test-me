@@ -18,6 +18,7 @@ from ..models.question import Question
 from ..services.anki_export import AnkiExporter
 from ..services.csv_export import CSVExporter
 from ..services.anki_all_in_one_export import AnkiAllInOneExporter
+from ..utils.http_headers import content_disposition
 
 router = APIRouter()
 
@@ -170,7 +171,7 @@ async def export_test_to_anki(test_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:
@@ -218,7 +219,7 @@ async def export_test_to_csv(test_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:
@@ -266,7 +267,7 @@ async def export_test_to_anki_csv(test_id: int, db: Session = Depends(get_db)):
         return Response(
             content=content.encode("utf-8-sig"),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={"Content-Disposition": content_disposition(filename)},
         )
 
     except Exception as e:

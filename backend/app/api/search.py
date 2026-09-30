@@ -45,7 +45,7 @@ def search(
                 type="deck",
                 id=deck.id,
                 title=deck.name,
-                subtitle=f"{deck.num_questions} cards"
+                subtitle=f"{len(deck.deck_questions)} cards"
                 + (f" • {deck.description}" if deck.description else ""),
                 url=f"/decks/{deck.id}",
             )

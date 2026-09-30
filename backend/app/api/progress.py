@@ -204,6 +204,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         repetitions=int(progress.repetitions),
         quality=quality,
         time_taken_seconds=request.time_taken_seconds,
+        apply_time_penalty=request.written_answer is None and not request.explain,
     )
 
     # Update spaced repetition data
@@ -435,12 +436,15 @@ async def get_overall_stats(db: Session = Depends(get_db)):
         1 for p in all_progress if SM2Algorithm.get_due_questions_count(p.next_review_date)
     )
 
-    # Get current streak (most recent progress)
-    recent_progress = max(all_progress, key=lambda p: p.last_attempt_date or datetime.min)
-    current_streak = recent_progress.streak if recent_progress else 0
-
-    # Get best streak
-    best_streak = max((p.best_streak for p in all_progress), default=0)
+    # Count runs across questions in the order the attempts happened.
+    attempts = sorted(
+        (attempt for p in all_progress for attempt in (p.attempt_history or [])),
+        key=lambda attempt: datetime.fromisoformat(attempt["date"]),
+    )
+    current_streak = best_streak = 0
+    for attempt in attempts:
+        current_streak = current_streak + 1 if attempt["correct"] else 0
+        best_streak = max(best_streak, current_streak)
 
     result = {
         "total_questions_seen": len(all_progress),

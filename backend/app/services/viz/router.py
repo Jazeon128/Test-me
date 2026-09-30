@@ -197,6 +197,9 @@ def route(
         raise RoutingUnavailable(str(exc)) from exc
 
     chosen = answers.choice("template")
+    if chosen not in templates.criteria():
+        logger.info("routing_unknown_template", choice=chosen)
+        raise RoutingUnavailable(f"Unknown template: {chosen}")
 
     routing = Routing(
         template_id=None if chosen == templates.NO_MATCH else chosen,

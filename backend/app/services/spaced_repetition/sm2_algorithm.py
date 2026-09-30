@@ -100,6 +100,7 @@ class SM2Algorithm:
         quality: ReviewResult,
         time_taken_seconds: Optional[float] = None,
         time_limit_seconds: float = 30.0,
+        apply_time_penalty: bool = True,
     ) -> Tuple[float, int, int, datetime]:
         """
         Calculate the next review parameters based on SM-2 algorithm.
@@ -132,6 +133,7 @@ class SM2Algorithm:
                 exceeds time_limit_seconds, the quality score is reduced by 1.
             time_limit_seconds: Maximum time considered acceptable (default 30s). Used to
                 apply a time penalty if the user takes too long.
+            apply_time_penalty: Whether to reduce quality for slow timed answers.
 
         Returns:
             Tuple of (new_easiness_factor, new_interval, new_repetitions, next_review_date):
@@ -154,7 +156,11 @@ class SM2Algorithm:
         """
         # Adjust quality based on time taken (if provided)
         adjusted_quality = quality.value
-        if time_taken_seconds is not None and time_taken_seconds > time_limit_seconds:
+        if (
+            apply_time_penalty
+            and time_taken_seconds is not None
+            and time_taken_seconds > time_limit_seconds
+        ):
             # If took too long, reduce quality by 1 (but not below 0)
             adjusted_quality = max(0, adjusted_quality - 1)
 

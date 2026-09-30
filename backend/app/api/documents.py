@@ -759,7 +759,15 @@ def regenerate_deck_questions(
 
         old_questions = list(deck.questions)
         existing_count = len(old_questions)
-        document_ids = sorted({q.document_id for q in old_questions if q.document_id is not None})
+        held_back_sources = db.query(FlaggedQuestion.document_id).filter(
+            FlaggedQuestion.deck_id == deck_id,
+            FlaggedQuestion.status == "pending",
+            FlaggedQuestion.document_id.isnot(None),
+        ).all()
+        document_ids = sorted(
+            {q.document_id for q in old_questions if q.document_id is not None}
+            | {row.document_id for row in held_back_sources}
+        )
         for document_id in new_document_ids or []:
             if document_id not in document_ids:
                 document_ids.append(document_id)

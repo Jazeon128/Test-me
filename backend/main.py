@@ -1,8 +1,9 @@
 import os
 import sys
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -94,6 +95,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def is_cross_site_write(method, origin, fetch_site, allowed_origins):
+    """Decide whether a browser write comes from an untrusted site."""
+    if method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return False
+    if origin is not None:
+        if any((origin in allowed_origins, origin == "null", origin.startswith("file://"))):
+            return False
+        try:
+            parsed = urlsplit(origin)
+            host = parsed.hostname or ""
+        except ValueError:
+            return True
+        loopback = host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".localhost")
+        return not (parsed.scheme in {"http", "https"} and loopback)
+    return fetch_site == "cross-site"
+
+
+@app.middleware("http")
+async def check_write_origin(request: Request, call_next):
+    if is_cross_site_write(
+        request.method,
+        request.headers.get("origin"),
+        request.headers.get("sec-fetch-site"),
+        config_settings.CORS_ORIGINS,
+    ):
+        return await http_exception_handler(
+            request,
+            StarletteHTTPException(status_code=403, detail="Cross-site requests are not allowed."),
+        )
+    return await call_next(request)
+
 
 # Register exception handlers
 app.add_exception_handler(TestMeException, testme_exception_handler)

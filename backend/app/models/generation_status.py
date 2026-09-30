@@ -63,6 +63,9 @@ class GenerationStatus(Base):
             "progress": self.progress,
             "current_step": self.current_step,
             "logs": self.logs or [],
+            "warnings": [
+                entry["message"] for entry in self.logs or [] if entry.get("level") == "warning"
+            ],
             "error_message": self.error_message,
             "total_documents": self.total_documents,
             "documents_completed": self.documents_completed,

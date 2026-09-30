@@ -14,6 +14,7 @@ from ..typesafe_key import typesafe_key
 from ..parsers.base_parser import ParsedDocument, ParsedSection
 from . import sourcing, verify
 from ...utils.logging import get_logger
+from ...utils.redact import redact_secrets
 from ...utils.metrics import track_question_generation, track_ai_api_call, estimate_cost
 from ...exceptions import AIServiceError
 
@@ -585,22 +586,18 @@ class QuestionGenerator:
                 provider=self.provider, model=self.model, duration=api_elapsed, success=False
             )
 
+            secrets = [getattr(self, "_api_key", "")]
+            message = redact_secrets(str(e), secrets)
             logger.error(
                 "question_generation_error",
                 error_type=type(e).__name__,
-                error_message=str(e),
+                error_message=message,
                 provider=self.provider,
                 model=self.model,
                 section_page=section.page,
                 section_paragraph=section.paragraph,
-                stack_trace=traceback.format_exc(),
-                exc_info=True,
+                stack_trace=redact_secrets(traceback.format_exc(), secrets),
             )
-            message = str(e)
-            api_key = getattr(self, "_api_key", None)
-            if api_key:
-                message = message.replace(api_key, "[redacted]")
-            message = re.sub(r"(?i)(api[_ -]?key[=:]\s*)[^\s&,]+", r"\1[redacted]", message)
             if not hasattr(self, "failed_batches"):
                 self.failed_batches = []
             self.failed_batches.append({

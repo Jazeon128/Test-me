@@ -9,6 +9,7 @@ from typing import Optional
 from ..db import get_db
 from ..models.settings import Settings
 from ..services import jev, jev_usage
+from ..utils.redact import redact_secrets
 from ..services.typesafe_key import SETTING_KEY, typesafe_key, typesafe_key_source
 
 router = APIRouter()
@@ -414,10 +415,10 @@ def _status_of(error: Exception) -> Optional[int]:
     return None
 
 
-def describe_connection_failure(provider: str, model: str, error: Exception) -> str:
+def describe_connection_failure(provider: str, model: str, error: Exception, api_key: str = "") -> str:
     """Turn a provider error into something the user can act on."""
     status = _status_of(error)
-    text = str(error)
+    text = redact_secrets(str(error), [api_key])
     # Google answers a bad key with 400 and API_KEY_INVALID, not 401, so the
     # body is checked as well as the status.
     if status in (401, 403) or any(marker in text for marker in INVALID_KEY_MARKERS):
@@ -462,7 +463,9 @@ async def test_ai_config(db: Session = Depends(get_db)):
     except Exception as error:
         raise HTTPException(
             status_code=400,
-            detail=describe_connection_failure(generator.provider, generator.model, error),
+            detail=describe_connection_failure(
+                generator.provider, generator.model, error, generator._api_key
+            ),
         )
 
     latency_ms = int((time.monotonic() - started) * 1000)

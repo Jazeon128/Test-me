@@ -1,18 +1,51 @@
 {
-  "sets": ["pmle", "gcp_ace", "aiops", "pcep", "aip_c01"],
+  "sets": [
+    "pmle",
+    "gcp_ace",
+    "aiops",
+    "pcep",
+    "aip_c01"
+  ],
   "local_config": "pilot.local.json",
   "screen_limit": 40,
-  "models": ["google/gemini-3.8-flash", "deepseek/deepseek-v4.1-flash", "qwen/qwen3.8-flash", "openai/gpt-6-luna"],
-  "prompt_variants": ["production", "exam_scenario", "code_tracing"],
+  "models": [
+    "google/gemini-3.8-flash",
+    "deepseek/deepseek-v4.1-flash",
+    "qwen/qwen3.8-flash",
+    "openai/gpt-6-luna"
+  ],
+  "prompt_variants": [
+    "production",
+    "exam_scenario",
+    "code_tracing"
+  ],
   "sources_per_set": 8,
   "passages_per_source": 1,
   "questions_per_call": 3,
   "seed": 20260930,
   "budget_cap": "3.00",
   "catalog_prices": {
-    "google/gemini-3.8-flash": {"prompt_per_million": "0.75", "completion_per_million": "3.75"},
-    "deepseek/deepseek-v4.1-flash": {"prompt_per_million": "0.0198", "completion_per_million": "0.396"},
-    "qwen/qwen3.8-flash": {"prompt_per_million": "0.15", "completion_per_million": "0.47"},
-    "openai/gpt-6-luna": {"prompt_per_million": "0.1", "completion_per_million": "0.5"}
-  }
+    "google/gemini-3.8-flash": {
+      "prompt_per_million": "0.75",
+      "completion_per_million": "3.75"
+    },
+    "deepseek/deepseek-v4.1-flash": {
+      "prompt_per_million": "0.0198",
+      "completion_per_million": "0.396"
+    },
+    "qwen/qwen3.8-flash": {
+      "prompt_per_million": "0.15",
+      "completion_per_million": "0.47"
+    },
+    "openai/gpt-6-luna": {
+      "prompt_per_million": "0.1",
+      "completion_per_million": "0.5"
+    }
+  },
+  "judge": {
+    "primary": "anthropic/claude-sonnet-5.5",
+    "second": "mistralai/mistral-large-2512"
+  },
+  "judge_budget": "2.00",
+  "judge_per_cell": 20
 }

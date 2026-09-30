@@ -66,3 +66,28 @@ are blank. Latency percentiles use linear interpolation on call latency seconds.
 
 Free catalog models with known zero prices are supported. The pilot evaluates
 the 4 requested models and does not substitute free models or fallback models.
+
+## Blind judging and owner review
+
+Run `python -m evals.run judge --config evals/pilot.json --run NAME --dry-run`
+to inspect the seeded sample and worst-case price without calls. Missing catalog
+prices print unknown and refuse calls. Supply saved judge catalog prices in config.
+The primary judge is anthropic/claude-sonnet-5.5. The second judge is
+mistralai/mistral-large-2512. The independent judge budget defaults to $2.00.
+Judging resumes from judges.jsonl. Each call records prompt hashes and option mapping.
+Each item and judge uses two separate calls. The solve call omits explanation and
+key. The subsequent rubric call includes them and never receives the solve answer.
+Completed calls persist in judge_calls.jsonl. Resume skips a completed solve call.
+Each call records its own prompt hash and reserves and settles its own budget amount.
+Dry run counts both calls.
+
+Judging creates human_review.csv and a separate human_review_key.csv. Existing
+sheets are preserved. Fill key_correct, good and excellent with yes or no.
+When fewer than 60 items or fewer than 10 disagreements or rejections exist,
+the export uses available items and prints the shortage.
+Run `python -m evals.run agreement --run NAME` for percent agreement and kappa.
+Run `python -m evals.run report --run NAME` for an offline, self-contained report.
+Undefined kappa is reported as None. Unjudged rates are unchecked.
+Run facts use the saved generation date when present, otherwise config file mtime.
+If the generation commit was not saved, the report labels the current report HEAD.
+Judge configuration is snapshotted separately to support existing generation runs.

@@ -2,13 +2,13 @@
 
 import argparse
 
-from . import checks, corpus, generate
+from . import checks, corpus, generate, judge, report, review
 from .config import load, run_path, write
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['freeze', 'generate', 'check'])
+    parser.add_argument('command', choices=['freeze', 'generate', 'check', 'judge', 'report', 'agreement'])
     parser.add_argument('--config', default='evals/pilot.json')
     parser.add_argument('--run')
     parser.add_argument('--dry-run', action='store_true')
@@ -23,9 +23,19 @@ def main():
     if not args.run:
         parser.error('--run is required')
     directory = run_path(args.run)
-    if args.command == 'check':
-        checks.check(directory)
+    offline_commands = {'report': report.report, 'agreement': review.review_agreement,
+                        'check': checks.check}
+    if args.command in offline_commands:
+        offline_commands[args.command](directory)
         return
+    if args.command == 'judge':
+        config = load(args.config)
+        judge.judge(config, directory, config.get('catalog_prices', {}), dry=args.dry_run)
+        return
+    generate_run(args, directory, parser)
+
+
+def generate_run(args, directory, parser):
     try:
         config = load(args.config)
     except ValueError as error:

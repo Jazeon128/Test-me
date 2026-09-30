@@ -164,10 +164,11 @@ describe('Property 27: Log export', () => {
       expect(window.electronAPI.getLogs).toHaveBeenCalled()
     })
 
-    // Find and click export button
+    // The logs arrive after getLogs resolves, so wait for the button to enable
+    // rather than assuming it already has.
     const exportButton = screen.getByText('Export Logs')
     expect(exportButton).toBeInTheDocument()
-    expect(exportButton).not.toBeDisabled()
+    await waitFor(() => expect(exportButton).not.toBeDisabled())
 
     fireEvent.click(exportButton)
 

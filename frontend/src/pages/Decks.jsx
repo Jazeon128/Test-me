@@ -1,4 +1,5 @@
 import Spinner from '../components/Spinner'
+import { serverMessage } from '../utils/serverMessage'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decksAPI, testsAPI } from '../services/api'
@@ -8,6 +9,7 @@ export default function Decks() {
   const navigate = useNavigate()
   const [decks, setDecks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')
@@ -19,11 +21,13 @@ export default function Decks() {
   }, [])
 
   const loadDecks = async () => {
+    setLoading(true)
+    setLoadError(null)
     try {
       const response = await decksAPI.list()
       setDecks(response.data)
     } catch (error) {
-      console.error('Failed to load decks:', error)
+      setLoadError(serverMessage(error.originalError || error) || 'Failed to load decks.')
     } finally {
       setLoading(false)
     }
@@ -137,6 +141,15 @@ export default function Decks() {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner aria-label="Loading decks" className="h-12 w-12" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 pb-12">
+        <p role="alert">{loadError}</p>
+        <button className="btn-primary" onClick={loadDecks}>Try again</button>
       </div>
     )
   }

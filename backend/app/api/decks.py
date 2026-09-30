@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.test import Test
 from ..models.flagged_question import FlaggedQuestion
@@ -28,6 +29,7 @@ async def create_deck(request: CreateDeckRequest, db: Session = Depends(get_db))
     deck = Test(name=request.name, description=request.description or "")
     db.add(deck)
     db.commit()
+    invalidate_stats_cache()
     db.refresh(deck)
 
     return {
@@ -131,6 +133,7 @@ async def update_deck(deck_id: int, request: UpdateDeckRequest, db: Session = De
         deck.description = request.description
 
     db.commit()
+    invalidate_stats_cache()
     db.refresh(deck)
 
     return {
@@ -152,6 +155,7 @@ async def delete_deck(deck_id: int, db: Session = Depends(get_db)):
     db.query(FlaggedQuestion).filter_by(deck_id=deck_id).delete(synchronize_session="fetch")
     db.delete(deck)
     db.commit()
+    invalidate_stats_cache()
 
     return {"message": "Deck deleted successfully"}
 
@@ -208,6 +212,7 @@ async def import_csv(
         count += 1
 
     db.commit()
+    invalidate_stats_cache()
 
     return {
         "id": deck.id,

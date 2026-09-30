@@ -12,7 +12,7 @@ from ..models.notebook import Notebook
 from ..models.document import Document
 from ..models.deck import Deck, DeckQuestion
 from ..services.spaced_repetition import SM2Algorithm, ReviewResult
-from ..utils.cache import stats_cache
+from ..utils.cache import stats_cache, invalidate_stats_cache
 from fastapi.concurrency import run_in_threadpool
 
 from .questions import (
@@ -244,7 +244,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     db.refresh(progress)
 
     # Invalidate stats cache when progress is updated
-    stats_cache.invalidate_all()
+    invalidate_stats_cache()
 
     # Record the day, then see whether anything was earned by it.
     points_earned = activity.record_answer(db, is_correct, progress.streak)
@@ -377,6 +377,9 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
         .filter(Question.id.in_(questions_to_review))
         .all()
     )
+
+    questions_by_id = {question.id: question for question in questions}
+    questions = [questions_by_id[question_id] for question_id in questions_to_review]
 
     response_data = {
         "num_questions": len(questions),

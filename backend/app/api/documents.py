@@ -10,6 +10,7 @@ from datetime import datetime
 import traceback
 import uuid
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.document import Document, DocumentType
 from ..models.question import Question, QuestionOption
@@ -118,6 +119,7 @@ async def upload_document(
         )
         db.add(deck)
         db.commit()
+        invalidate_stats_cache()
         db.refresh(deck)
         deck_created = True
 
@@ -163,6 +165,7 @@ async def upload_document(
 
         db.add(document)
         db.commit()
+        invalidate_stats_cache()
         db.refresh(document)
 
         uploaded_documents.append(
@@ -376,6 +379,7 @@ def cancel_generation(job_id: str, db: Session = Depends(get_db)):
     job.pending_request = None
     job.add_log("Upload cancelled after the pre-flight warning")
     db.commit()
+    invalidate_stats_cache()
 
     return {"job_id": job_id, "status": "cancelled", "deck_removed": deck_removed}
 
@@ -542,6 +546,7 @@ def process_document(
             document.title = parsed_doc.title
             document.num_pages = parsed_doc.num_pages
             db.commit()
+            invalidate_stats_cache()
 
         # Generate questions
         logger.info(
@@ -625,6 +630,7 @@ def process_document(
                 gen_status.add_log(f"{len(flagged)} question(s) held back by the quality check")
                 flag_modified(gen_status, "logs")
         db.commit()
+        invalidate_stats_cache()
         logger.info(
             "questions_saved",
             document_id=document_id,
@@ -720,6 +726,7 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     db.query(FlaggedQuestion).filter_by(document_id=document_id).delete(synchronize_session="fetch")
     db.delete(document)
     db.commit()
+    invalidate_stats_cache()
 
     try:
         if os.path.exists(file_path):
@@ -902,6 +909,7 @@ def regenerate_deck_questions(
             add_log(f"Successfully saved {len(generated)} questions to database")
             add_log("Generation completed successfully")
         db.commit()
+        invalidate_stats_cache()
 
     except Exception as error:
         db.rollback()

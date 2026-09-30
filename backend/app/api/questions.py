@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.question import Question, QuestionOption
 from ..models.deck import Deck, DeckQuestion
@@ -157,6 +158,7 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
         db.add(option)
 
     db.commit()
+    invalidate_stats_cache()
     db.refresh(question)
 
     return format_question(question)
@@ -317,6 +319,7 @@ async def delete_question(question_id: int, db: Session = Depends(get_db)):
 
     db.delete(question)
     db.commit()
+    invalidate_stats_cache()
 
     return {"message": "Question deleted successfully"}
 

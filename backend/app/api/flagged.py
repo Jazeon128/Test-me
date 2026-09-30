@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.flagged_question import FlaggedQuestion
 from ..models.deck import Deck
@@ -49,6 +50,7 @@ def restore(item_id: int, db: Session = Depends(get_db)):
     item.status = "restored"
     item.resolved_at = datetime.now()
     db.commit()
+    invalidate_stats_cache()
     return {"question_id": question.id}
 
 

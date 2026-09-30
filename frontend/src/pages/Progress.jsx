@@ -1,4 +1,5 @@
 import Spinner from '../components/Spinner'
+import { serverMessage } from '../utils/serverMessage'
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useNavigate } from 'react-router-dom'
@@ -13,12 +14,15 @@ export default function Progress() {
   const [activity, setActivity] = useState(null)
   const [awards, setAwards] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     loadStats()
   }, [])
 
   const loadStats = async () => {
+    setLoading(true)
+    setLoadError(null)
     try {
       const [statsResponse, activityResponse, awardsResponse] = await Promise.all([
         progressAPI.getStats(),
@@ -29,7 +33,7 @@ export default function Progress() {
       setActivity(activityResponse.data)
       setAwards(awardsResponse.data)
     } catch (error) {
-      console.error('Failed to load stats:', error)
+      setLoadError(serverMessage(error.originalError || error) || 'Failed to load progress.')
     } finally {
       setLoading(false)
     }
@@ -39,6 +43,15 @@ export default function Progress() {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner aria-label="Loading progress" className="h-12 w-12" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 pb-12">
+        <p role="alert">{loadError}</p>
+        <button className="btn-primary" onClick={loadStats}>Try again</button>
       </div>
     )
   }

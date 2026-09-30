@@ -12,6 +12,7 @@ from typing import List
 import os
 import tempfile
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.test import Test
 from ..models.question import Question
@@ -56,6 +57,7 @@ async def create_test(request: CreateTestRequest, db: Session = Depends(get_db))
 
     db.add(test)
     db.commit()
+    invalidate_stats_cache()
     db.refresh(test)
 
     return {
@@ -131,6 +133,7 @@ async def delete_test(test_id: int, db: Session = Depends(get_db)):
 
     db.delete(test)
     db.commit()
+    invalidate_stats_cache()
 
     return {"message": "Test deleted successfully"}
 

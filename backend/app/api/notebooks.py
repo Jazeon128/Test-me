@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.canvas import Canvas
 from ..models.deck import Deck
@@ -69,6 +70,7 @@ async def create_notebook(request: NotebookRequest, db: Session = Depends(get_db
     notebook = Notebook(name=name, description=request.description, icon=request.icon)
     db.add(notebook)
     db.commit()
+    invalidate_stats_cache()
     db.refresh(notebook)
     return _serialize(db, notebook)
 
@@ -159,6 +161,7 @@ async def update_notebook(
         notebook.icon = request.icon or None
 
     db.commit()
+    invalidate_stats_cache()
     db.refresh(notebook)
     return _serialize(db, notebook)
 
@@ -186,4 +189,5 @@ async def delete_notebook(notebook_id: int, db: Session = Depends(get_db)):
 
     db.delete(notebook)
     db.commit()
+    invalidate_stats_cache()
     return {"success": True}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
+import { parseLocalDate } from '../utils/localDate'
 
 /**
  * A year of study days.
@@ -45,7 +46,7 @@ export default function HeatMap({ days }) {
   const busiest = Math.max(...days.map((d) => d.questions_answered), 0)
 
   // Pad the start so the first column begins on a Monday.
-  const firstWeekday = (new Date(days[0].date).getDay() + 6) % 7
+  const firstWeekday = (parseLocalDate(days[0].date).getDay() + 6) % 7
   const cells = [...Array(firstWeekday).fill(null), ...days]
 
   const weeks = []

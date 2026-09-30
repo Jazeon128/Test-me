@@ -126,3 +126,8 @@ class StatisticsCache:
 
 # Global statistics cache instance
 stats_cache = StatisticsCache(ttl_seconds=300)  # 5 minute TTL
+
+
+def invalidate_stats_cache():
+    """Clear statistics after a committed material or progress change."""
+    stats_cache.invalidate_all()

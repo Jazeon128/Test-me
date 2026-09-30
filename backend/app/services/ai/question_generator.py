@@ -227,6 +227,11 @@ class QuestionGenerator:
         self.flagged_questions = []
 
         try:
+            if not any(section.text.strip() for section in parsed_doc.sections):
+                raise ValueError(
+                    "This document has no extractable text. If it is a scanned PDF, "
+                    "run OCR on it first."
+                )
             return self._generate_questions_internal(
                 parsed_doc,
                 num_questions,

@@ -33,6 +33,7 @@ def passage_from(text: str) -> str:
     ]
     return text[:ends[-1] if ends else PASSAGE_CHARS]
 
+
 #: Per-request timeout for Gemini, in milliseconds as google-genai expects.
 GEMINI_TIMEOUT_MS = 180_000
 

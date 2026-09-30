@@ -496,20 +496,28 @@ async def questions_for_node(
     return {"node_id": node_id, "questions": questions}
 
 
+def _matrix_cell(payload: Dict, node_id: str) -> Optional[Dict]:
+    """Resolve a matrix cell's generated id."""
+    cells = payload.get("cells")
+    if isinstance(cells, list):
+        for index, cell in enumerate(cells):
+            if node_id == f"cell-{index}" and isinstance(cell, dict):
+                return {
+                    **cell,
+                    "id": node_id,
+                    "label": cell.get("value") or f"{cell.get('option', '')}: {cell.get('criterion', '')}",
+                }
+    return None
+
+
 def _find_node(payload: Dict, node_id: str) -> Optional[Dict]:
     """Find a node by id anywhere in a template payload."""
     if isinstance(payload, dict):
         if payload.get("id") == node_id and "label" in payload:
             return payload
-        cells = payload.get("cells")
-        if isinstance(cells, list):
-            for index, cell in enumerate(cells):
-                if node_id == f"cell-{index}" and isinstance(cell, dict):
-                    return {
-                        **cell,
-                        "id": node_id,
-                        "label": cell.get("value") or f"{cell.get('option', '')}: {cell.get('criterion', '')}",
-                    }
+        cell = _matrix_cell(payload, node_id)
+        if cell is not None:
+            return cell
         for value in payload.values():
             found = _find_node(value, node_id)
             if found is not None:

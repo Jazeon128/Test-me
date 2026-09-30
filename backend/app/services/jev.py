@@ -91,6 +91,37 @@ class Answers:
         return self._number(question_id, "score", default)
 
 
+def _validate_number(value, question_id: str, kind: str) -> None:
+    """Validate a numeric answer with its question-specific bounds."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise TypeError(f"{question_id} {kind} must be a number")
+    try:
+        number = float(value)
+    except (ValueError, OverflowError) as exc:
+        raise ValueError(f"{question_id} {kind} must be a finite number") from exc
+    if not math.isfinite(number):
+        raise ValueError(f"{question_id} {kind} must be finite")
+    if kind == "noul" and not 0 <= number <= 1:
+        raise ValueError(f"{question_id} noul must be in [0, 1]")
+
+
+def _validate_answers(raw: Dict, questions: Dict) -> None:
+    """Validate each answer unit before exposing it to callers."""
+    if not isinstance(raw, dict):
+        raise TypeError("answers must be a dict")
+    for question_id, question in questions.items():
+        unit = raw.get(question_id)
+        if not isinstance(unit, dict):
+            raise TypeError(f"{question_id} answer unit must exist and be a dict")
+        kind = question.get("type")
+        value = unit.get(kind)
+        if kind in ("noul", "score"):
+            _validate_number(value, question_id, kind)
+        elif kind == "choice":
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{question_id} choice must be a non-empty string")
+
+
 def ask(
     state: Dict,
     questions: Dict,
@@ -130,28 +161,7 @@ def ask(
         duration_ms = int((time.time() - started) * 1000)
         input_tokens = int(body.get("usage", {}).get("input_tokens", 0))
         raw = body.get("answers", {})
-        if not isinstance(raw, dict):
-            raise TypeError("answers must be a dict")
-        for question_id, question in questions.items():
-            unit = raw.get(question_id)
-            if not isinstance(unit, dict):
-                raise TypeError(f"{question_id} answer unit must exist and be a dict")
-            kind = question.get("type")
-            value = unit.get(kind)
-            if kind in ("noul", "score"):
-                if isinstance(value, bool) or not isinstance(value, (int, float, str)):
-                    raise TypeError(f"{question_id} {kind} must be a number")
-                try:
-                    number = float(value)
-                except (ValueError, OverflowError) as exc:
-                    raise ValueError(f"{question_id} {kind} must be a finite number") from exc
-                if not math.isfinite(number):
-                    raise ValueError(f"{question_id} {kind} must be finite")
-                if kind == "noul" and not 0 <= number <= 1:
-                    raise ValueError(f"{question_id} noul must be in [0, 1]")
-            elif kind == "choice":
-                if not isinstance(value, str) or not value.strip():
-                    raise ValueError(f"{question_id} choice must be a non-empty string")
+        _validate_answers(raw, questions)
         answers = Answers(raw=raw, duration_ms=duration_ms, input_tokens=input_tokens)
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
         error = f"Malformed Jev response: {exc}"

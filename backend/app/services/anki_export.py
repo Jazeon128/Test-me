@@ -1,9 +1,18 @@
 import genanki
+import html
 import random
 from typing import List
 from ..models.question import Question
 from ..models.test import Test
 from sqlalchemy.orm import Session
+
+
+# New fixed ID: adding CorrectA-D fields requires a new Anki note type.
+MODEL_ID = 1874562391
+
+
+def _escape_text(text: str) -> str:
+    return html.escape(text, quote=False).replace("\n", "<br>")
 
 
 class AnkiExporter:
@@ -12,7 +21,7 @@ class AnkiExporter:
     def __init__(self) -> None:
         # Create a custom model for our multiple-choice questions
         self.model = genanki.Model(
-            random.randrange(1 << 30, 1 << 31),  # Random model ID
+            MODEL_ID,
             "Test Me - Multiple Choice",
             fields=[
                 {"name": "Question"},
@@ -23,6 +32,10 @@ class AnkiExporter:
                 {"name": "CorrectAnswer"},
                 {"name": "Explanation"},
                 {"name": "Reference"},
+                {"name": "CorrectA"},
+                {"name": "CorrectB"},
+                {"name": "CorrectC"},
+                {"name": "CorrectD"},
             ],
             templates=[
                 {
@@ -196,15 +209,15 @@ class AnkiExporter:
         note = genanki.Note(
             model=self.model,
             fields=[
-                question.question_text,
-                option_texts[0],
-                option_texts[1],
-                option_texts[2],
-                option_texts[3],
+                _escape_text(question.question_text),
+                _escape_text(option_texts[0]),
+                _escape_text(option_texts[1]),
+                _escape_text(option_texts[2]),
+                _escape_text(option_texts[3]),
                 correct_answer or "A",
-                question.explanation or "No explanation provided.",
-                reference,
-            ],
+                _escape_text(question.explanation or "No explanation provided."),
+                _escape_text(reference),
+            ] + ["1" if correct_answer == letter else "" for letter in "ABCD"],
             tags=[f"difficulty:{question.difficulty}"],
         )
 

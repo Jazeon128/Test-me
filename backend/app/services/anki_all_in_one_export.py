@@ -1,10 +1,16 @@
 import csv
+import html
 from typing import List
 from ..models.question import Question
 from ..models.test import Test
 from sqlalchemy.orm import Session
 
 
+def _escape_text(text: str) -> str:
+    return html.escape(text, quote=False).replace("\n", "<br>")
+
+
+# Anki consumes this CSV, so spreadsheet apostrophe prefixes would show on cards.
 class AnkiAllInOneExporter:
     """Export questions to CSV format compatible with Anki AllInOne note type"""
 
@@ -63,7 +69,7 @@ class AnkiAllInOneExporter:
 
         # Extract option texts (pad if less than 5 options)
         # AllInOne format expects up to 5 options (Q_1 to Q_5)
-        option_texts = [opt.option_text for opt in options] + [""] * (5 - len(options))
+        option_texts = [_escape_text(opt.option_text) for opt in options] + [""] * (5 - len(options))
 
         # Truncate if more than 5 options (though UI usually limits to 4)
         option_texts = option_texts[:5]
@@ -91,7 +97,7 @@ class AnkiAllInOneExporter:
 
         # Build row
         row = [
-            question.question_text,  # Question
+            _escape_text(question.question_text),  # Question
             q_type,  # QType
             option_texts[0],  # Q_1
             option_texts[1],  # Q_2
@@ -122,7 +128,7 @@ class AnkiAllInOneExporter:
 
         # Add correct answer statement in green bold
         # Using the provided explanation text if available, otherwise generic text
-        explanation_text = question.explanation or "No detailed explanation provided."
+        explanation_text = _escape_text(question.explanation or "No detailed explanation provided.")
         html_parts.append(
             f'<p style="color: #2d7a2d; font-weight: bold;">{correct_header} - {explanation_text}</p>'
         )
@@ -138,7 +144,7 @@ class AnkiAllInOneExporter:
             # so we'll just list the option text.
             # If we had per-option feedback, we would insert it here.
             html_parts.append(
-                f"<li><strong>Option {label}:</strong> {opt.option_text} ({status})</li>"
+                f"<li><strong>Option {label}:</strong> {_escape_text(opt.option_text)} ({status})</li>"
             )
 
         html_parts.append("</ul>")

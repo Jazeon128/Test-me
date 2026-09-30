@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 
 class CSVExporter:
-    """Export questions to CSV format compatible with Anki import"""
+    """Export questions to spreadsheet CSV format"""
 
     # CSV Headers for simplified format
     HEADERS = [
@@ -133,7 +133,8 @@ class CSVExporter:
             question.difficulty or "medium",
         ]
 
-        return row
+        # Protect spreadsheet cells only: Anki CSV prefixes would show on cards.
+        return ["'" + cell if cell.startswith(("=", "+", "-", "@", "\t", "\r")) else cell for cell in row]
 
     def _format_source_reference(self, source_reference: dict) -> str:
         """

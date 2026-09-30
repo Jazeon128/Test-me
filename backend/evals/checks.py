@@ -100,7 +100,7 @@ def safe_jev_check(call, question, key, budget, identifier):
 def check(directory, api_key=None):
     candidates = rows(directory / 'candidates.jsonl')
     config = json.loads((directory / 'config.json').read_text(encoding='utf-8'))
-    budget = Budget(directory / 'ledger.jsonl', config['budget_cap'])
+    budget = Budget(directory / 'ledger.jsonl', config['budget_cap'], recover=True)
     done = {r['id'] for r in rows(directory / 'checks.jsonl')}
     stopped = False
     for call in candidates:

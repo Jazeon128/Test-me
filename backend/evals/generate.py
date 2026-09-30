@@ -130,7 +130,7 @@ def generate(config, passages, directory, prices, client=None, dry=False):
     cells = list(matrix(config, passages))
     if dry:
         return dry_run(cells, prices)
-    budget = Budget(directory / 'ledger.jsonl', config['budget_cap'])
+    budget = Budget(directory / 'ledger.jsonl', config['budget_cap'], recover=True)
     done = {record['id'] for record in rows(directory / 'candidates.jsonl')}
     for cell in cells:
         if cell['id'] in done:

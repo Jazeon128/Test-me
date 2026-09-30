@@ -1,6 +1,10 @@
 """Durable Decimal reservations, including uncertain failed requests."""
 
+import atexit
+import os
+from contextlib import contextmanager
 from decimal import Decimal, ROUND_CEILING
+from pathlib import Path
 
 from .config import append, rows
 
@@ -31,11 +35,13 @@ def estimate(prompt, model):
 
 
 class Budget:
-    def __init__(self, path, cap, phase=None):
+    def __init__(self, path, cap, phase=None, recover=False):
         self.path = path
         self.phase = phase
         self.cap = price(cap)
         self.entries = {}
+        if recover:
+            _hold_lock(Path(path).parent)
         unresolved = set()
         for event in rows(path):
             if event['event'] == 'abandon':
@@ -50,7 +56,9 @@ class Budget:
                 unresolved.discard(event['id'])
         # A reservation left open by a killed run may or may not have been
         # billed. Count it as spent, the safe side, and free its id for a retry.
-        for identifier in sorted(unresolved):
+        # Only a run holding the run lock may do this: a reader would otherwise
+        # abandon the call a live run has in flight.
+        for identifier in sorted(unresolved if recover else ()):
             amount = self.entries.pop(identifier)
             self._record(identifier, amount, 'abandon')
             self.entries.pop(identifier, None)
@@ -79,3 +87,55 @@ class Budget:
             record['phase'] = self.phase
         append(self.path, record)
         self.entries[identifier] = amount
+
+
+class RunLocked(RuntimeError):
+    pass
+
+
+@contextmanager
+def run_lock(directory):
+    """One writer per run directory. A stale lock from a dead process is replaced."""
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    lock = directory / 'run.lock'
+    if lock.exists():
+        pid = int(lock.read_text(encoding='utf-8').strip() or 0)
+        if pid and pid != os.getpid() and _alive(pid):
+            raise RunLocked(f'Run {directory.name} is already in progress (process {pid}).')
+    lock.write_text(str(os.getpid()), encoding='utf-8')
+    try:
+        yield
+    finally:
+        if lock.exists() and lock.read_text(encoding='utf-8').strip() == str(os.getpid()):
+            lock.unlink()
+
+
+def _alive(pid):
+    if os.name == 'nt':
+        import ctypes
+        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return False
+        code = ctypes.c_ulong()
+        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        ctypes.windll.kernel32.CloseHandle(handle)
+        return code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+_held = set()
+
+
+def _hold_lock(directory):
+    """Take the run lock for the rest of this process, released at exit."""
+    if directory in _held:
+        return
+    lock = run_lock(directory)
+    lock.__enter__()
+    _held.add(directory)
+    atexit.register(lock.__exit__, None, None, None)

@@ -351,11 +351,39 @@ def test_open_reservation_from_a_killed_run_counts_as_spent_and_can_retry(tmp_pa
     ledger = tmp_path / 'ledger.jsonl'
     first = Budget(ledger, '1.00')
     first.reserve('call:1', '0.30')
-    # The process dies here: no settle.
-    second = Budget(ledger, '1.00')
+    # The process dies here: no settle. The resuming writer recovers it.
+    second = Budget(ledger, '1.00', recover=True)
     assert second.total == Decimal('0.30')
     second.reserve('call:1', '0.30')
     second.settle('call:1', '0.10')
     assert second.total == Decimal('0.40')
     third = Budget(ledger, '1.00')
     assert third.total == Decimal('0.40')
+
+
+def test_reading_a_ledger_never_abandons_a_live_reservation(tmp_path):
+    from decimal import Decimal
+    from evals.budget import Budget
+    ledger = tmp_path / 'ledger.jsonl'
+    Budget(ledger, '1.00').reserve('call:1', '0.30')
+    reader = Budget(ledger, '1.00')
+    assert reader.total == Decimal('0.30')
+    assert '"abandon"' not in ledger.read_text(encoding='utf-8')
+
+
+def test_a_second_writer_is_refused_while_the_first_is_alive(tmp_path):
+    import os
+    import pytest
+    from evals.budget import RunLocked, run_lock
+    (tmp_path / 'run.lock').write_text(str(os.getppid()), encoding='utf-8')
+    with pytest.raises(RunLocked):
+        with run_lock(tmp_path):
+            pass
+
+
+def test_a_stale_lock_from_a_dead_process_is_replaced(tmp_path):
+    from evals.budget import run_lock
+    (tmp_path / 'run.lock').write_text('999999', encoding='utf-8')
+    with run_lock(tmp_path):
+        assert (tmp_path / 'run.lock').read_text(encoding='utf-8').strip().isdigit()
+    assert not (tmp_path / 'run.lock').exists()

@@ -26,9 +26,17 @@ from .. import jev
 
 logger = get_logger(__name__)
 
-#: A flag at or above this is worth acting on. A starting point, not a measured
-#: threshold: sweep it against real generations before trusting it.
-FLAG_THRESHOLD = 0.7
+# 2026-09-30, Gemini 3.8 Flash, AIP-C01: 6 good questions and the same 6
+# with wrong keys. Good / wrong-key ranges: answer_is_wrong 0.03-0.10 /
+# 0.96-0.97, not_in_source 0.06-0.07 / 0.08-0.15, ambiguous_options
+# 0.04-0.07 / 0.08-0.17, tests_wording 0.34-0.66 / 0.42-0.71.
+# tests_wording is set high because it drifts across runs on good questions.
+THRESHOLDS = {
+    "answer_is_wrong": 0.7,
+    "not_in_source": 0.7,
+    "ambiguous_options": 0.7,
+    "tests_wording": 0.85,
+}
 
 #: Leave room for the question and its options alongside the section text.
 MAX_SECTION_CHARS = 12_000
@@ -91,11 +99,14 @@ class QuestionVerdict:
 
     @property
     def flagged(self) -> bool:
-        return self.verdict.should_escalate(FLAG_THRESHOLD)
+        return any(flag.probability >= THRESHOLDS.get(flag.name, 0.7) for flag in self.verdict.flags)
 
     @property
     def reasons(self) -> List[str]:
-        return [flag.description for flag in self.verdict.raised(FLAG_THRESHOLD)]
+        return [
+            flag.description for flag in self.verdict.flags
+            if flag.probability >= THRESHOLDS.get(flag.name, 0.7)
+        ]
 
 
 def build_state(section_text: str, question: Dict) -> Dict:
@@ -107,7 +118,10 @@ def build_state(section_text: str, question: Dict) -> Dict:
             option.get("text")
             for option in options
             if option.get("is_correct")
-            or (correct_answer is not None and option.get("option") == correct_answer)
+            or (
+                correct_answer is not None
+                and str(option.get("option")).strip().upper() == str(correct_answer).strip().upper()
+            )
         ),
         None,
     )

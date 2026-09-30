@@ -14,6 +14,7 @@ another, so a caller that needs a follow-up judgment makes a second call only
 when the first answer changes the state or the options.
 """
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -58,8 +59,9 @@ class Answers:
 
     def _number(self, question_id: str, name: str, default: float) -> float:
         try:
-            return float(self._unit(question_id).get(name, default))
-        except (ValueError, TypeError):
+            value = float(self._unit(question_id).get(name, default))
+            return value if math.isfinite(value) else default
+        except (ValueError, TypeError, OverflowError):
             return default
 
     def choice(self, question_id: str, default: Optional[str] = None) -> Optional[str]:
@@ -130,6 +132,26 @@ def ask(
         raw = body.get("answers", {})
         if not isinstance(raw, dict):
             raise TypeError("answers must be a dict")
+        for question_id, question in questions.items():
+            unit = raw.get(question_id)
+            if not isinstance(unit, dict):
+                raise TypeError(f"{question_id} answer unit must exist and be a dict")
+            kind = question.get("type")
+            value = unit.get(kind)
+            if kind in ("noul", "score"):
+                if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+                    raise TypeError(f"{question_id} {kind} must be a number")
+                try:
+                    number = float(value)
+                except (ValueError, OverflowError) as exc:
+                    raise ValueError(f"{question_id} {kind} must be a finite number") from exc
+                if not math.isfinite(number):
+                    raise ValueError(f"{question_id} {kind} must be finite")
+                if kind == "noul" and not 0 <= number <= 1:
+                    raise ValueError(f"{question_id} noul must be in [0, 1]")
+            elif kind == "choice":
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"{question_id} choice must be a non-empty string")
         answers = Answers(raw=raw, duration_ms=duration_ms, input_tokens=input_tokens)
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
         error = f"Malformed Jev response: {exc}"

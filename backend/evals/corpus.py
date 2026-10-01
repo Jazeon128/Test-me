@@ -34,8 +34,8 @@ def assessment_key(sha, parser, title, notebook_name="", notebook_description=""
     }, sort_keys=True))
 
 
-def prepared(path, sha, notebook_name="", title=None, notebook_description=""):
-    source = adapters.parse(path)
+def prepared(path, sha, notebook_name="", title=None, notebook_description="", source=None):
+    source = source if source is not None else adapters.parse(path)
     text = '\n'.join(section.text for section in source.sections)[:SCREEN_CHARS]
     title = path.stem if title is None else title
     cache_key = assessment_key(sha, source.parser, title, notebook_name, notebook_description)
@@ -70,6 +70,7 @@ def assess(path, key, budget, sha, notebook_name="", preparation=None):
 
 
 def screen(grouped, config, output, name, key, cache, manifest):
+    grouped, parsed = reference_sources(grouped, manifest, screened=True)
     total_other = sum((Budget(output / other / 'screen_ledger.jsonl', config['budget_cap']).total
                        for other in config['sets'] if other != name), Decimal(0))
     remaining = Decimal(config['budget_cap']) - total_other
@@ -78,7 +79,10 @@ def screen(grouped, config, output, name, key, cache, manifest):
     for path in sample(grouped, config.get('screen_limit', 40), config['seed']):
         sha = digest(path.read_bytes())
         try:
-            preparation = prepared(path, sha, name)
+            source = parsed.get(path) or adapters.parse(path)
+            if isinstance(source, Exception):
+                raise source
+            preparation = prepared(path, sha, name, source=source)
             cache_key = preparation[2]
             if cache_key not in cache:
                 cache[cache_key] = assess(path, key, budget, sha, name, preparation)
@@ -95,6 +99,34 @@ def screen(grouped, config, output, name, key, cache, manifest):
         if score['checked'] and score['worth_generating']:
             eligible[group] = grouped[group]
     return eligible
+
+
+def reference_sources(grouped, manifest, screened=False):
+    eligible, parsed = {}, {}
+    for group, paths in grouped.items():
+        for path in paths:
+            if path.suffix.lower() != '.csv':
+                eligible.setdefault(group, []).append(path)
+                continue
+            try:
+                source = adapters.parse(path)
+            except Exception as error:
+                parsed[path] = error
+                eligible.setdefault(group, []).append(path)
+                continue
+            parsed[path] = source
+            if source.sections or not source.reference_items:
+                eligible.setdefault(group, []).append(path)
+                continue
+            manifest['reference_items'].extend(
+                dict(item, source_path=str(path)) for item in source.reference_items)
+            if screened:
+                manifest['screened'].append({
+                    'checked': False, 'is_teachable': None, 'is_transcript': None,
+                    'worth_generating': False, 'model': None, 'has_study_content': None,
+                    'reason': 'reference_only', 'group': group, 'source_path': str(path),
+                    'source_sha256': digest(path.read_bytes())})
+    return eligible, parsed
 
 
 def excluded(path, patterns):
@@ -185,7 +217,10 @@ def freeze(config, output=None, no_screen=False, api_key=None):
         grouped = groups(files)
         manifest = {'passages': [], 'parse_failures': [], 'reference_items': [],
                     'seed': config['seed'], 'set': name, 'screened': []}
-        eligible = grouped if no_screen else screen(grouped, config, output, name, api_key, cache, manifest)
+        if no_screen:
+            eligible, _ = reference_sources(grouped, manifest)
+        else:
+            eligible = screen(grouped, config, output, name, api_key, cache, manifest)
         selected = sample(eligible, config['sources_per_set'], config['seed'])
         for path in selected:
             try:

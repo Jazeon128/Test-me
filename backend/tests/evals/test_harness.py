@@ -99,7 +99,7 @@ def test_freeze_determinism_and_parse_failure(tmp_path, config):
     first = path.read_bytes()
     corpus.freeze(config, output, no_screen=True)
     assert first == path.read_bytes()
-    assert reports['test'] == {'files_found': 3, 'groups': 3, 'sampled_sources': 3,
+    assert reports['test'] == {'files_found': 3, 'groups': 3, 'sampled_sources': 2,
                                'parse_failures': 1, 'reference_items': 1}
     manifest = load(path)
     assert len(manifest['passages']) == 1
@@ -107,6 +107,76 @@ def test_freeze_determinism_and_parse_failure(tmp_path, config):
     assert p['passage_sha256'] == digest(p['text'])
     assert p['source_sha256'] == digest((source / 'notes.md').read_bytes())
     assert len(p['app_version']) == 40
+
+
+@pytest.mark.parametrize('no_screen', [False, True])
+@pytest.mark.parametrize('limit', [0, 8])
+@pytest.mark.parametrize('filename,content', [
+    ('exam.csv', 'question,answer\nWhat?,Answer\nWhy?,Because\n'),
+    ('practice.csv', 'What?,Answer\nWhy?,Because\n'),
+])
+def test_freeze_reference_only(tmp_path, config, monkeypatch, no_screen, limit, filename, content):
+    source = tmp_path / 'source'
+    source.mkdir()
+    path = source / filename
+    path.write_text(content, encoding='utf-8')
+    config.update(sets={'test': [str(source)]}, sources_per_set=limit, screen_limit=limit)
+    output = tmp_path / 'frozen'
+    parsed = []
+    original = adapters.parse
+
+    def parse(path):
+        parsed.append(path)
+        return original(path)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Reference-only files must not assess or reserve budget')
+
+    monkeypatch.setattr(adapters, 'parse', parse)
+    monkeypatch.setattr(jev, 'ask', forbidden)
+    monkeypatch.setattr(corpus.sourcing, 'assess_source', forbidden)
+    monkeypatch.setattr(Budget, 'reserve', forbidden)
+    corpus.freeze(config, output, no_screen=no_screen, api_key='fake')
+    manifest = load(output / 'test' / 'manifest.json')
+    assert parsed == [path]
+    assert manifest['reference_items'] == [
+        dict(item, source_path=str(path)) for item in original(path).reference_items]
+    assert len(manifest['reference_items']) == 2
+    assert manifest['passages'] == []
+    assert manifest['report']['sampled_sources'] == 0
+    assert manifest['parse_failures'] == []
+    assert not (output / 'screen_cache.json').exists()
+    assert not (output / 'test' / 'screen_ledger.jsonl').exists()
+    if no_screen:
+        assert manifest['screened'] == []
+    else:
+        assert manifest['screened'] == [{
+            'checked': False, 'is_teachable': None, 'is_transcript': None,
+            'worth_generating': False, 'has_study_content': None, 'model': None,
+            'reason': 'reference_only', 'group': corpus.normalized_stem(path),
+            'source_path': str(path), 'source_sha256': digest(path.read_bytes())}]
+
+
+@pytest.mark.parametrize('no_screen', [False, True])
+def test_freeze_normal_csv(tmp_path, config, monkeypatch, no_screen):
+    path = tmp_path / 'cards.csv'
+    path.write_text('front,back\nConcept,Definition\n', encoding='utf-8')
+    config['sets'] = {'test': [str(tmp_path)]}
+    calls = []
+
+    def fake(title, text, key, **context):
+        calls.append((title, text))
+        return corpus.sourcing.SourceAssessment(.9, 0)
+
+    monkeypatch.setattr(corpus.sourcing, 'assess_source', fake)
+    output = tmp_path / 'frozen'
+    corpus.freeze(config, output, no_screen=no_screen, api_key='fake')
+    manifest = load(output / 'test' / 'manifest.json')
+    assert calls == ([] if no_screen else [('cards', 'Q: Concept\nA: Definition')])
+    assert manifest['report']['sampled_sources'] == 1
+    assert len(manifest['passages']) == 1
+    assert manifest['passages'][0]['source_path'] == str(path)
+    assert manifest['reference_items'] == []
 
 
 def test_prompts_and_applicability(config, passage):

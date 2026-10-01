@@ -54,6 +54,8 @@ Screen scores cache by Secure Hash Algorithm 256-bit (SHA-256) source hash in `e
 
 Screening reserves estimated input characters / 3.5 plus 1,024 tokens for assessment instructions. Reported Jev input tokens replace the estimate. Rejected groups still cost money. Budget refusals remain unchecked. Practice-test comma-separated values (CSV) rows remain reference items, not generated-question inputs.
 
+Practice CSVs with references and no sections are recorded as `reference_only` during screening without calls, costs or cache entries, and their references are retained once per file independently of sampling in both freeze modes.
+
 ## Pilot configuration and prices
 
 | Setting | Saved pilot value |

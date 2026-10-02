@@ -43,9 +43,10 @@ export default function HeldBackQuestions({ deckId, onRestored }) {
         <div className="space-y-6">
           {items.map(item => (
             <article key={item.id} className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <p className="font-medium mb-2">{item.question}</p>
+              <p className="font-medium mb-2">{item.card_type === 'flashcard' && <strong>Front: </strong>}{item.question}</p>
+              {item.card_type === 'flashcard' ? <p><strong>Back: </strong>{item.explanation}</p> : <>
               <ul className="space-y-1 text-sm">
-                {item.options.map(option => (
+                {(item.options || []).map(option => (
                   <li key={option.option}>
                     {option.option}. {option.text}
                     {String(option.option).trim().toUpperCase() === String(item.correct_answer).trim().toUpperCase() &&
@@ -53,6 +54,7 @@ export default function HeldBackQuestions({ deckId, onRestored }) {
                   </li>
                 ))}
               </ul>
+              </>}
               <ul className="list-disc pl-5 mt-3 text-sm text-amber-800 dark:text-amber-200">
                 {item.reasons.map((reason, index) => <li key={index}>{reason}</li>)}
               </ul>

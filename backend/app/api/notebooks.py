@@ -59,7 +59,8 @@ async def generate_artifact(
                            source_ids=deck.source_ids, kind=request.kind, deck_id=deck.id,
                            result_id=deck.id, total_documents=sum(s["num_questions"] > 0 for s in split),
                            total_questions_requested=request.num_questions)
-    job.add_log(f"Question split: {split}")
+    item_name = "Card" if request.kind == "flashcards" else "Question"
+    job.add_log(f"{item_name} split: {split}")
     db.add(job)
     db.commit()
     invalidate_stats_cache()
@@ -69,7 +70,8 @@ async def generate_artifact(
             source = by_id[share["source_id"]]
             background_tasks.add_task(process_document, source.id, source.file_path, source.file_type,
                                       share["num_questions"], request.difficulty, deck.id,
-                                      request.custom_prompt, job.job_id)
+                                      request.custom_prompt, job.job_id,
+                                      card_type="flashcard" if request.kind == "flashcards" else "mcq")
     return dict(job_id=job.job_id, deck_id=deck.id, split=split)
 
 

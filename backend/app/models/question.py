@@ -4,7 +4,7 @@ from .base import Base, TimestampMixin
 
 
 class Question(Base, TimestampMixin):
-    """Represents a generated multiple-choice question"""
+    """Represents a multiple-choice question or a front-and-back flashcard"""
 
     __tablename__ = "questions"
 
@@ -17,6 +17,7 @@ class Question(Base, TimestampMixin):
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
 
     # Question content
+    card_type = Column(String(20), nullable=False, default="mcq", server_default="mcq")
     question_text = Column(Text, nullable=False)
     explanation = Column(Text, nullable=True)  # Why the answer is correct
 

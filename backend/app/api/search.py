@@ -14,6 +14,7 @@ router = APIRouter()
 
 
 class SearchResult(BaseModel):
+    card_type: Optional[str] = None
     type: str  # 'question' or 'deck'
     id: int
     title: str
@@ -25,7 +26,7 @@ class SearchResponse(BaseModel):
     results: List[SearchResult]
 
 
-@router.get("/", response_model=SearchResponse)
+@router.get("/", response_model=SearchResponse, response_model_exclude_none=True)
 def search(
     q: str = Query(..., min_length=2, description="Search query"), db: Session = Depends(get_db)
 ):
@@ -83,7 +84,8 @@ def search(
 
         results.append(
             SearchResult(
-                type="question", id=question.id, title=front_preview, subtitle=back_preview, url=url
+                type="question", id=question.id, title=front_preview, subtitle=back_preview, url=url,
+                card_type=question.card_type
             )
         )
 

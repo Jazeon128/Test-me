@@ -31,7 +31,8 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef(null)
-  const typed = mode === 'written' || mode === 'explain'
+  const flashcard = questions[currentIndex]?.card_type === 'flashcard'
+  const typed = !flashcard && (mode === 'written' || mode === 'explain')
 
   const handleSubmit = useCallback((option) => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -72,7 +73,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     if (showResult || questions.length === 0) return
     startTime.current = Date.now()
     answerDuration.current = null
-    if (typed) return
+    if (typed || flashcard) return
     setTimeLeft(30)
     const deadline = Date.now() + 30000
     timerRef.current = setInterval(() => {
@@ -81,7 +82,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
       if (remaining === 0) handleSubmit(null)
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [currentIndex, showResult, questions, typed, handleSubmit])
+  }, [currentIndex, showResult, questions, typed, flashcard, handleSubmit])
 
   useEffect(() => {
     if (!loading && questions.length === 0 && !embedded) onEmpty()
@@ -180,7 +181,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     <div className="max-w-4xl mx-auto px-4">
       <div className="mb-6">
         <label htmlFor="answer-mode" className="mr-3 font-medium text-gray-700 dark:text-gray-200">Answer mode</label>
-        <select id="answer-mode" value={mode} disabled={showResult || submitting}
+        <select id="answer-mode" value={flashcard ? 'choice' : mode} disabled={showResult || submitting || flashcard}
           className="input-field max-w-xs"
           onChange={(event) => {
             setMode(event.target.value)
@@ -190,12 +191,12 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
             setSubmitError('')
             startTime.current = Date.now()
           }}>
-          <option value="choice">Multiple choice</option>
-          <option value="written">Written answer</option>
-          <option value="explain">Explain it</option>
+          <option value="choice">{flashcard ? 'Flashcard' : 'Multiple choice'}</option>
+          {!flashcard && <option value="written">Written answer</option>}
+          {!flashcard && <option value="explain">Explain it</option>}
         </select>
-        {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
-        {mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
+        {!flashcard && mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
+        {!flashcard && mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
       </div>
       {/* Header Stats */}
       <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -252,12 +253,13 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
             <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}>
               <Clock size={18} />
-              <span className="font-bold">{typed ? 'Untimed' : `${timeLeft}s`}</span>
+              <span className="font-bold">{typed || flashcard ? 'Untimed' : `${timeLeft}s`}</span>
             </div>
           </div>
 
           {/* Question Text */}
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            {flashcard && <span className="block text-sm mb-2">Front</span>}
             {currentQuestion.question_text}
           </h2>
 
@@ -271,8 +273,8 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
                 value={writtenAnswer} onChange={(event) => setWrittenAnswer(event.target.value)}
                 disabled={showResult || submitting} />
             </div>
-          ) : <div className="space-y-3 mb-6">
-            {currentQuestion.options.map((option, idx) => {
+          ) : !flashcard && <div className="space-y-3 mb-6">
+            {(currentQuestion.options || []).map((option, idx) => {
               const isSelected = selectedOption === option.option
               const isCorrect = result?.correct_answer === option.option
               const showCorrect = showResult && isCorrect
@@ -326,7 +328,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
                 )}
                 <div>
                   <h3 className={`font-bold mb-2 ${result.correct ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'}`}>
-                    {result.correct ? 'Correct' : 'Incorrect'}
+                    {flashcard ? 'Back' : result.correct ? 'Correct' : 'Incorrect'}
                   </h3>
                   <p className={`text-sm mb-2 ${result.correct ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                     {result.explanation}
@@ -405,7 +407,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
           ) : (
             <button
               onClick={() => handleSubmit(selectedOption)}
-              disabled={!selectedOption}
+              disabled={!flashcard && !selectedOption}
               className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 disabled:cursor-not-allowed transition"
             >
               Show Answer

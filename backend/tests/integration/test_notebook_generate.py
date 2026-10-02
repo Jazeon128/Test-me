@@ -79,7 +79,7 @@ def test_generation(client, db_session, selected, kind):
     assert job.result_id == job.deck_id == deck.id
     assert job.documents_completed == job.total_documents == 3
     assert job.total_questions_requested == job.total_questions_generated == 10
-    assert "Question split:" in job.logs[0]["message"]
+    assert ("Card split:" if kind == "flashcards" else "Question split:") in job.logs[0]["message"]
     assert [call[1] for call in calls] == [8, 1, 1]
     assert all(call[2]["custom_prompt"] == "Use examples" for call in calls)
 

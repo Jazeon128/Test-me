@@ -116,6 +116,8 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
             {
                 "id": q.id,
                 "question_text": q.question_text,
+                "card_type": q.card_type,
+                "explanation": q.explanation,
                 "difficulty": q.difficulty,
                 "document_id": q.document_id,
                 # The deck page filters and edits by tag, so it needs them here.

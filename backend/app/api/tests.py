@@ -90,6 +90,7 @@ async def get_test(test_id: int, db: Session = Depends(get_db)):
             {
                 "id": q.id,
                 "question_text": q.question_text,
+                "card_type": q.card_type,
                 "difficulty": q.difficulty,
             }
             for q in test.questions
@@ -303,6 +304,7 @@ async def start_test_session(
         {
             "id": q.id,
             "question_text": q.question_text,
+            "card_type": q.card_type,
             "options": [
                 {
                     "option": chr(65 + opt.order),
@@ -311,6 +313,7 @@ async def start_test_session(
                 for opt in sorted(q.options, key=lambda x: x.order)
             ],
             "difficulty": q.difficulty,
+            "explanation": q.explanation,
         }
         for q in test.questions
     ]

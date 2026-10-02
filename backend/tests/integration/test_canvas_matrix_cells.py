@@ -63,7 +63,7 @@ def test_matrix_cell_questions(client, matrix, monkeypatch, index, label):
     response = client.post(f"/api/canvas/{matrix.id}/nodes/cell-{index}/questions")
     assert response.status_code == 200
     data = response.json()
-    assert data == {"node_id": f"cell-{index}", "questions": [{**questions[0], "id": data["questions"][0]["id"]}],
+    assert data == {"node_id": f"cell-{index}", "questions": [{**questions[0], "id": data["questions"][0]["id"], "card_type": "mcq"}],
                     "deck_id": data["deck_id"], "notebook_id": None, "held_back": 0, "generated": True}
     assert data["deck_id"] is not None
     assert data["questions"][0]["id"] is not None

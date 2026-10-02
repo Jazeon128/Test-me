@@ -418,7 +418,11 @@ def _save_generated_question(db, q_data, document_id, deck) -> Question:
     """Save a generated question and its children without committing."""
     from ..models.deck import DeckQuestion
 
+    card_type = q_data.get("card_type", "mcq")
+    if card_type not in ("mcq", "flashcard"):
+        raise HTTPException(status_code=422, detail="Unknown card type")
     question = Question(
+        card_type=card_type,
         document_id=document_id,
         question_text=q_data["question"],
         explanation=q_data.get("explanation", ""),
@@ -434,6 +438,8 @@ def _save_generated_question(db, q_data, document_id, deck) -> Question:
             DeckQuestion(question_id=question.id, order=next_order)
         )
 
+    if card_type == "flashcard":
+        return question
     correct_answer = str(q_data["correct_answer"]).strip().upper()
     for order, option in enumerate(q_data["options"]):
         db.add(QuestionOption(
@@ -454,6 +460,7 @@ def process_document(
     deck_id: int = None,
     custom_prompt: str = None,
     job_id: str = None,
+    card_type: str = "mcq",
 ):
     """Background task to parse document and generate questions"""
     from ..db import SessionLocal
@@ -462,6 +469,8 @@ def process_document(
 
     db = SessionLocal()
     gen_status = None
+    item_name = "cards" if card_type == "flashcard" else "questions"
+    count_name = "card(s)" if card_type == "flashcard" else "question(s)"
 
     # Get generation status if job_id provided
     if job_id:
@@ -594,8 +603,8 @@ def process_document(
         )
         if gen_status:
             gen_status.progress = 20
-            gen_status.current_step = f"Generating {num_questions} questions using AI"
-            gen_status.add_log(f"Starting AI question generation ({num_questions} questions)")
+            gen_status.current_step = f"Generating {num_questions} {item_name} using AI"
+            gen_status.add_log(f"Starting AI {'card' if card_type == 'flashcard' else 'question'} generation ({num_questions} {item_name})")
             gen_status.total_questions = num_questions
             db.commit()
 
@@ -611,6 +620,7 @@ def process_document(
                 difficulty=difficulty,
                 custom_prompt=custom_prompt,
                 step_callback=step_callback,
+                card_type=card_type,
             )
 
             # Capture the logs
@@ -642,8 +652,8 @@ def process_document(
         )
         if gen_status:
             gen_status.progress = 90
-            gen_status.current_step = "Saving questions to database"
-            gen_status.add_log(f"Successfully generated {len(questions_data)} questions")
+            gen_status.current_step = f"Saving {item_name} to database"
+            gen_status.add_log(f"Successfully generated {len(questions_data)} {item_name}")
             db.commit()
 
         # Get deck if provided
@@ -664,7 +674,7 @@ def process_document(
             ))
         if gen_status:
             if flagged:
-                gen_status.add_log(f"{len(flagged)} question(s) held back by the quality check")
+                gen_status.add_log(f"{len(flagged)} {count_name} held back by the quality check")
                 flag_modified(gen_status, "logs")
         db.commit()
         invalidate_stats_cache()
@@ -679,11 +689,11 @@ def process_document(
             failures = getattr(generator, "failed_batches", [])
             if failures:
                 gen_status.add_log(
-                    f"Generated {len(questions_data)} of {num_questions} question(s). "
+                    f"Generated {len(questions_data)} of {num_questions} {count_name}. "
                     f"Gemini failed on {len(failures)} section(s): {failures[-1]['message']}",
                     level="warning",
                 )
-            gen_status.add_log(f"Successfully saved {len(questions_data)} questions to database")
+            gen_status.add_log(f"Successfully saved {len(questions_data)} {item_name} to database")
         finish_document(generated=len(questions_data), flagged=len(flagged))
 
     except Exception as e:

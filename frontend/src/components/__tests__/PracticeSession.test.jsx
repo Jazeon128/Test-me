@@ -28,6 +28,22 @@ async function openWrittenMode() {
 }
 
 describe('Written practice', () => {
+  it('reveals the back of a flashcard and offers no written modes', async () => {
+    progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [{
+      id: 7, card_type: 'flashcard', question_text: 'SM-2?', explanation: 'Reviews.',
+    }] } })
+    render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
+    await screen.findByText('SM-2?')
+    expect(screen.getByText('Front')).toBeInTheDocument()
+    expect(screen.queryByText('Reviews.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Written answer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Explain it' })).not.toBeInTheDocument()
+    expect(screen.getByText('Untimed')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
+    expect(screen.getByText('Back')).toBeInTheDocument()
+    expect(screen.getByText('Reviews.')).toBeInTheDocument()
+  })
+
   it('saves the answer once and shows the server grade before continuing', async () => {
     progressAPI.submit.mockResolvedValue({ data: {
       correct: true, explanation: question.explanation,

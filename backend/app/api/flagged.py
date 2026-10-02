@@ -23,6 +23,8 @@ def list_flagged(deck_id: int, db: Session = Depends(get_db)):
             **{key: item.payload.get(key) for key in (
                 "question", "options", "correct_answer", "explanation"
             )},
+            "card_type": item.payload.get("card_type", "mcq"),
+            "options": item.payload.get("options") or [],
             "reasons": item.reasons,
             "document_id": item.document_id,
             "created_at": item.created_at,

@@ -236,6 +236,7 @@ class QuestionGenerator:
         example_questions: Optional[List[Dict]] = None,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         step_callback: Optional[Callable[[str, int, int], None]] = None,
+        card_type: str = "mcq",
     ) -> List[Dict]:
         """
         Generate multiple-choice questions from a parsed document
@@ -249,10 +250,14 @@ class QuestionGenerator:
             progress_callback: Optional callback function invoked as (current, total)
                              after each question completes. Allows real-time progress tracking.
             step_callback: Optional callback invoked as (step, sections_done, sections_total).
+            card_type: "mcq" for multiple-choice questions or "flashcard" for front-and-back cards.
 
         Returns:
             List of question dictionaries with questions, options, answers, and references
         """
+        if card_type not in ("mcq", "flashcard"):
+            raise ValueError("Unknown card type")
+        self.card_type = card_type
         if step_callback is not None:
             self.step_callback = step_callback
         start_time = time.time()
@@ -363,7 +368,7 @@ class QuestionGenerator:
             )
 
             if questions:
-                self._report_step("Checking questions")
+                self._report_step("Checking cards" if self.card_type == "flashcard" else "Checking questions")
                 questions = self._verify_batch(section, questions)
                 all_questions.extend(questions)
                 logger.debug(
@@ -540,9 +545,7 @@ class QuestionGenerator:
     ) -> List[Dict]:
         """Generate a batch of multiple-choice questions from a section"""
         try:
-            prompt = self._build_batch_prompt(
-                section.text, count, difficulty, custom_prompt, example_questions
-            )
+            prompt = self._batch_prompt(section.text, count, difficulty, custom_prompt, example_questions)
             content = ""
             provider_display = {
                 "anthropic": "Anthropic Claude",
@@ -632,9 +635,10 @@ class QuestionGenerator:
             )
 
             # Parse the response
-            questions_data = self._parse_batch_response(content)
+            questions_data = self._parse_generated_response(content)
             if not questions_data:
-                raise ValueError("Response contained no valid questions")
+                item_name = "cards" if getattr(self, "card_type", "mcq") == "flashcard" else "questions"
+                raise ValueError(f"Response contained no valid {item_name}")
 
             valid_questions = []
             for q_data in questions_data:
@@ -646,9 +650,7 @@ class QuestionGenerator:
                     "section": section.section,
                     "paragraph": section.paragraph,
                 }
-                q_data["difficulty"] = (
-                    difficulty if difficulty != "mixed" else q_data.get("difficulty", "medium")
-                )
+                q_data["difficulty"] = self._generated_difficulty(q_data, difficulty)
                 valid_questions.append(q_data)
 
                 # Invoke progress callback after each question is parsed
@@ -691,6 +693,63 @@ class QuestionGenerator:
                 "message": message[:200],
             })
             return []
+
+    def _batch_prompt(self, text, count, difficulty, custom_prompt, example_questions):
+        if getattr(self, "card_type", "mcq") == "flashcard":
+            return self._build_flashcard_prompt(text, count, custom_prompt)
+        return self._build_batch_prompt(text, count, difficulty, custom_prompt, example_questions)
+
+    def _parse_generated_response(self, content):
+        if getattr(self, "card_type", "mcq") == "flashcard":
+            return self._parse_flashcard_response(content)
+        return self._parse_batch_response(content)
+
+    def _generated_difficulty(self, question, difficulty):
+        if getattr(self, "card_type", "mcq") == "flashcard":
+            return "medium"
+        return difficulty if difficulty != "mixed" else question.get("difficulty", "medium")
+
+    def _build_flashcard_prompt(self, section_text, count, custom_prompt=None):
+        custom = f"\nADDITIONAL INSTRUCTIONS:\n{custom_prompt}" if custom_prompt else ""
+        return f"""Generate exactly {count} flashcards using only the passage below.
+Use no outside facts. Each card tests one idea. Ignore metadata and legal notices.
+The front names a term or concept or asks a short prompt. It must not contain the answer.
+The front is at most 200 characters. The back answers the front in 1 to 3 sentences,
+at most 600 characters. The passage must state or directly imply the answer.
+Return only a JSON array of objects with front, back, and reference fields:
+[{{"front": "Short prompt", "back": "Answer", "reference": "Supporting passage"}}]
+PASSAGE:
+{section_text}{custom}"""
+
+    def _parse_flashcard_response(self, response):
+        match = re.search(r"\[.*\]", response, re.DOTALL)
+        if not match:
+            return []
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(data, list):
+            return []
+        cards = []
+        for item in data:
+            card = self._parse_flashcard_item(item)
+            if card:
+                cards.append(card)
+        return cards
+
+    @staticmethod
+    def _parse_flashcard_item(item):
+        if not isinstance(item, dict):
+            return None
+        front, back = item.get("front"), item.get("back")
+        if not isinstance(front, str) or not isinstance(back, str):
+            return None
+        front, back = front.strip(), back.strip()
+        if not front or not back or len(front) > 200 or len(back) > 600:
+            return None
+        return dict(card_type="flashcard", question=front, explanation=back,
+                    reference=item.get("reference", {}), difficulty="medium")
 
     def _build_batch_prompt(
         self,

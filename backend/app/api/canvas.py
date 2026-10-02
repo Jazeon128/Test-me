@@ -534,6 +534,7 @@ def _question_json(question):
     options = sorted(question.options, key=lambda option: option.order)
     return {
         "id": question.id, "question": question.question_text,
+        "card_type": question.card_type,
         "options": [{"option": chr(65 + option.order), "text": option.option_text}
                     for option in options],
         "correct_answer": next((chr(65 + option.order) for option in options

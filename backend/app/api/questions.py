@@ -332,6 +332,7 @@ def format_question(question: Question) -> dict:
         "id": question.id,
         "document_id": question.document_id,
         "question_text": question.question_text,
+        "card_type": question.card_type,
         "options": [
             {
                 "id": opt.id,
@@ -374,7 +375,7 @@ def _has_flashcard_answer(question: Question) -> bool:
 
 def expected_answer(question: Question) -> str:
     """The flashcard back or correct option used to grade a written answer."""
-    if _has_flashcard_answer(question):
+    if question.card_type == "flashcard" or _has_flashcard_answer(question):
         return question.explanation
     return next((option.option_text for option in question.options if option.is_correct), "")
 
@@ -421,7 +422,7 @@ def key_points(question: Question) -> List[str]:
     The correct answer first, then the sentences of the stored explanation.
     """
     points = [expected_answer(question)]
-    if not _has_flashcard_answer(question):
+    if question.card_type != "flashcard" and not _has_flashcard_answer(question):
         points += curation.split_sentences(question.explanation or "")
     return [point for point in points if point]
 
@@ -483,6 +484,8 @@ def grade_written_answer(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    if question.card_type == "flashcard":
+        raise HTTPException(status_code=422, detail="Written mode is unavailable for flashcards")
     api_key = require_typesafe_key(db)
     return grade_to_response(
         question.question_text, expected_answer(question), request.answer, api_key
@@ -518,6 +521,7 @@ def suggested_tags(question_id: int, db: Session = Depends(get_db)):
     scores = curation.score_tags(
         question={
             "question_text": question.question_text,
+            "card_type": question.card_type,
             "explanation": question.explanation,
         },
         available_tags=[tag.name for tag in candidates],

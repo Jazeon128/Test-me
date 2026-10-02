@@ -111,21 +111,21 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
                 style={{ borderColor: 'var(--line)', background: 'var(--s2)' }}
               >
                 <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                  {question.question}
+                  {question.card_type === 'flashcard' && <strong>Front: </strong>}{question.question}
                 </div>
-                <ul className="mt-2 space-y-1">
+                {question.card_type !== 'flashcard' && <ul className="mt-2 space-y-1">
                   {(question.options || []).map((option) => (
                     <li key={option.option} className="text-xs" style={{ color: 'var(--text2)' }}>
                       <span className="tm-mono">{option.option}.</span> {option.text}
                     </li>
                   ))}
-                </ul>
+                </ul>}
                 <button type="button" className="mt-2 text-sm" aria-expanded={!!shownAnswers[question.id]}
                   onClick={() => setShownAnswers(current => ({ ...current, [question.id]: !current[question.id] }))}>
                   {shownAnswers[question.id] ? 'Hide answer' : 'Show answer'}
                 </button>
                 {shownAnswers[question.id] && <p className="mt-2 text-sm">
-                  Answer: {question.correct_answer}. {question.explanation}
+                  {question.card_type === 'flashcard' ? 'Back: ' : `Answer: ${question.correct_answer}. `}{question.explanation}
                 </p>}
               </div>
             ))}

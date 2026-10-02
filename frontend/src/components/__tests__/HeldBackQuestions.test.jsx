@@ -20,6 +20,15 @@ beforeEach(() => {
 })
 
 describe('HeldBackQuestions', () => {
+  it('shows a flashcard front and back without options', async () => {
+    api.get.mockResolvedValue({ data: [{ id: 9, card_type: 'flashcard',
+      question: 'SM-2?', explanation: 'Reviews.', reasons: ['Unsupported back'] }] })
+    render(<HeldBackQuestions deckId="3" onRestored={vi.fn()} />)
+    expect(await screen.findByText('SM-2?', { exact: false })).toHaveTextContent('Front: SM-2?')
+    expect(screen.getByText('Reviews.', { exact: false })).toHaveTextContent('Back: Reviews.')
+    expect(screen.queryByText('(Keyed answer)')).not.toBeInTheDocument()
+  })
+
   it('renders questions, reasons, and keyed options', async () => {
     render(<HeldBackQuestions deckId="3" onRestored={vi.fn()} />)
     expect(await screen.findByText('Held back by the quality check (2)')).toBeInTheDocument()

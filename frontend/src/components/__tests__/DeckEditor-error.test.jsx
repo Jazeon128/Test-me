@@ -23,3 +23,18 @@ it('shows the load error and retries successfully', async () => {
   await waitFor(() => expect(decksAPI.get).toHaveBeenCalledTimes(2))
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
+
+it('shows a flashcard front and lets the learner reveal its back', async () => {
+  decksAPI.get.mockResolvedValueOnce({ data: {
+    id: 1, name: 'Study cards', num_questions: 1, documents: [], questions: [{
+      id: 7, card_type: 'flashcard', question_text: 'SM-2?', explanation: 'Reviews.',
+      difficulty: 'medium', tags: [],
+    }],
+  } })
+  render(<MemoryRouter><DeckEditor deckId={1} onBack={vi.fn()} /></MemoryRouter>)
+  expect(await screen.findByText('SM-2?', { exact: false })).toHaveTextContent('Front: SM-2?')
+  const reveal = screen.getByText('Show back')
+  expect(reveal.closest('details')).not.toHaveAttribute('open')
+  fireEvent.click(reveal)
+  expect(screen.getByText('Reviews.', { exact: false })).toHaveTextContent('Back: Reviews.')
+})

@@ -36,6 +36,8 @@ THRESHOLDS = {
     "not_in_source": 0.7,
     "ambiguous_options": 0.7,
     "tests_wording": 0.85,
+    "back_not_supported": 0.7,
+    "front_gives_away": 0.7,
 }
 
 #: Leave room for the question and its options alongside the section text.
@@ -90,6 +92,28 @@ CHECKS = {
 }
 
 
+FLASHCARD_CHECKS = {
+    "back_not_supported": {
+        "description": "The source does not support the back as the answer to the front",
+        "instructions": (
+            "Does `section_text` fail to support `card.back` as a correct answer to `card.front`?"
+        ),
+        "criteria": {
+            "true": "The back states something the passage does not say, contradicts it, or answers a different question",
+            "false": "The passage states or directly implies the back as the answer to the front",
+        },
+    },
+    "front_gives_away": {
+        "description": "The front already contains the answer in the back",
+        "instructions": "Does `card.front` already contain the answer in `card.back`?",
+        "criteria": {
+            "true": "The front states or nearly states the back",
+            "false": "The front asks for or names something the learner must recall",
+        },
+    },
+}
+
+
 @dataclass
 class QuestionVerdict:
     """What the checks said about one question."""
@@ -111,6 +135,16 @@ class QuestionVerdict:
 
 def build_state(section_text: str, question: Dict) -> Dict:
     """Named fields, so each check can point at the part it judges."""
+    if question.get("card_type") == "flashcard":
+        return {
+            "section_text": jev.trim(section_text, MAX_SECTION_CHARS),
+            "card": {"front": question.get("question") or question.get("question_text") or "",
+                     "back": question.get("explanation") or ""},
+        }
+    return _mcq_state(section_text, question)
+
+
+def _mcq_state(section_text, question):
     options = question.get("options") or []
     correct_answer = question.get("correct_answer")
     correct = next(
@@ -139,10 +173,10 @@ def build_state(section_text: str, question: Dict) -> Dict:
     }
 
 
-def _questions() -> Dict:
+def _questions(checks=CHECKS) -> Dict:
     return {
         name: {"type": "noul", "instructions": check["instructions"], "criteria": check["criteria"]}
-        for name, check in CHECKS.items()
+        for name, check in checks.items()
     }
 
 
@@ -154,9 +188,10 @@ def verify_question(
     timeout: float = jev.DEFAULT_TIMEOUT,
 ) -> QuestionVerdict:
     """Run every check over one question in a single request."""
+    checks = FLASHCARD_CHECKS if question.get("card_type") == "flashcard" else CHECKS
     answers = jev.ask(
         state=build_state(section_text, question),
-        questions=_questions(),
+        questions=_questions(checks),
         api_key=api_key,
         timeout=timeout,
         label="verify_question",
@@ -168,7 +203,7 @@ def verify_question(
             probability=answers.noul(name),
             description=check["description"],
         )
-        for name, check in CHECKS.items()
+        for name, check in checks.items()
     ]
 
     return QuestionVerdict(question_index=index, verdict=jev.Verdict(flags=flags))

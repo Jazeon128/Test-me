@@ -74,6 +74,9 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    if question.card_type == "flashcard" and (request.written_answer is not None or request.explain):
+        raise HTTPException(status_code=422, detail="Written and explain modes are unavailable for flashcards")
+
     # Check if answer is correct
     correct_option = None
     is_correct = False
@@ -387,6 +390,7 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
             {
                 "id": q.id,
                 "question_text": q.question_text,
+                "card_type": q.card_type,
                 "options": [
                     {
                         "option": chr(65 + opt.order),

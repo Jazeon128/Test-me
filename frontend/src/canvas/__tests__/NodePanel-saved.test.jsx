@@ -13,6 +13,16 @@ function mount() {
     source={{ section: { text: 'Original passage' } }} onClose={vi.fn()} /></MemoryRouter>)
 }
 beforeEach(() => { vi.resetAllMocks() })
+it('shows a flashcard front and reveals its back without options', async () => {
+  canvasAPI.savedQuestionsForNode.mockResolvedValue({ data: { ...result, questions: [{
+    id: 10, card_type: 'flashcard', question: 'SM-2?', explanation: 'Reviews.',
+  }] } })
+  mount()
+  expect(await screen.findByText('SM-2?', { exact: false })).toHaveTextContent('Front: SM-2?')
+  expect(screen.queryByText(/Reviews\./)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
+  expect(screen.getByText('Back: Reviews.')).toBeInTheDocument()
+})
 it('loads saved questions, hides and toggles answers, and links to practice and review', async () => {
   canvasAPI.savedQuestionsForNode.mockResolvedValue({ data: result })
   mount()

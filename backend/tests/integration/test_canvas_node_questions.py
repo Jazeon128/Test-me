@@ -59,7 +59,7 @@ def test_save_reuse_more_get_and_second_source(client, db_session, setup_node, m
     assert data["held_back"] == 1
     assert len(data["questions"]) == 1
     question = db_session.query(Question).one()
-    assert data["questions"][0] == {"id": question.id, "question": question.question_text,
+    assert data["questions"][0] == {"id": question.id, "question": question.question_text, "card_type": "mcq",
         "options": [{"option": "A", "text": "Topic"}, {"option": "B", "text": "Other"}],
         "correct_answer": "A", "explanation": "The passage says so."}
     assert question.document_id == second_id

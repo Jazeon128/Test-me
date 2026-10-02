@@ -285,7 +285,11 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                                                 {question.difficulty}
                                             </span>
                                         </div>
-                                        <p className="text-gray-900 dark:text-white font-medium mb-2">{question.question_text}</p>
+                                        <p className="text-gray-900 dark:text-white font-medium mb-2">{question.card_type === 'flashcard' && <strong>Front: </strong>}{question.question_text}</p>
+                                        {question.card_type === 'flashcard' && <details className="mb-2">
+                                            <summary className="cursor-pointer">Show back</summary>
+                                            <p><strong>Back: </strong>{question.explanation}</p>
+                                        </details>}
 
                                         {/* Tag Badges */}
                                         {editingTagsFor !== question.id && question.tags && question.tags.length > 0 && (

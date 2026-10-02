@@ -13,6 +13,26 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from '../../App'
 
+// The configured-app cases render the notebook page. Keep its requests local
+// and settled so they cannot update React after the test environment closes.
+vi.mock('../../services/api', async importOriginal => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    notebooksAPI: { ...actual.notebooksAPI, list: vi.fn().mockResolvedValue({ data: [] }) },
+    progressAPI: {
+      ...actual.progressAPI,
+      getStatsByNotebook: vi.fn().mockResolvedValue({ data: [] }),
+      getStats: vi.fn().mockResolvedValue({ data: {} }),
+    },
+    activityAPI: {
+      ...actual.activityAPI,
+      get: vi.fn().mockResolvedValue({ data: { heatmap: [], totals: {} } }),
+      awards: vi.fn().mockResolvedValue({ data: { earned: [], locked: [] } }),
+    },
+  }
+})
+
 /**
  * Advance the welcome wizard to the AI-provider step.
  *

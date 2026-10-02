@@ -1,0 +1,81 @@
+import { useEffect, useRef, useState } from 'react'
+import { Check, Loader2, AlertCircle } from 'lucide-react'
+import PropTypes from 'prop-types'
+
+export default function CanvasSaveControls({
+  status,
+  retry,
+  restore,
+  restoring,
+  setRestoring,
+  hasChanges,
+}) {
+  const [keepTrigger, setKeepTrigger] = useState(false)
+  const trigger = useRef(null)
+  const confirm = useRef(null)
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (restoring) confirm.current?.focus()
+    else if (wasOpen.current) trigger.current?.focus()
+    wasOpen.current = restoring
+  }, [restoring])
+  const Icon = status === 'Saved' ? Check : status === 'Saving...' ? Loader2 : AlertCircle
+  return (
+    <>
+      <span className="tm-save-status" aria-live="polite">
+        <Icon
+          size={16}
+          aria-hidden="true"
+          className={status === 'Saving...' ? 'animate-spin' : undefined}
+        />
+        {status}
+      </span>
+      {status === 'Save failed' && (
+        <button type="button" className="btn-secondary" onClick={restoring ? restore : retry}>
+          Retry
+        </button>
+      )}
+      {(hasChanges || keepTrigger) && (
+        <button
+          type="button"
+          className="btn-secondary"
+          ref={trigger}
+          onClick={() => {
+            setKeepTrigger(true)
+            setRestoring(true)
+          }}
+        >
+          Restore original
+        </button>
+      )}
+      {restoring && (
+        <div
+          className="tm-restore"
+          role="dialog"
+          aria-label="Restore original"
+          onKeyDown={event => {
+            if (event.key === 'Escape') setRestoring(false)
+          }}
+        >
+          <p>
+            Restore the generated diagram? Your edits and positions on this canvas will be lost.
+          </p>
+          <button type="button" className="tm-danger" ref={confirm} onClick={restore}>
+            Restore
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => setRestoring(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
+CanvasSaveControls.propTypes = {
+  hasChanges: PropTypes.bool.isRequired,
+  status: PropTypes.string.isRequired,
+  retry: PropTypes.func.isRequired,
+  restore: PropTypes.func.isRequired,
+  restoring: PropTypes.bool.isRequired,
+  setRestoring: PropTypes.func.isRequired,
+}

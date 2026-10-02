@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const NODE_FIELDS = [
   'id',
@@ -30,19 +30,117 @@ export function editedGraph(nodes, edges) {
 export const meaningColours = ['MatrixCell', 'MessageNode', 'NoteNode']
 export const COLORS = ['blue', 'teal', 'amber', 'violet', 'rose', 'slate']
 
-export default function useCanvasEditing({ nodes, edges, setNodes, setEdges, setCanvas, save }) {
+export function freePosition(centre, nodes) {
+  let x = 0
+  let y = 0
+  let dx = 1
+  let dy = 0
+  let length = 1
+  let travelled = 0
+  let turns = 0
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const position = { x: centre.x + x * 40, y: centre.y + y * 40 }
+    const occupied = nodes.some(node => {
+      let origin = node.position
+      let parent = nodes.find(item => item.id === node.parentId)
+      while (parent) {
+        origin = { x: origin.x + parent.position.x, y: origin.y + parent.position.y }
+        parent = nodes.find(item => item.id === parent.parentId)
+      }
+      const width = node.measured?.width ?? 180
+      const height = node.measured?.height ?? 60
+      return (
+        position.x < origin.x + width &&
+        position.x + 180 > origin.x &&
+        position.y < origin.y + height &&
+        position.y + 60 > origin.y
+      )
+    })
+    if (!occupied) return position
+    x += dx
+    y += dy
+    travelled++
+    if (travelled === length) {
+      const previousDx = dx
+      dx = -dy
+      dy = previousDx
+      travelled = 0
+      turns++
+      if (turns % 2 === 0) length++
+    }
+  }
+  return centre
+}
+
+export default function useCanvasEditing({
+  nodes,
+  edges,
+  setNodes,
+  setEdges,
+  setCanvas,
+  save,
+  canvasId,
+}) {
   const [editing, setEditing] = useState(null)
-  const spots = useRef(new Map())
+  const history = useRef({ past: [], future: [] })
+  const drag = useRef(null)
+  const [availability, setAvailability] = useState({ canUndo: false, canRedo: false })
+  const refresh = useCallback(
+    () =>
+      setAvailability({
+        canUndo: history.current.past.length > 0,
+        canRedo: history.current.future.length > 0,
+      }),
+    []
+  )
+  const clearHistory = useCallback(() => {
+    history.current = { past: [], future: [] }
+    drag.current = null
+    setEditing(null)
+    refresh()
+  }, [refresh])
+  useEffect(() => {
+    clearHistory()
+  }, [canvasId, clearHistory])
+  const beginDrag = () => {
+    drag.current = editedGraph(nodes, edges)
+  }
+  const pushHistory = useCallback(() => {
+    history.current.past = [
+      ...history.current.past,
+      drag.current || editedGraph(nodes, edges),
+    ].slice(-50)
+    history.current.future = []
+    drag.current = null
+    refresh()
+  }, [nodes, edges, refresh])
   const applyGraph = useCallback(
-    (nextNodes, nextEdges) => {
+    (nextNodes, nextEdges, recordHistory = true, layoutOnly = false) => {
+      if (recordHistory) pushHistory()
       setNodes(nextNodes)
       setEdges(nextEdges)
       const edited = editedGraph(nextNodes, nextEdges)
-      setCanvas(record => ({ ...record, edited, has_edits: true }))
-      save({ edited })
+      if (layoutOnly) {
+        const layout = Object.fromEntries(nextNodes.map(node => [node.id, node.position]))
+        setCanvas(record => ({ ...record, layout }))
+        save({ layout })
+      } else {
+        setCanvas(record => ({ ...record, edited, has_edits: true }))
+        save({ edited })
+      }
     },
-    [setNodes, setEdges, setCanvas, save]
+    [setNodes, setEdges, setCanvas, save, pushHistory]
   )
+  const travel = direction => {
+    const from = history.current[direction === 'undo' ? 'past' : 'future']
+    const to = history.current[direction === 'undo' ? 'future' : 'past']
+    if (!from.length) return
+    to.push(editedGraph(nodes, edges))
+    const snapshot = from.pop()
+    setEditing(null)
+    applyGraph(snapshot.nodes, snapshot.edges, false)
+    refresh()
+  }
   const commit = useCallback(
     (id, text) => {
       const next = nodes.map(node =>
@@ -54,13 +152,10 @@ export default function useCanvasEditing({ nodes, edges, setNodes, setEdges, set
     [nodes, edges, applyGraph]
   )
   const add = (position, note = false) => {
-    const key = `${position.x}:${position.y}`
-    const count = spots.current.get(key) || 0
-    spots.current.set(key, count + 1)
     const node = {
       id: `n-${crypto.randomUUID()}`,
       type: note ? 'NoteNode' : 'StepNode',
-      position: { x: position.x + count * 24, y: position.y + count * 24 },
+      position: freePosition(position, nodes),
       data: note
         ? { label: 'Note', note: true, added: true }
         : { label: 'New node', color: 'slate', kind: 'added', added: true },
@@ -130,6 +225,11 @@ export default function useCanvasEditing({ nodes, edges, setNodes, setEdges, set
     },
   }))
   return {
+    ...availability,
+    undo: () => travel('undo'),
+    redo: () => travel('redo'),
+    clearHistory,
+    beginDrag,
     displayNodes,
     editing,
     startEditing: setEditing,

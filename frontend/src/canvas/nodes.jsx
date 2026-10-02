@@ -66,7 +66,7 @@ function NodeShell({ data, selected, shape = 'rect', caption, detail = true }) {
       <Handle type="target" position={Position.Left} />
       <div className="tm-node-head">
         <span className="tm-sw" />
-        <span className="tm-kind">{caption}</span>
+        {caption && <span className="tm-kind">{caption}</span>}
         <Cite
           added={data.added}
           sectionId={data.source_section_id}
@@ -100,7 +100,7 @@ NodeShell.propTypes = {
 export function StepNode({ data, selected }) {
   const kind = data.kind || 'step'
   const shape = kind === 'decision' ? 'hex' : kind === 'start' || kind === 'end' ? 'pill' : 'rect'
-  return <NodeShell data={data} selected={selected} shape={shape} caption={kind} />
+  return <NodeShell data={data} selected={selected} shape={shape} caption={data.added ? '' : kind} />
 }
 
 /** A component in an architecture or context diagram. */

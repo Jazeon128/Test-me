@@ -114,7 +114,7 @@ it('draws an edited graph without layout and opens Edit with a 44 px toolbar', a
   const button = await screen.findByRole('button', { name: 'Edit' })
   expect(button.closest('.tm-edit-toolbar')).toBeInTheDocument()
   fireEvent.click(button)
-  expect(screen.getByLabelText('Label')).toHaveFocus()
+  await waitFor(() => expect(screen.getByLabelText('Label')).toHaveFocus())
 })
 it('saves Label with Enter, preserves fields, strips callbacks and shows the edited marker', async () => {
   await setup()
@@ -196,7 +196,7 @@ it('confirms restore, clears edits and positions and redraws from the payload', 
   expect(toGraph).toHaveBeenCalledTimes(1)
   expect(toGraph).toHaveBeenCalledWith('flowchart', {})
   expect(layout).toHaveBeenCalledTimes(1)
-  expect(screen.queryByRole('button', { name: 'Restore original' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Restore original' })).toHaveFocus()
 })
 it('flushes unsaved text when navigating away', async () => {
   await setup()

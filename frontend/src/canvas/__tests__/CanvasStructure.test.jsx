@@ -1,13 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import PropTypes from 'prop-types'
 import Canvas from '../../pages/Canvas'
 import { canvasAPI } from '../../services/api'
 
-const state = vi.hoisted(() => ({ save: vi.fn(), convert: vi.fn(point => point), flow: null }))
+const state = vi.hoisted(() => ({ status: 'Saved', flush: vi.fn(), save: vi.fn(), convert: vi.fn(point => point), flow: null }))
 vi.mock('../useCanvasSave', () => ({ default: () => ({
-  status: 'Saved', save: state.save, flush: vi.fn(), retry: vi.fn(),
+  status: state.status, save: state.save, flush: state.flush, retry: vi.fn(),
 }) }))
 vi.mock('../../services/api', () => ({
   canvasAPI: { get: vi.fn(), nodeSource: vi.fn() },
@@ -51,6 +51,8 @@ const graph = { schema_version: 1, nodes: [node('a'), node('b')],
   edges: [{ id: 'ab', source: 'a', target: 'b' }] }
 beforeEach(() => {
   vi.clearAllMocks()
+  state.status = 'Saved'
+  state.flush.mockResolvedValue(true)
   state.convert.mockImplementation(point => ({ x: point.x - 10, y: point.y - 20 }))
   canvasAPI.nodeSource.mockResolvedValue({ data: { section: null } })
 })
@@ -70,7 +72,7 @@ const saved = () => state.save.mock.calls.at(-1)[0].edited
 it('converts an unedited graph with one save, places and selects additions, and opens their editor', async () => {
   const { container } = await setup(null)
   expect(screen.getByRole('toolbar', { name: 'Canvas tools' })).toBeInTheDocument()
-  const wrapper = container.querySelector('.tm-flow-editor')
+  const wrapper = container.querySelector('.tm-drawing-surface')
   vi.spyOn(wrapper, 'getBoundingClientRect').mockReturnValue({ left: 100, top: 50, width: 600, height: 400 })
   click('Add node')
   expect(state.convert).toHaveBeenCalledWith({ x: 400, y: 250 })
@@ -82,7 +84,7 @@ it('converts an unedited graph with one save, places and selects additions, and 
   expect(saved().nodes[0].position).toEqual(graph.nodes[0].position)
   expect(saved().edges).toEqual(graph.edges)
   expect(state.flow.nodes.at(-1).selected).toBe(true)
-  expect(screen.getByLabelText('Label')).toHaveFocus()
+  await waitFor(() => expect(screen.getByLabelText('Label')).toHaveFocus())
   expect(screen.getByTitle('Added by you. No source passage.')).toHaveTextContent('added')
   expect(screen.queryByText('Source panel')).not.toBeInTheDocument()
   fireEvent.keyDown(screen.getByLabelText('Label'), { key: 'Escape' })
@@ -91,9 +93,9 @@ it('converts an unedited graph with one save, places and selects additions, and 
   expect(screen.queryByText('Source panel')).not.toBeInTheDocument()
   click('Add note')
   expect(state.save).toHaveBeenCalledTimes(2)
-  expect(saved().nodes.at(-1)).toMatchObject({ type: 'NoteNode', position: { x: 414, y: 254 },
+  expect(saved().nodes.at(-1)).toMatchObject({ type: 'NoteNode', position: { x: 470, y: 310 },
     data: { label: 'Note', note: true, added: true } })
-  expect(screen.getByLabelText('Text')).toHaveFocus()
+  await waitFor(() => expect(screen.getByLabelText('Text')).toHaveFocus())
 })
 
 it('adds a note with no handles or citation and validates multiline Text, save and cancel', async () => {
@@ -225,4 +227,176 @@ it.each([true, false])('saves every moved position when has_edits is %s', async 
   const payload = state.save.mock.calls[0][0]
   if (edited) expect(payload.edited.nodes.map(item => item.position)).toEqual(moved.map(item => item.position))
   else expect(payload).toEqual({ layout: { a: moved[0].position, b: moved[1].position } })
+})
+
+
+it('places the toolbar above the drawing surface and focuses and selects new node and note text', async () => {
+  const { container } = await setup()
+  const toolbar = screen.getByRole('toolbar')
+  const surface = container.querySelector('.tm-drawing-surface')
+  expect(toolbar.parentElement).toBe(surface.parentElement)
+  expect(toolbar.nextElementSibling).toBe(surface)
+  expect(surface.contains(toolbar)).toBe(false)
+  click('Add node')
+  const label = screen.getByLabelText('Label')
+  await waitFor(() => expect(label).toHaveFocus())
+  expect([label.selectionStart, label.selectionEnd]).toEqual([0, 8])
+  fireEvent.change(label, { target: { value: 'Replacement' } })
+  click('Save')
+  expect(screen.getByTitle('Added by you. No source passage.')).toHaveTextContent('added')
+  expect(screen.queryByText('edited')).not.toBeInTheDocument()
+  click('Add note')
+  const text = screen.getByLabelText('Text')
+  await waitFor(() => expect(text).toHaveFocus())
+  expect([text.selectionStart, text.selectionEnd]).toEqual([0, 4])
+})
+it('updates Undo and Redo disabled states and saves first undo as an edited drawn graph', async () => {
+  await setup(null)
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
+  click('Add node')
+  click('Undo')
+  expect(saved()).toEqual(graph)
+  expect(state.save).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Redo' })).toBeEnabled()
+  click('Redo')
+  expect(saved().nodes).toHaveLength(3)
+})
+it.each([
+  ['z', { ctrlKey: true }, 2],
+  ['z', { metaKey: true }, 2],
+  ['Z', { ctrlKey: true, shiftKey: true }, 3],
+  ['Z', { metaKey: true, shiftKey: true }, 3],
+  ['y', { ctrlKey: true }, 3],
+])('runs the history shortcut %s with %j', async (key, modifiers, calls) => {
+  const { container } = await setup()
+  click('Add node')
+  fireEvent.keyDown(screen.getByLabelText('Label'), { key: 'Escape' })
+  if (calls === 3) click('Undo')
+  const wrapper = container.querySelector('.tm-flow-editor')
+  wrapper.focus()
+  fireEvent.keyDown(wrapper, { key, ...modifiers })
+  expect(state.save).toHaveBeenCalledTimes(calls)
+  expect(saved().nodes).toHaveLength(calls === 2 ? 2 : 3)
+})
+it.each([false, true])('adds with N, Shift is %s and Enter opens the selection editor', async shiftKey => {
+  const { container } = await setup()
+  const wrapper = container.querySelector('.tm-flow-editor')
+  wrapper.focus()
+  fireEvent.keyDown(wrapper, { key: shiftKey ? 'N' : 'n', shiftKey })
+  expect(saved().nodes.at(-1).type).toBe(shiftKey ? 'NoteNode' : 'StepNode')
+  const field = screen.getByLabelText(shiftKey ? 'Text' : 'Label')
+  fireEvent.keyDown(field, { key: 'Escape' })
+  wrapper.focus()
+  fireEvent.keyDown(wrapper, { key: 'Enter' })
+  await waitFor(() => expect(screen.getByLabelText(shiftKey ? 'Text' : 'Label')).toHaveFocus())
+})
+it('ignores every shortcut while typing', async () => {
+  await setup()
+  click('Add node')
+  const label = screen.getByLabelText('Label')
+  const detail = screen.getByLabelText('Detail')
+  const shortcuts = [
+    { key: 'z', ctrlKey: true }, { key: 'z', metaKey: true },
+    { key: 'Z', ctrlKey: true, shiftKey: true }, { key: 'y', ctrlKey: true },
+    { key: 'Delete' }, { key: 'Backspace' }, { key: 'n' }, { key: 'N', shiftKey: true },
+  ]
+  for (const field of [label, detail]) {
+    for (const shortcut of shortcuts) fireEvent.keyDown(field, shortcut)
+  }
+  expect(state.save).toHaveBeenCalledTimes(1)
+  // Enter and Escape belong to the editor and must not run canvas actions.
+  fireEvent.keyDown(detail, { key: 'Enter', shiftKey: true })
+  expect(state.save).toHaveBeenCalledTimes(1)
+  fireEvent.keyDown(label, { key: 'Escape' })
+  expect(state.save).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+})
+it('closes colour and edge label on selection changes and clears selection with Escape', async () => {
+  const { container } = await setup()
+  await act(async () => fireEvent.click(screen.getByText('a')))
+  click('Colour')
+  expect(screen.getByRole('menu')).toBeInTheDocument()
+  await act(async () => fireEvent.click(screen.getByText('b')))
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  click('Edge ab')
+  click('Edit label')
+  expect(screen.getByLabelText('Edge label')).toBeInTheDocument()
+  await act(async () => fireEvent.click(screen.getByText('a')))
+  expect(screen.queryByLabelText('Edge label')).not.toBeInTheDocument()
+  click('Colour')
+  const wrapper = container.querySelector('.tm-flow-editor')
+  wrapper.focus()
+  fireEvent.keyDown(wrapper, { key: 'Escape' })
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+})
+it('opens shortcut help, closes by Escape and Close, and returns focus', async () => {
+  await setup()
+  click('Keyboard shortcuts')
+  expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toHaveTextContent('Cmd+Z')
+  const close = screen.getByRole('button', { name: 'Close' })
+  expect(close).toHaveFocus()
+  fireEvent.keyDown(close, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveFocus()
+  click('Keyboard shortcuts')
+  click('Close')
+  expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveFocus()
+})
+it.each([
+  ['Saved', '.lucide-check'], ['Saving...', '.lucide-loader2'], ['Save failed', '.lucide-alert-circle'],
+])('shows the %s pill icon and fixed width class', async (status, icon) => {
+  state.status = status
+  await setup()
+  const pill = screen.getByText(status)
+  expect(pill).toHaveClass('tm-save-status')
+  expect(pill).toHaveAttribute('aria-live', 'polite')
+  expect(pill.querySelector(icon)).not.toBeNull()
+  if (status === 'Saving...') expect(pill.querySelector(icon)).toHaveClass('animate-spin')
+})
+it('focuses restore confirmation, returns focus on cancel and success, and clears history', async () => {
+  await setup()
+  click('Add node')
+  click('Restore original')
+  expect(screen.getByRole('button', { name: 'Restore', exact: true })).toHaveFocus()
+  fireEvent.click(screen.getByRole('dialog', { name: 'Restore original' }).querySelector('.btn-secondary'))
+  expect(screen.getByRole('button', { name: 'Restore original' })).toHaveFocus()
+  click('Restore original')
+  await act(async () => click('Restore'))
+  expect(screen.getByRole('button', { name: 'Restore original' })).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled()
+  expect(state.save.mock.calls.at(-1)[0]).toEqual({ edited: null, layout: null })
+})
+
+
+it('renders exactly one added chip in a new node, including after text edits', async () => {
+  await setup()
+  click('Add node')
+  const id = saved().nodes.at(-1).id
+  expect(within(screen.getByTestId(id)).getAllByText('added', { exact: true })).toHaveLength(1)
+  fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Undo test node' } })
+  fireEvent.keyDown(screen.getByLabelText('Label'), { key: 'Enter' })
+  expect(within(screen.getByTestId(id)).getAllByText('added', { exact: true })).toHaveLength(1)
+  expect(within(screen.getByTestId(id)).queryByText('edited')).not.toBeInTheDocument()
+})
+it.each([false, true])('blocks N and Shift+N outside an open editor, note is %s', async note => {
+  const { container } = await setup()
+  click(note ? 'Add note' : 'Add node')
+  await waitFor(() => expect(screen.getByLabelText(note ? 'Text' : 'Label')).toHaveFocus())
+  const button = screen.getByRole('button', { name: note ? 'Add note' : 'Add node' })
+  const wrapper = container.querySelector('.tm-flow-editor')
+  for (const target of [button, wrapper]) {
+    target.focus()
+    fireEvent.keyDown(target, { key: 'n' })
+    fireEvent.keyDown(target, { key: 'N', shiftKey: true })
+  }
+  expect(state.save).toHaveBeenCalledTimes(1)
+  expect(state.flow.nodes).toHaveLength(3)
+  fireEvent.keyDown(screen.getByLabelText(note ? 'Text' : 'Label'), { key: 'Escape' })
+  wrapper.focus()
+  fireEvent.keyDown(wrapper, { key: 'n' })
+  expect(state.save).toHaveBeenCalledTimes(2)
 })

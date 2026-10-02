@@ -18,6 +18,8 @@ import NodePanel from '../canvas/NodePanel'
 import useCanvasSave from '../canvas/useCanvasSave'
 import useCanvasEditing from '../canvas/useCanvasEditing'
 import CanvasToolbar from '../canvas/CanvasToolbar'
+import CanvasSaveControls from '../canvas/CanvasSaveControls'
+import canvasShortcuts from '../canvas/canvasShortcuts'
 import { Generating, EmptyState, TemplateBadge } from '../canvas/CanvasChrome'
 import '../canvas/canvas.css'
 
@@ -68,8 +70,10 @@ export default function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
 
   const { status: saveStatus, save, flush, retry } = useCanvasSave(canvas?.id)
-  const { displayNodes, startEditing, applyGraph, add, connect, canDelete, remove,
-    recolour, labelEdge } = useCanvasEditing({ nodes, edges, setNodes, setEdges, setCanvas, save })
+  const {
+    displayNodes, editing, startEditing, applyGraph, add, connect, canDelete, remove,
+    recolour, labelEdge, undo, redo, canUndo, canRedo, clearHistory, beginDrag,
+  } = useCanvasEditing({ nodes, edges, setNodes, setEdges, setCanvas, save, canvasId })
   const [restoring, setRestoring] = useState(false)
 
   const pollRef = useRef(null)
@@ -134,12 +138,13 @@ export default function Canvas() {
           },
         }))
       )
+      clearHistory()
       setEdges(laidOut.edges)
       setCanvas(record)
       drawnIdRef.current = String(record.id)
       setPhase('ready')
     },
-    [openSource, setEdges, setNodes]
+    [openSource, setEdges, setNodes, clearHistory]
   )
 
   useEffect(() => {
@@ -222,15 +227,8 @@ export default function Canvas() {
     if (!canvas) return
     const moved = new Map((draggedNodes || [dragged]).filter(Boolean).map(node => [node.id, node.position]))
     const next = nodes.map(node => moved.has(node.id) ? { ...node, position: moved.get(node.id) } : node)
-    if (canvas.has_edits || canvas.edited) {
-      applyGraph(next, edges)
-    } else {
-      setNodes(next)
-      const positions = Object.fromEntries(next.map(node => [node.id, node.position]))
-      setCanvas(record => ({ ...record, layout: positions }))
-      save({ layout: positions })
-    }
-  }, [canvas, nodes, edges, save, setNodes, applyGraph])
+    applyGraph(next, edges, true, !(canvas.has_edits || canvas.edited))
+  }, [canvas, nodes, edges, applyGraph])
 
   const addNode = note => {
     const rect = wrapperRef.current.getBoundingClientRect()
@@ -309,10 +307,9 @@ export default function Canvas() {
             >
               {canvas.request_text}
             </h1>
-            <span aria-live="polite">{saveStatus}</span>
-            {saveStatus === 'Save failed' && <button type="button" onClick={restoring ? restore : retry}>Retry</button>}
-            {(canvas.has_edits || canvas.edited || canvas.layout) &&
-              <button type="button" onClick={() => setRestoring(true)}>Restore original</button>}
+            <CanvasSaveControls status={saveStatus} retry={retry} restore={restore}
+              restoring={restoring} setRestoring={setRestoring}
+              hasChanges={Boolean(canvas.has_edits || canvas.edited || canvas.layout)} />
             <TemplateBadge canvas={canvas} />
           </div>
         )}
@@ -356,11 +353,6 @@ export default function Canvas() {
           </button>
         </div>
       </header>
-      {restoring && <div className="tm-restore" role="dialog" aria-label="Restore original">
-        <p>Restore the generated diagram? Your edits and positions on this canvas will be lost.</p>
-        <button type="button" onClick={restore}>Restore</button>
-        <button type="button" onClick={() => setRestoring(false)}>Cancel</button>
-      </div>}
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           {phase === 'idle' && <EmptyState name={documentName} onExample={example => {
@@ -393,55 +385,52 @@ export default function Canvas() {
           {phase === 'ready' && (
             <div
               className="tm-flow-editor"
-              ref={wrapperRef}
               inert={restoring ? '' : undefined}
               tabIndex={0}
-              onKeyDown={event => {
-                if (event.target.closest('input, textarea, [contenteditable="true"]')) return
-                if (event.key === 'Delete' || event.key === 'Backspace') {
-                  event.preventDefault()
-                  deleteSelected()
-                }
-                if (event.key === 'Enter' && selected && !event.target.closest('button')) {
-                  event.preventDefault()
-                  startEditing(selected.id)
-                }
-              }}
+              onKeyDown={event => canvasShortcuts(event, {
+                undo, redo, add: addNode, remove: deleteSelected, edit: startEditing, selected, editing,
+                clear: () => { setSelected(null); setSelectedEdge(null); setSource(null) },
+              })}
             >
-              <CanvasToolbar key={selected?.id || selectedEdge?.id || 'none'}
+              <CanvasToolbar undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
                 selected={nodes.find(node => node.id === selected?.id)}
                 edge={edges.find(edge => edge.id === selectedEdge?.id)} onEdit={startEditing}
                 onAdd={addNode} onDelete={deleteSelected} canDelete={canDelete(selected)}
                 onColour={color => recolour(selected, color)}
                 onLabel={label => labelEdge(selectedEdge, label)} />
-              <ReactFlow
-                onInit={instance => { flowRef.current = instance }}
-                onConnect={connect}
-                nodes={displayNodes}
-                deleteKeyCode={null}
-                onNodeDoubleClick={(_, node) => startEditing(node.id)}
-                edges={edges.map(edge => ({ ...edge, selectable: true }))}
-                onEdgeClick={(_, edge) => {
-                  setSelectedEdge(edge)
-                  setSelected(null)
-                  setSource(null)
-                }}
-                nodeTypes={nodeTypes}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeDragStop={persistLayout}
-                onNodeClick={(_, node) => openSource(canvas.id, node)}
-                onPaneClick={() => {
-                  setSelected(null)
-                  setSelectedEdge(null)
-                  setSource(null)
-                }}
-                fitView
-                proOptions={{ hideAttribution: false }}
-              >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
-                <Controls showInteractive={false} />
-              </ReactFlow>
+              <div className="tm-drawing-surface" ref={wrapperRef}>
+                <ReactFlow
+                  onInit={instance => { flowRef.current = instance }}
+                  onConnect={connect}
+                  nodes={displayNodes.map(node => ({ ...node, data: {
+                    ...node.data, onOpenSource: () => openSource(canvas.id, node),
+                  } }))}
+                  deleteKeyCode={null}
+                  onNodeDoubleClick={(_, node) => startEditing(node.id)}
+                  edges={edges.map(edge => ({ ...edge, selectable: true }))}
+                  onEdgeClick={(_, edge) => {
+                    setSelectedEdge(edge)
+                    setSelected(null)
+                    setSource(null)
+                  }}
+                  nodeTypes={nodeTypes}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onNodeDragStart={beginDrag}
+                  onNodeDragStop={persistLayout}
+                  onNodeClick={(_, node) => openSource(canvas.id, node)}
+                  onPaneClick={() => {
+                    setSelected(null)
+                    setSelectedEdge(null)
+                    setSource(null)
+                  }}
+                  fitView
+                  proOptions={{ hideAttribution: false }}
+                >
+                  <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
+                  <Controls showInteractive={false} />
+                </ReactFlow>
+              </div>
             </div>
           )}
         </div>

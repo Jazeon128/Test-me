@@ -1,7 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 
 export default function NodeEditor({ data, detail = false, note = false }) {
+  const field = useRef(null)
+  useEffect(() => {
+    let attempts = 0
+    let frame = null
+    const focusField = () => {
+      frame = null
+      const target = field.current
+      if (!target) return
+      const active = document.activeElement
+      if (active !== target && active?.closest(
+        'input, textarea, [contenteditable]:not([contenteditable="false"])'
+      )) return
+      attempts++
+      target.focus({ preventScroll: true })
+      if (document.activeElement === target) {
+        target.select()
+        return
+      }
+      if (attempts < 30) frame = requestAnimationFrame(focusField)
+    }
+    frame = requestAnimationFrame(focusField)
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [])
   const [label, setLabel] = useState(data.label || '')
   const [text, setText] = useState(data.detail || '')
   const valid =
@@ -29,7 +54,7 @@ export default function NodeEditor({ data, detail = false, note = false }) {
         {note ? 'Text' : 'Label'}
         {note ? (
           <textarea
-            autoFocus
+            ref={field}
             required
             value={label}
             aria-invalid={!label.trim() || label.length > 400}
@@ -37,7 +62,7 @@ export default function NodeEditor({ data, detail = false, note = false }) {
           />
         ) : (
           <input
-            autoFocus
+            ref={field}
             required
             value={label}
             aria-invalid={!label.trim() || label.length > 120}
@@ -78,7 +103,7 @@ NodeEditor.propTypes = {
 }
 
 export function EditedMarker({ data }) {
-  return data.edited ? (
+  return data.edited && !data.added ? (
     <span
       className="tm-edited"
       title="Edited by you. The source passage supported the original wording."

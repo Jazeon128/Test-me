@@ -21,6 +21,7 @@ import CanvasToolbar from './CanvasToolbar'
 import CanvasSaveControls from './CanvasSaveControls'
 import canvasShortcuts from './canvasShortcuts'
 import { Generating, EmptyState, TemplateBadge } from './CanvasChrome'
+import { canvasTitle } from './canvasTitle'
 import './canvas.css'
 
 const POLL_MS = 900
@@ -272,10 +273,11 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
       style={{ borderColor: 'var(--line)' }}
     >
       <header
-        className="flex flex-col gap-3 border-b px-4 py-3"
+        className="tm-canvas-header flex flex-col gap-3 border-b px-4 py-3"
         style={{ borderColor: 'var(--line)', background: 'var(--chrome)' }}
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="tm-canvas-meta flex flex-wrap items-center gap-3">
+          <div className="tm-canvas-sources flex flex-wrap items-center gap-3">
           {!embedded && <button
             type="button"
             onClick={async () => { if (await flush()) onClose(notebookId && notebookName ? notebookId : null) }}
@@ -296,15 +298,15 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
               <span className="truncate" title={source.name}>{source.name}</span>
             </span>
           ))}
-        </div>
+          </div>
         {canvas && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="tm-canvas-controls flex flex-wrap items-center gap-x-3 gap-y-2">
             {!embedded && <h1
               className="min-w-0 flex-1 truncate text-sm font-semibold"
               style={{ color: 'var(--text)' }}
               title={canvas.request_text}
             >
-              {canvas.request_text}
+              {canvasTitle(canvas.title || canvas.request_text)}
             </h1>}
             <CanvasSaveControls status={saveStatus} retry={retry} restore={restore}
               restoring={restoring} setRestoring={setRestoring}
@@ -312,7 +314,8 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             <TemplateBadge canvas={canvas} />
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-3">
+        </div>
+        <div className="tm-canvas-question flex items-center gap-3">
           <label htmlFor="canvas-request" className="sr-only">
             What do you want to see?
           </label>
@@ -330,8 +333,8 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             }
             className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
             style={{
-              background: 'var(--bg)',
-              borderColor: 'var(--line2)',
+              background: embedded ? 'var(--field)' : 'var(--bg)',
+              borderColor: embedded ? 'var(--line)' : 'var(--line2)',
               color: 'var(--text)',
               minHeight: 44,
             }}
@@ -340,8 +343,8 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             type="button"
             onClick={() => start()}
             disabled={!request.trim() || phase === 'generating'}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: 'var(--accent-ink)', minHeight: 44 }}
+            className={embedded ? 'btn-primary flex items-center gap-2' : 'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50'}
+            style={embedded ? undefined : { background: 'var(--accent)', color: 'var(--accent-ink)', minHeight: 44 }}
           >
             {phase === 'generating' ? (
               <Loader2 size={15} className="animate-spin" />
@@ -425,7 +428,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
                     setSource(null)
                   }}
                   fitView
-                  proOptions={{ hideAttribution: false }}
+                  proOptions={{ hideAttribution: true }}
                 >
                   <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
                   <Controls showInteractive={false} />

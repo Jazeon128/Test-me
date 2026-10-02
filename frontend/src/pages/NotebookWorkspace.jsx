@@ -1,3 +1,4 @@
+import { canvasTitle as readableCanvasTitle } from '../canvas/canvasTitle'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { notebooksAPI, statusAPI } from '../services/api'
@@ -246,7 +247,7 @@ function Workspace({ notebookId }) {
       </div>
       {hasOpenCentre && <>
         <header ref={deckHeader} tabIndex={-1} className="workspace-deck-header">
-          <h1>{hasOpenSource ? sourceTitle : hasOpenCanvas ? (canvasId ? `Canvas: ${canvasTitle || workspace.artifacts.canvases.find(canvas => String(canvas.id) === canvasId)?.title || 'Loading...'}` : 'New canvas') : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
+          <h1>{hasOpenSource ? sourceTitle : hasOpenCanvas ? (canvasId ? `Canvas: ${readableCanvasTitle(canvasTitle || workspace.artifacts.canvases.find(canvas => String(canvas.id) === canvasId)?.title || 'Loading...')}` : 'New canvas') : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
           <button onClick={close} className="icon-button" aria-label="Close"><X size={20} aria-hidden="true" /></button>
         </header>
         {hasOpenSource ? <SourceView key={sourceId} sourceId={sourceId} source={openedSource} /> : hasOpenCanvas ? <Suspense fallback={<p role="status">Loading canvas...</p>}>

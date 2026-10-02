@@ -400,3 +400,8 @@ it.each([false, true])('blocks N and Shift+N outside an open editor, note is %s'
   fireEvent.keyDown(wrapper, { key: 'n' })
   expect(state.save).toHaveBeenCalledTimes(2)
 })
+
+it('hides React Flow attribution', async () => {
+  await setup()
+  expect(state.flow.proOptions).toEqual({ hideAttribution: true })
+})

@@ -1,3 +1,4 @@
+import { canvasTitle } from '../../canvas/canvasTitle'
 import { Layers, ListChecks, Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -38,7 +39,7 @@ export default function ArtifactList({ artifacts, progress, open, notebookId, on
             event.preventDefault()
             onOpenCanvas(canvas.id, event.currentTarget)
           }
-        }}><span className="sr-only">Open </span>{canvas.title}</Link></li>)}
+        }}><span className="sr-only">Open </span>{canvasTitle(canvas.title)}</Link></li>)}
       </ul>
     </section>}
     {!artifacts.decks.length && !artifacts.canvases.length && <p className="mt-6">Nothing made yet. Tick sources and choose Quiz, Flashcards or Canvas.</p>}

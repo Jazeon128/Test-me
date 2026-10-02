@@ -166,7 +166,7 @@ it('hides only the embedded inner title and retains the canvas header controls',
 it('keeps the standalone inner title', async () => {
   canvasAPI.get.mockResolvedValue({ data: record(5, null) })
   mount('/canvas/5')
-  expect(await screen.findByRole('heading', { name: 'Explain cells' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Cell diagram' })).toBeInTheDocument()
 })
 it('scopes notebook target sizing outside the embedded React Flow surface', async () => {
   const { container } = mount('/notebooks/2?view=canvas&canvas=1')
@@ -179,5 +179,16 @@ it('scopes notebook target sizing outside the embedded React Flow surface', asyn
   expect(nodeButton.matches(selector)).toBe(false)
   expect(screen.getByRole('button', { name: 'Undo' }).matches(selector)).toBe(true)
   expect(screen.getByRole('button', { name: 'Close', exact: true }).matches(selector)).toBe(true)
-  expect(css).toContain('.tm-edit-toolbar button { width: 44px; height: 44px;')
+  expect(css).toContain('.tm-edit-toolbar button { width: 36px; height: 36px;')
+})
+
+it('formats request titles in the centre header and Studio canvases list', async () => {
+  const raw = 'draw me a table of the cheat sheet?'
+  notebooksAPI.workspace.mockResolvedValue({ data: { notebook: { id: 2, name: 'Biology' },
+    sources: [], artifacts: { decks: [], canvases: [{ id: 1, title: raw }] }, jobs: [], progress: {} } })
+  canvasAPI.get.mockResolvedValue({ data: { ...record(), title: raw } })
+  mount()
+  const link = await screen.findByRole('link', { name: 'Open A table of the cheat sheet' })
+  fireEvent.click(link)
+  expect(await screen.findByRole('heading', { name: 'Canvas: A table of the cheat sheet' })).toBeInTheDocument()
 })

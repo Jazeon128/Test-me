@@ -42,6 +42,8 @@ code {
   --muted: #626a83;
   --field: rgba(255, 255, 255, .64);
   --line: rgba(94, 105, 150, .17);
+  --app-line: var(--line);
+  --app-accent: var(--accent);
   --accent: #6254d9;
   --workspace-tile-active: rgba(98, 84, 217, .12);
   --surface-shadow: 0 12px 40px -24px rgba(50, 41, 108, .3), inset 0 1px 0 rgba(255,255,255,.75);
@@ -60,6 +62,8 @@ code {
   --muted: #b0b7cf;
   --field: rgba(13, 18, 36, .42);
   --line: rgba(193, 202, 255, .15);
+  --app-line: var(--line);
+  --app-accent: var(--accent);
   --accent: #b0a8ff;
   --workspace-tile-active: rgba(176, 168, 255, .16);
   --surface-shadow: 0 16px 40px -24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
@@ -342,9 +346,13 @@ button:disabled { cursor: not-allowed; }
 .dark .tm-canvas { --canvas-editor-bg: #20243c; --canvas-editor-ink: #f8f9fd; --canvas-editor-line: #a5acc5; --canvas-note-bg: #594c20; --canvas-note-ink: #fff3bd; }
 .tm-flow-editor { height: 100%; position: relative; display: flex; flex-direction: column; }
 .tm-drawing-surface { flex: 1; min-height: 0; position: relative; }
-.tm-edit-toolbar { position: relative; flex-shrink: 0; display: flex; gap: 4px; flex-wrap: wrap; max-width: 100%; }
-.tm-edit-toolbar button { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.tm-edit-toolbar { position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 4px; height: 44px; max-width: 100%; }
+.tm-edit-toolbar button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 6px; }
+.notebook-workspace .tm-canvas.tm-canvas-embedded .tm-canvas-body .tm-flow-editor .tm-edit-toolbar > button { min-height: 36px; min-width: 36px; }
 .tm-edit-toolbar, .tm-editor, .tm-restore { background: var(--canvas-editor-bg); color: var(--canvas-editor-ink); border: 1px solid var(--canvas-editor-line); border-radius: 6px; padding: 8px; }
+.tm-edit-toolbar { padding: 4px; }
+.tm-editor { position: relative; width: 100%; min-width: 240px; z-index: 1000; }
+.tm-editor textarea { line-height: 20px; max-height: 80px; resize: none; overflow-y: auto; overflow-wrap: anywhere; }
 .tm-editor label { display: block; font-size: 12px; }
 .tm-editor input, .tm-editor textarea { display: block; width: 100%; color: var(--canvas-editor-ink); background: var(--canvas-editor-bg); border: 1px solid var(--canvas-editor-line); }
 .tm-editor button, .tm-restore button { min-height: 44px; padding: 4px 8px; }
@@ -440,3 +448,33 @@ button:disabled { cursor: not-allowed; }
 .practice-progress-fill { background: linear-gradient(135deg, #7969e6, #5b4cca); }
 .deck-option-radio { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
 .deck-option-row .deck-option-radio { align-self: flex-end; margin-bottom: 12px; }
+
+/* Container width keeps toolbar labels tied to the drawing column. */
+.tm-canvas { container-type: inline-size; }
+.tm-tool-label { display: none; white-space: nowrap; font-size: 12px; }
+.tm-tool-separator { height: 24px; width: 1px; flex-shrink: 0; background: var(--line); margin: 0 2px; }
+@container (min-width: 900px) {
+  .tm-tool-label { display: inline; }
+  .tm-edit-toolbar > button { width: auto; padding: 0 8px; }
+}
+.tm-edit-toolbar { overflow-x: auto; }
+.tm-edit-toolbar:has(.tm-shortcuts, .tm-colour-menu, input) { overflow: visible; }
+.tm-shortcuts, .tm-colour-menu { position: absolute; top: 44px; left: 4px; z-index: 1100; }
+.tm-colour-menu { padding: 8px; background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; }
+@media (max-width: 767px) {
+  .tm-canvas-embedded .tm-canvas-header { padding: 8px; gap: 8px; }
+  .tm-canvas-embedded .tm-canvas-meta { gap: 6px; }
+  .tm-canvas-embedded .tm-canvas-meta span:has(> svg),
+  .notebook-workspace .tm-canvas.tm-canvas-embedded .tm-canvas-header .tm-canvas-meta button.btn-secondary {
+    height: 32px; min-height: 32px; padding: 4px 8px; font-size: 12px;
+  }
+  .tm-canvas-embedded .tm-save-status { min-width: 0; }
+  .tm-canvas-embedded .tm-canvas-sources > span { max-width: 160px; }
+  .tm-canvas-embedded .tm-template-chip { max-width: 200px; }
+  .tm-canvas-embedded .tm-template-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tm-canvas-embedded .tm-restore-anchor { width: auto; }
+  .tm-canvas-embedded .tm-restore { width: min(340px, calc(100vw - 48px)); }
+  .tm-canvas-embedded .tm-canvas-question { gap: 6px; flex-wrap: nowrap; }
+  .tm-canvas-embedded .tm-canvas-question .btn-primary { flex-shrink: 0; padding: 8px 10px; }
+  .tm-canvas-embedded .tm-tool-label { display: none; }
+}

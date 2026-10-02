@@ -11,19 +11,27 @@
 .tm-canvas {
   --bg: #f3f4f6;
   --dot: #cdd2d9;
-  --chrome: #ffffff;
-  --s2: #f1f2f4;
-  --s3: #e6e8ec;
-  --line: #e1e4e8;
+  --drawing-chrome: #ffffff;
+  --chrome: var(--drawing-chrome);
+  --drawing-s2: #f1f2f4;
+  --s2: var(--drawing-s2);
+  --drawing-s3: #e6e8ec;
+  --s3: var(--drawing-s3);
+  --drawing-line: #e1e4e8;
+  --line: var(--drawing-line);
   --line2: #c6cbd2;
-  --text: #15171c;
-  --text2: #454c57;
-  --text3: #646b76;
+  --drawing-text: #15171c;
+  --text: var(--drawing-text);
+  --drawing-text2: #454c57;
+  --text2: var(--drawing-text2);
+  --drawing-text3: #646b76;
+  --text3: var(--drawing-text3);
   --node: #ffffff;
   --node-line: #c3c9d1;
   --edge: #858c97;
   --edge-label: #454c57;
-  --accent: #3f55d1;
+  --drawing-accent: #3f55d1;
+  --accent: var(--drawing-accent);
   --accent-ink: #ffffff;
   --accent-soft: #e7ebfb;
   --accent-line: #9aa8ea;
@@ -60,19 +68,27 @@
 .dark .tm-canvas {
   --bg: #0f1114;
   --dot: #262a31;
-  --chrome: #15181d;
-  --s2: #1b1f25;
-  --s3: #252a32;
-  --line: #242930;
+  --drawing-chrome: #15181d;
+  --chrome: var(--drawing-chrome);
+  --drawing-s2: #1b1f25;
+  --s2: var(--drawing-s2);
+  --drawing-s3: #252a32;
+  --s3: var(--drawing-s3);
+  --drawing-line: #242930;
+  --line: var(--drawing-line);
   --line2: #363c46;
-  --text: #e6e8eb;
-  --text2: #aab1bb;
-  --text3: #8c939e;
+  --drawing-text: #e6e8eb;
+  --text: var(--drawing-text);
+  --drawing-text2: #aab1bb;
+  --text2: var(--drawing-text2);
+  --drawing-text3: #8c939e;
+  --text3: var(--drawing-text3);
   --node: #181b21;
   --node-line: #3a414b;
   --edge: #6c7480;
   --edge-label: #aab1bb;
-  --accent: #8394ff;
+  --drawing-accent: #8394ff;
+  --accent: var(--drawing-accent);
   --accent-ink: #0d0f14;
   --accent-soft: #1e2340;
   --accent-line: #4e5cb8;
@@ -372,3 +388,35 @@
   background: transparent;
   color: var(--text3);
 }
+
+.tm-canvas.tm-canvas-embedded {
+  --chrome: var(--surface-solid);
+  --s2: var(--surface-solid);
+  --s3: var(--field);
+  --line: var(--app-line);
+  --text: var(--ink);
+  --text2: var(--muted);
+  --text3: var(--muted);
+  --accent: var(--app-accent);
+}
+.tm-canvas-embedded .tm-drawing-surface {
+  --chrome: var(--drawing-chrome);
+  --s2: var(--drawing-s2);
+  --s3: var(--drawing-s3);
+  --line: var(--drawing-line);
+  --text: var(--drawing-text);
+  --text2: var(--drawing-text2);
+  --text3: var(--drawing-text3);
+  --accent: var(--drawing-accent);
+}
+.tm-canvas-embedded :is(.tm-canvas-header, .tm-edit-toolbar) {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+.tm-canvas-embedded .tm-edit-toolbar { background: var(--chrome); color: var(--text); border-color: var(--line); }
+
+.tm-canvas-meta { flex-direction: column; align-items: stretch; }
+.tm-canvas-embedded .tm-canvas-meta { flex-direction: row; align-items: center; }
+.tm-canvas-embedded :is(.tm-canvas-sources, .tm-canvas-controls) { display: contents; }
+.tm-node:has(.tm-editor) { clip-path: none; overflow: visible; }

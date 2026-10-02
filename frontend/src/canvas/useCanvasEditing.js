@@ -216,10 +216,12 @@ export default function useCanvasEditing({
   }
   const displayNodes = nodes.map(node => ({
     ...node,
+    ...(editing === node.id ? { zIndex: 1000 } : {}),
     ...(node.type === 'GroupNode' ? { selectable: true } : {}),
     data: {
       ...node.data,
       editing: editing === node.id,
+      editorWidth: node.measured?.width ?? node.width ?? node.style?.width,
       onSaveText: text => commit(node.id, text),
       onCancelText: () => setEditing(null),
     },

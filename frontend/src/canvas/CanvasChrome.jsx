@@ -63,7 +63,7 @@ export function TemplateBadge({ canvas }) {
   const label = canvas.template_title || canvas.template
   return (
     <span
-      className="flex flex-none items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+      className="tm-template-chip flex flex-none items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
       style={{
         borderColor: 'var(--accent-line)',
         background: 'var(--accent-soft)',

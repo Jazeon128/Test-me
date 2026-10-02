@@ -23,6 +23,26 @@ export function isProviderRead(url) {
     || /^\/api\/settings\/openrouter\/(models|key)$/.test(path)
 }
 
+export async function stubModelCatalogue(route, catalogue, manifest, step) {
+  const request = route.request()
+  const path = new URL(request.url()).pathname.replace(/\/+$/, '')
+  if (request.method() !== 'GET' || path !== '/api/settings/openrouter/models') return false
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(catalogue) })
+  manifest.stubbed.push({ method: 'GET', url: request.url(), step })
+  return true
+}
+
+export function modelCatalogue(selectedIds, fetchedAt = new Date().toISOString()) {
+  const ids = [...new Set(selectedIds.filter(Boolean))]
+  const extras = ['openrouter/auto', 'openrouter/free', 'meta-llama/llama-3.3-70b-instruct:free']
+    .filter(id => !ids.includes(id)).slice(0, 2)
+  return { fetched_at: fetchedAt, models: [...ids, ...extras].map(id => ({
+    id, name: id, context_length: null, max_completion_tokens: null,
+    prompt_per_million: null, completion_per_million: null, request_price: null,
+    free: false, supported_parameters: [], input_modalities: ['text'],
+  })) }
+}
+
 export function slugify(value) {
   return String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'step'
@@ -33,5 +53,5 @@ export function stepFileName(flowIndex, stepIndex, slug, viewport) {
 }
 
 export function buildManifest(gitSha, viewports, generatedAt = new Date().toISOString()) {
-  return { generated_at: generatedAt, git_sha: gitSha, viewports, flows: [], blocked: [], errors: [] }
+  return { generated_at: generatedAt, git_sha: gitSha, viewports, flows: [], blocked: [], stubbed: [], errors: [] }
 }

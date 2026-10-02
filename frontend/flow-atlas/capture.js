@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { flows } from './flows.js'
-import { buildManifest, isBlocked, isProviderRead, stepFileName } from './guard.js'
+import { buildManifest, isBlocked, isProviderRead, modelCatalogue, stubModelCatalogue, stepFileName } from './guard.js'
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repo = path.dirname(frontend)
@@ -29,6 +29,7 @@ let currentStep = 'seed'
 let interrupted = false
 const manifest = buildManifest(null, viewports)
 let exitCode = 0
+let catalogue
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -130,6 +131,16 @@ async function seed() {
   for (const [front, back] of cards) {
     await api('/api/questions/', 'POST', { deck_id: deck.id, card_type: 'flashcard', question_text: front, explanation: back })
   }
+  const kindScript = [
+    'import sqlite3, sys',
+    'from pathlib import Path',
+    'database = Path(sys.argv[1]).resolve()',
+    'assert database.parent == Path(sys.argv[2]).resolve()',
+    'connection = sqlite3.connect(database)',
+    'with connection: connection.execute("UPDATE decks SET kind = ? WHERE id = ?", ("flashcards", int(sys.argv[3])))',
+    'connection.close()',
+  ].join('\n')
+  await command(python, ['-c', kindScript, path.join(work, 'test_me.db'), work, String(deck.id)])
   const workspace = await api(`/api/notebooks/${notebook.id}/workspace`)
   const quiz = workspace.artifacts.decks.find(item => item.name === 'OpenRouter check')
   if (!quiz) throw new Error('Required quiz deck "OpenRouter check" is missing from the notebook.')
@@ -151,6 +162,7 @@ async function makeContext(viewport) {
     localStorage.setItem('test-me.welcomeCompleted', 'true')
   })
   await context.route('**/api/**', async route => {
+    if (await stubModelCatalogue(route, catalogue, manifest, currentStep)) return
     const request = route.request()
     if (unsafeRequest(request.method(), request.url(), request.postData())) {
       manifest.blocked.push({ method: request.method(), url: request.url(), step: currentStep })
@@ -242,6 +254,18 @@ try {
     'source.close()',
   ].join('\n')
   await command(python, ['-c', copyScript, path.join(backend, 'test_me.db'), path.join(work, 'test_me.db')])
+  // Read only model/provider settings from the copy. Never load credentials or .env.
+  const modelsScript = [
+    'import json, sqlite3, sys',
+    'from pathlib import Path',
+    'connection = sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + "?mode=ro", uri=True)',
+    'keys = ("ai_provider", "ai_model", "generation_provider", "generation_model", "chat_provider", "chat_model")',
+    'settings = dict(connection.execute("SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?, ?, ?)", keys))',
+    'models = [settings.get(task + "_model") or settings.get("ai_model") for task in ("generation", "chat") if (settings.get(task + "_provider") or settings.get("ai_provider")) == "openrouter"]',
+    'print(json.dumps(models))',
+    'connection.close()',
+  ].join('\n')
+  catalogue = modelCatalogue(JSON.parse(await command(python, ['-c', modelsScript, path.join(work, 'test_me.db')])))
   await cp(path.join(backend, 'uploads'), path.join(work, 'uploads'), { recursive: true })
   await requireFreePort(8001)
   await requireFreePort(5174)
@@ -282,6 +306,6 @@ try {
   try { await writeFile(path.join(runFolder, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`) }
   catch (error) { process.stderr.write(`Manifest could not be written: ${error.message}\n`); exitCode = 1 }
   const captured = manifest.flows.reduce((total, flow) => total + flow.steps.length, 0)
-  process.stdout.write(`${captured} steps captured, ${manifest.errors.length} errors, ${manifest.blocked.length} blocked requests\n`)
+  process.stdout.write(`${captured} steps captured, ${manifest.errors.length} errors, ${manifest.blocked.length} blocked requests, ${manifest.stubbed.length} stubbed requests\n`)
   process.exitCode = exitCode || (manifest.errors.length ? 1 : 0)
 }

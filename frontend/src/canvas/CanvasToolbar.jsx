@@ -38,6 +38,7 @@ export default function CanvasToolbar({
   const button = (name, Icon, action, disabled = false, title = name) => (
     <button type="button" onClick={action} disabled={disabled} aria-label={name} title={title}>
       <Icon size={18} aria-hidden="true" />
+      <span className="tm-tool-label">{name === 'Edit label' ? 'Edit' : name}</span>
     </button>
   )
   return (
@@ -66,6 +67,7 @@ export default function CanvasToolbar({
         onClick={() => (help ? closeHelp() : setHelp(true))}
       >
         <Keyboard size={18} aria-hidden="true" />
+        <span className="tm-tool-label">Shortcuts</span>
       </button>
       {help && (
         <div className="tm-shortcuts" role="dialog" aria-label="Keyboard shortcuts">
@@ -91,9 +93,11 @@ export default function CanvasToolbar({
           </button>
         </div>
       )}
+      <span className="tm-tool-separator" aria-hidden="true" />
       {button('Source', FileText, onSource, !selected?.data.source_section_id || Boolean(selected?.data.added) || selected?.type === 'MatrixHeader')}
       {button('Add node', Plus, () => onAdd(false))}
       {button('Add note', StickyNote, () => onAdd(true))}
+      {(selected || edge) && <span className="tm-tool-separator" aria-hidden="true" />}
       {selected && (
         <>
           {button('Edit', Pencil, () => onEdit(selected.id))}

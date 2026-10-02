@@ -28,6 +28,11 @@ export default function NodeEditor({ data, detail = false, note = false }) {
     }
   }, [])
   const [label, setLabel] = useState(data.label || '')
+  useEffect(() => {
+    if (!field.current) return
+    field.current.style.height = 'auto'
+    field.current.style.height = `${Math.min(field.current.scrollHeight, 80)}px`
+  }, [label])
   const [text, setText] = useState(data.detail || '')
   const valid =
     label.trim().length > 0 && label.length <= (note ? 400 : 120) && (!detail || text.length <= 400)
@@ -38,6 +43,7 @@ export default function NodeEditor({ data, detail = false, note = false }) {
   return (
     <form
       className="tm-editor nodrag nopan nowheel"
+      style={{ minWidth: Math.max(240, data.editorWidth || 0) }}
       onSubmit={submit}
       onClick={event => event.stopPropagation()}
       onDoubleClick={event => event.stopPropagation()}
@@ -47,7 +53,7 @@ export default function NodeEditor({ data, detail = false, note = false }) {
           event.preventDefault()
           data.onCancelText()
         }
-        if (event.key === 'Enter' && (note ? event.ctrlKey : !event.shiftKey)) submit(event)
+        if (event.key === 'Enter' && (note ? event.ctrlKey : event.target === field.current || !event.shiftKey)) submit(event)
       }}
     >
       <label>
@@ -61,7 +67,8 @@ export default function NodeEditor({ data, detail = false, note = false }) {
             onChange={event => setLabel(event.target.value)}
           />
         ) : (
-          <input
+          <textarea
+            rows={1}
             ref={field}
             required
             value={label}

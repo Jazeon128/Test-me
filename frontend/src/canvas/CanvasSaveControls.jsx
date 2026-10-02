@@ -35,39 +35,42 @@ export default function CanvasSaveControls({
           Retry
         </button>
       )}
-      {(hasChanges || keepTrigger) && (
-        <button
-          type="button"
-          className="btn-secondary"
-          ref={trigger}
-          onClick={() => {
-            setKeepTrigger(true)
-            setRestoring(true)
-          }}
-        >
-          Restore original
-        </button>
-      )}
-      {restoring && (
-        <div
-          className="tm-restore"
-          role="dialog"
-          aria-label="Restore original"
-          onKeyDown={event => {
-            if (event.key === 'Escape') setRestoring(false)
-          }}
-        >
-          <p>
-            Restore the generated diagram? Your edits and positions on this canvas will be lost.
-          </p>
-          <button type="button" className="tm-danger" ref={confirm} onClick={restore}>
-            Restore
+      <div className="tm-restore-anchor">
+        {(hasChanges || keepTrigger) && (
+          <button
+            type="button"
+            className="btn-secondary"
+            ref={trigger}
+            onClick={() => {
+              setKeepTrigger(true)
+              setRestoring(true)
+            }}
+          >
+            Restore original
           </button>
-          <button type="button" className="btn-secondary" onClick={() => setRestoring(false)}>
-            Cancel
-          </button>
-        </div>
-      )}
+        )}
+        {restoring && (
+          <div
+            className="tm-restore"
+            style={{ position: 'absolute' }}
+            role="dialog"
+            aria-label="Restore original"
+            onKeyDown={event => {
+              if (event.key === 'Escape') { event.stopPropagation(); setRestoring(false) }
+            }}
+          >
+            <p>
+              Restore the generated diagram? Your edits and positions on this canvas will be lost.
+            </p>
+            <button type="button" className="tm-danger" ref={confirm} onClick={restore}>
+              Restore
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setRestoring(false)}>
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
     </>
   )
 }

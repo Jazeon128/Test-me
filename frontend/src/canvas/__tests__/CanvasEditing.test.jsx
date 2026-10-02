@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
@@ -271,4 +272,53 @@ it('loads old matrix headers without saving and supports header editing and dele
   fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
   await screen.findByText('Left')
   expect(canvasAPI.update.mock.calls[0][1].edited.nodes.some(node => node.id === 'row-0')).toBe(true)
+})
+
+it('selects on click and opens the passage only from Source or the source chip', async () => {
+  await setup()
+  expect(screen.getByRole('button', { name: 'Source', exact: true })).toBeDisabled()
+  fireEvent.click(screen.getByText('Original'))
+  expect(screen.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Source', exact: true })).toBeEnabled()
+  expect(canvasAPI.nodeSource).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('source-panel')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Source', exact: true }))
+  await screen.findByTestId('source-panel')
+  expect(canvasAPI.nodeSource).toHaveBeenCalledWith(7, 'n')
+  fireEvent.click(screen.getByText('Original'))
+  expect(screen.queryByTestId('source-panel')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Show the source passage for this node (s)' }))
+  await screen.findByTestId('source-panel')
+  expect(canvasAPI.nodeSource).toHaveBeenCalledTimes(2)
+})
+
+it('disables Source for a node without a passage', async () => {
+  canvasAPI.get.mockResolvedValueOnce({ data: { ...record, edited: {
+    ...record.edited, nodes: [{ ...node, data: { label: 'Original' } }],
+  } } })
+  await setup()
+  fireEvent.click(screen.getByText('Original'))
+  expect(screen.getByRole('button', { name: 'Source', exact: true })).toBeDisabled()
+  expect(canvasAPI.nodeSource).not.toHaveBeenCalled()
+})
+
+it('anchors restore outside layout flow, focuses it and closes on Escape', async () => {
+  const css = readFileSync('src/index.css', 'utf8')
+  const restoreRule = css.match(/^\.tm-restore \{[^}]+\}/m)[0]
+  render(<style>{restoreRule}</style>)
+  await setup()
+  const trigger = screen.getByRole('button', { name: 'Restore original' })
+  fireEvent.click(trigger)
+  const dialog = screen.getByRole('dialog', { name: 'Restore original' })
+  expect(dialog).toHaveStyle({ position: 'absolute', left: '0px' })
+  expect(getComputedStyle(dialog).right).toBe('')
+  expect(dialog.parentElement).toBe(trigger.parentElement)
+  expect(screen.getByRole('button', { name: 'Restore', exact: true })).toHaveFocus()
+  fireEvent.keyDown(dialog, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(trigger).toHaveFocus()
+  fireEvent.click(trigger)
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(trigger).toHaveFocus()
 })

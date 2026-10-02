@@ -106,7 +106,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
       setSelected(node)
       setSelectedEdge(null)
       setSource(null)
-      if (node.data.added || node.type === 'MatrixHeader') return
+      if (!node.data.source_section_id || node.data.added || node.type === 'MatrixHeader') return
       try {
         const response = await canvasAPI.nodeSource(targetCanvasId, node.id)
         setSource(response.data)
@@ -268,7 +268,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
     documentContext.map(doc => ({ id: doc.id, name: doc.display_name }))
 
   return (
-    <div ref={canvasRef} className={`tm-canvas ${embedded ? 'tm-canvas-embedded' : 'h-[calc(100vh-8rem)]'} flex flex-col overflow-hidden rounded-xl border`}
+    <div ref={canvasRef} className={`tm-canvas ${embedded ? 'tm-canvas-embedded' : 'h-[calc(100vh-8rem)]'} flex flex-col rounded-xl border`}
       style={{ borderColor: 'var(--line)' }}
     >
       <header
@@ -394,6 +394,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
               <CanvasToolbar undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
                 selected={nodes.find(node => node.id === selected?.id)}
                 edge={edges.find(edge => edge.id === selectedEdge?.id)} onEdit={startEditing}
+                onSource={() => openSource(canvas.id, nodes.find(node => node.id === selected?.id))}
                 onAdd={addNode} onDelete={deleteSelected} canDelete={canDelete(selected)}
                 onColour={color => recolour(selected, color)}
                 onLabel={label => labelEdge(selectedEdge, label)} />
@@ -417,7 +418,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
                   onEdgesChange={onEdgesChange}
                   onNodeDragStart={beginDrag}
                   onNodeDragStop={persistLayout}
-                  onNodeClick={(_, node) => openSource(canvas.id, node)}
+                  onNodeClick={(_, node) => { setSelected(node); setSelectedEdge(null); setSource(null) }}
                   onPaneClick={() => {
                     setSelected(null)
                     setSelectedEdge(null)
@@ -433,7 +434,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             </div>
           )}
         </div>
-        {phase === 'ready' && selected && !selected.data.added && selected.type !== 'MatrixHeader' && (
+        {phase === 'ready' && source && selected && !selected.data.added && selected.type !== 'MatrixHeader' && (
           <NodePanel
             key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}

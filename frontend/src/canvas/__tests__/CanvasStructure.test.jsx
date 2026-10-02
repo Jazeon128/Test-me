@@ -16,7 +16,7 @@ vi.mock('../../services/api', () => ({
 vi.mock('../layout', () => ({ toGraph: (_, payload) => payload, layout: async (_, graph) => graph }))
 vi.mock('../NodePanel', () => ({ default: () => <aside>Source panel</aside> }))
 vi.mock('@xyflow/react', async () => {
-  const { useState, useEffect } = await import('react')
+  const { useState, useLayoutEffect } = await import('react')
   const useGraphState = () => {
     const [items, setItems] = useState([])
     return [items, setItems, () => {}]
@@ -24,7 +24,7 @@ vi.mock('@xyflow/react', async () => {
   function Flow(props) {
     state.flow = props
     const { onInit } = props
-    useEffect(() => { onInit({ screenToFlowPosition: state.convert }) }, [onInit])
+    useLayoutEffect(() => { onInit({ screenToFlowPosition: state.convert }) }, [onInit])
     return <div>
       {props.nodes.map(node => {
         const Component = props.nodeTypes[node.type]

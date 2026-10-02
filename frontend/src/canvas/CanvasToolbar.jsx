@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Plus, StickyNote, Palette, Trash2, Undo2, Redo2, Keyboard } from 'lucide-react'
+import { Pencil, Plus, StickyNote, Palette, Trash2, Undo2, Redo2, Keyboard, FileText } from 'lucide-react'
 import PropTypes from 'prop-types'
 import { COLORS, meaningColours } from './useCanvasEditing'
 
@@ -11,6 +11,7 @@ export default function CanvasToolbar({
   selected,
   edge,
   onEdit,
+  onSource,
   onAdd,
   onDelete,
   canDelete,
@@ -90,6 +91,7 @@ export default function CanvasToolbar({
           </button>
         </div>
       )}
+      {button('Source', FileText, onSource, !selected?.data.source_section_id || Boolean(selected?.data.added) || selected?.type === 'MatrixHeader')}
       {button('Add node', Plus, () => onAdd(false))}
       {button('Add note', StickyNote, () => onAdd(true))}
       {selected && (
@@ -166,6 +168,7 @@ CanvasToolbar.propTypes = {
   selected: PropTypes.object,
   edge: PropTypes.object,
   onEdit: PropTypes.func.isRequired,
+  onSource: PropTypes.func,
   onAdd: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   canDelete: PropTypes.bool.isRequired,

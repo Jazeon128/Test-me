@@ -117,7 +117,7 @@ it('shows saved canvas context and returns to its notebook', async () => {
   renderCanvas('/canvas/7')
   const back = await screen.findByRole('button', { name: 'Back to Biology' })
   expect(screen.getByRole('heading', { name: 'Existing canvas' })).toBeInTheDocument()
-  expect(screen.getByText('Flowchart')).toBeInTheDocument()
+  expect(screen.getByText('Drawn as: Flowchart')).toBeInTheDocument()
   expect(screen.getByText('How cells work')).toHaveAttribute('title', 'How cells work')
   fireEvent.click(back)
   expect(await screen.findByText('Notebook workspace')).toBeInTheDocument()

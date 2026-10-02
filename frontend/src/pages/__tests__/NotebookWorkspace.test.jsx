@@ -3,11 +3,12 @@ import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-rou
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import NotebookWorkspace from '../NotebookWorkspace'
 import { readFileSync } from 'node:fs'
-import { notebooksAPI, statusAPI } from '../../services/api'
+import { notebooksAPI, statusAPI, documentsAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
   notebooksAPI: { workspace: vi.fn(), addSources: vi.fn(), generate: vi.fn(), chatHistory: vi.fn() },
   statusAPI: { get: vi.fn() },
+  documentsAPI: { get: vi.fn(), passages: vi.fn() },
 }))
 vi.mock('../../canvas/CanvasView', async () => {
   const { forwardRef, useImperativeHandle } = await import('react')
@@ -390,4 +391,57 @@ describe('Consistent panel counts', () => {
     if (desktop) expect(screen.getByRole('complementary', { name: 'Studio' }).querySelector('.workspace-count')).toHaveTextContent('2')
     else expect(screen.getByRole('button', { name: 'Studio 2 1 running' })).toBeInTheDocument()
   })
+})
+
+it('opens a source, groups passages and restores the previous editing view', async () => {
+  documentsAPI.get.mockResolvedValue({ data: { file_type: 'pdf', num_pages: 8, status: 'ready' } })
+  documentsAPI.passages.mockResolvedValue({ data: { document_id: 1, passages: [
+    { ordinal: 1, heading: 'Cells', page: 2, text: 'ol, custom dependencies' },
+    { ordinal: 2, heading: 'Cells', page: 3, text: 'Second passage.' },
+    { ordinal: 3, heading: 'Membranes', page: 4, text: 'Third passage.' },
+  ] } })
+  mount('?deck=9&view=edit')
+  await screen.findByText('Deck editor 9')
+  const button = screen.getByRole('button', { name: 'Open Cells.pdf' })
+  expect(button).toHaveAttribute('title', 'Cells.pdf')
+  click('Open Cells.pdf')
+  expect(screen.getByLabelText('Location')).toHaveTextContent('?view=source&source=1')
+  expect(screen.getByRole('heading', { name: 'Source: Cells.pdf' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Source: Cells.pdf' }).parentElement).toHaveFocus()
+  expect(await screen.findByText('pdf · 8 pages · 3 passages')).toBeInTheDocument()
+  const group = screen.getByRole('region', { name: 'Cells' })
+  expect(within(group).getByRole('heading', { name: 'Cells' })).toBeInTheDocument()
+  expect(within(group).getAllByRole('article')).toHaveLength(2)
+  expect(within(group).getByText('Page 2')).toBeInTheDocument()
+  expect(within(group).getByText('… custom dependencies…')).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'Membranes' })).toBeInTheDocument()
+  expect(documentsAPI.passages).toHaveBeenCalledWith('1')
+  click('Close')
+  expect(await screen.findByText('Deck editor 9')).toBeInTheDocument()
+  expect(screen.getByLabelText('Location')).toHaveTextContent('?deck=9&view=edit')
+})
+
+it('closes a source back to chat and returns focus to its name', async () => {
+  mount()
+  await loaded()
+  click('Open Broken.pdf')
+  expect(screen.getByRole('heading', { name: 'Source: Broken.pdf' })).toBeInTheDocument()
+  expect(within(screen.getByLabelText('Source: Broken.pdf')).getByRole('alert')).toHaveTextContent('Unreadable file')
+  expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  expect(documentsAPI.passages).not.toHaveBeenCalled()
+  click('Close')
+  expect(screen.getByLabelText('Ask about your sources')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Open Broken.pdf' })).toHaveFocus()
+})
+
+it('shows processing sources without passages', async () => {
+  const data = fixture()
+  data.sources[0].status = 'processing'
+  notebooksAPI.workspace.mockResolvedValue({ data })
+  mount()
+  await loaded()
+  click('Open Cells.pdf')
+  expect(screen.getByText('Still reading this source.')).toBeInTheDocument()
+  expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  expect(documentsAPI.passages).not.toHaveBeenCalled()
 })

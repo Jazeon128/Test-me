@@ -4,6 +4,7 @@ import { notebooksAPI, statusAPI } from '../services/api'
 import QuestionBank from '../components/bank/QuestionBank'
 import PracticeSession from '../components/PracticeSession'
 import DeckEditor from '../components/DeckEditor'
+import SourceView from '../components/workspace/SourceView'
 import SourcesPanel from '../components/workspace/SourcesPanel'
 import StudioPanel from '../components/workspace/StudioPanel'
 import ChatPanel from '../components/workspace/ChatPanel'
@@ -35,6 +36,9 @@ function Workspace({ notebookId }) {
   const [params, setParams] = useSearchParams()
   const deckId = Number(params.get('deck'))
   const view = params.get('view')
+  const hasOpenSource = view === 'source'
+  const sourceId = params.get('source')
+  const previousCentre = useRef(null)
   const hasOpenCanvas = view === 'canvas'
   const canvasId = params.get('canvas')
   const canvasRef = useRef(null)
@@ -54,7 +58,7 @@ function Workspace({ notebookId }) {
       setParams(current => { const next = new URLSearchParams(current); next.set('view', 'questions'); return next }, { replace: true })
     }
   }, [view, practiceIds, setParams])
-  const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice || hasOpenCanvas
+  const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice || hasOpenCanvas || hasOpenSource
   const [workspace, setWorkspace] = useState(null)
   const loaded = Boolean(workspace)
   const wasOpen = useRef(false)
@@ -70,7 +74,7 @@ function Workspace({ notebookId }) {
       canvasOpener.current = null
     }
     wasOpen.current = hasOpenCentre
-  }, [hasOpenCentre, hasOpenBank, deckId, canvasId, view, loaded])
+  }, [hasOpenCentre, hasOpenBank, deckId, canvasId, sourceId, view, loaded])
   useEffect(() => { if (desktop) setDrawer(null) }, [desktop])
   const [selected, setSelected] = useState({})
   const seenReady = useRef(new Set())
@@ -139,6 +143,11 @@ function Workspace({ notebookId }) {
   }, [shouldPoll, refresh])
   const close = useCallback(async () => {
     if (hasOpenCanvas && canvasRef.current && !await canvasRef.current.flush()) return
+    if (hasOpenSource) {
+      setParams(previousCentre.current || new URLSearchParams())
+      previousCentre.current = null
+      return
+    }
     setParams(current => {
       const next = new URLSearchParams(current)
       if (hasSelectionPractice) { next.set('view', 'questions'); return next }
@@ -148,7 +157,7 @@ function Workspace({ notebookId }) {
       return next
     })
     refresh()
-  }, [setParams, refresh, hasSelectionPractice, hasOpenCanvas])
+  }, [setParams, refresh, hasSelectionPractice, hasOpenCanvas, hasOpenSource])
   const open = useCallback((id, view, trigger) => {
     if (trigger) opener.current = trigger
     setDrawer(null)
@@ -177,6 +186,13 @@ function Workspace({ notebookId }) {
       return next
     })
   }
+  const openSource = async (id, trigger) => {
+    if (hasOpenCanvas && canvasRef.current && !await canvasRef.current.flush()) return
+    if (!hasOpenSource) previousCentre.current = new URLSearchParams(params)
+    opener.current = trigger
+    setDrawer(null)
+    setParams({ view: 'source', source: String(id) })
+  }
   const onCanvas = (_, trigger) => openCanvas(null, trigger)
   const canvasSources = params.get('sources')
   const sourceIds = useMemo(() => workspace?.sources.filter(source => source.status === 'ready' && selected[source.id]).map(source => source.id) || [], [workspace, selected])
@@ -189,10 +205,12 @@ function Workspace({ notebookId }) {
     try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* Storage can be unavailable. */ }
   }
   if (!workspace) return <div className="notebook-workspace">{error ? <p role="alert">{error}</p> : <p>Loading notebook...</p>}</div>
+  const openedSource = workspace.sources.find(source => String(source.id) === sourceId)
+  const sourceTitle = `Source: ${openedSource?.display_name || 'Loading...'}`
   const deckName = workspace.artifacts.decks.find(deck => deck.id === deckId)?.name || 'deck'
   const panels = {
     sources: <SourcesPanel notebookId={notebookId} sources={workspace.sources}
-      selected={selected} setSelected={setSelected} refresh={refresh} />,
+      selected={selected} setSelected={setSelected} refresh={refresh} onOpenSource={openSource} />,
     studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} jobs={jobs}
       artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas} onOpenCanvas={openCanvas}
       onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
@@ -208,7 +226,7 @@ function Workspace({ notebookId }) {
       <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{counts.studio}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</button>
     </div>}
     {desktop && panel('sources')}
-    <section ref={centre} className="workspace-centre" aria-label={hasOpenCanvas ? 'Canvas' : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
+    <section ref={centre} className="workspace-centre" aria-label={hasOpenSource ? sourceTitle : hasOpenCanvas ? 'Canvas' : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
       {error && <p role="alert" className="workspace-error">{error}</p>}
       <div className="workspace-chat" hidden={hasOpenCentre}>
         <p className="eyebrow">Notebook</p>
@@ -228,10 +246,10 @@ function Workspace({ notebookId }) {
       </div>
       {hasOpenCentre && <>
         <header ref={deckHeader} tabIndex={-1} className="workspace-deck-header">
-          <h1>{hasOpenCanvas ? (canvasId ? `Canvas: ${canvasTitle || workspace.artifacts.canvases.find(canvas => String(canvas.id) === canvasId)?.title || 'Loading...'}` : 'New canvas') : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
+          <h1>{hasOpenSource ? sourceTitle : hasOpenCanvas ? (canvasId ? `Canvas: ${canvasTitle || workspace.artifacts.canvases.find(canvas => String(canvas.id) === canvasId)?.title || 'Loading...'}` : 'New canvas') : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
           <button onClick={close} className="icon-button" aria-label="Close"><X size={20} aria-hidden="true" /></button>
         </header>
-        {hasOpenCanvas ? <Suspense fallback={<p role="status">Loading canvas...</p>}>
+        {hasOpenSource ? <SourceView key={sourceId} sourceId={sourceId} source={openedSource} /> : hasOpenCanvas ? <Suspense fallback={<p role="status">Loading canvas...</p>}>
           <CanvasView ref={canvasRef} key={canvasId || 'new'} embedded canvasId={canvasId}
             sourceIds={canvasSourceIds} notebookId={notebookId} onTitle={setCanvasTitle} onClose={close}
             onCreated={id => setParams(current => {

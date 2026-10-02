@@ -1,3 +1,4 @@
+import { formatPassage } from '../../utils/passage'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 
 export default function CitationChip({ citation }) {
@@ -37,8 +38,9 @@ export default function CitationChip({ citation }) {
     {open && <span ref={popover} style={position} id={id} role="dialog" aria-label={`Citation ${citation.n}`} className="chat-popover"
       onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close() } }}>
       <strong>{citation.display_name}</strong>
-      <span>{citation.locator}</span>
-      <span>{citation.removed ? 'This source was removed from the notebook.' : citation.excerpt}</span>
+      {citation.heading && <strong>{citation.heading}</strong>}
+      <span>{citation.page != null ? `Page ${citation.page}` : citation.locator}</span>
+      <span>{citation.removed ? 'This source was removed from the notebook.' : formatPassage(citation.excerpt)}</span>
       <button ref={closeButton} type="button" onClick={close}>Close citation</button>
     </span>}
   </span>

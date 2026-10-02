@@ -50,12 +50,13 @@ export const flows = [
   ]),
   flow('workspace', 'Notebook workspace', [
     step('loaded', 'Sources, chat and studio', 'Open AWS GenAI certification', workspace),
-    step('ready-source', 'Ready source', 'Select the ready source', async (page, ctx) => {
+    step('ready-source', 'Ready source', 'Open the ready source', async (page, ctx) => {
       const source = ctx.sources.find(item => item.status === 'ready')
       if (!source) throw new Error('No ready source in the notebook')
-      const checkbox = page.getByRole('checkbox', { name: source.display_name, exact: true })
-      await checkbox.check()
-      await checkbox.scrollIntoViewIfNeeded()
+      await page.getByRole('button', { name: `Open ${source.display_name}`, exact: true }).click()
+      await page.getByRole('heading', { name: `Source: ${source.display_name}`, exact: true }).waitFor()
+      await visible(page.locator('.workspace-source-view article').first())
+      await page.getByText('Loading source...', { exact: true }).waitFor({ state: 'hidden' })
     }),
     step('failed-youtube', 'YouTube source failure', 'Look at the failed YouTube source', async (page, ctx) => {
       const source = ctx.sources.find(item => item.status === 'failed' && item.file_type === 'youtube')

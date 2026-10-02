@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { canvasAPI } from '../services/api'
+import { formatPassage } from '../utils/passage'
 import { serverMessage } from '../utils/serverMessage'
 
 /**
@@ -63,8 +64,8 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
       >
         <div className="flex-1">
           <div className="text-xs" style={{ color: 'var(--text3)' }}>
-            {source?.section?.heading || 'Source passage'}
-            {source?.section?.page ? ` · page ${source.section.page}` : ''}
+            {source?.section?.heading ? <strong>{source.section.heading}</strong> : 'Source passage'}
+            {source?.section?.page != null && <div>Page {source.section.page}</div>}
           </div>
           <h3 className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--text)' }}>
             {node.data.label}
@@ -87,7 +88,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
             className="whitespace-pre-wrap text-sm leading-relaxed"
             style={{ color: 'var(--text2)', overflowWrap: 'anywhere' }}
           >
-            {source.section.text}
+            {formatPassage(source.section.text)}
           </p>
         ) : (
           <p className="text-sm" style={{ color: 'var(--rose-i)' }}>

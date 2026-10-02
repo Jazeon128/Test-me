@@ -58,14 +58,9 @@ Generating.propTypes = {
   progress: PropTypes.number,
 }
 export function TemplateBadge({ canvas }) {
-  const chosenByModel = canvas.routing_confidence != null
+  const chosenByModel = !canvas.chosen_by_user
   const Icon = chosenByModel ? Wand2 : Hand
   const label = canvas.template_title || canvas.template
-  const attribution = chosenByModel
-    ? `chosen for you, ${Math.round(canvas.routing_confidence * 100)}% confident`
-    : canvas.chosen_by_user
-      ? 'you chose this form'
-      : null
   return (
     <span
       className="flex flex-none items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
@@ -74,15 +69,10 @@ export function TemplateBadge({ canvas }) {
         background: 'var(--accent-soft)',
         color: 'var(--accent)',
       }}
-      title={attribution ? `${label} — ${attribution}` : label}
+      title={canvas.chosen_by_user ? 'You chose this layout.' : 'Chosen from your question. Ask again to draw it another way.'}
     >
       <Icon size={12} />
-      <span className="font-medium">{label}</span>
-      {attribution && (
-        <span style={{ color: 'var(--text3)' }} className="hidden sm:inline">
-          {'·'} {attribution}
-        </span>
-      )}
+      <span className="font-medium">Drawn as: {label}</span>
     </span>
   )
 }

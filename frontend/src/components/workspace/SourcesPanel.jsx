@@ -11,7 +11,7 @@ export function PreflightMessage({ reason }) {
 }
 
 
-export default function SourcesPanel({ notebookId, sources, selected, setSelected, refresh }) {
+export default function SourcesPanel({ notebookId, sources, selected, setSelected, refresh, onOpenSource }) {
   const [adding, setAdding] = useState(false)
   const [files, setFiles] = useState([])
   const [youtube, setYoutube] = useState('')
@@ -54,13 +54,14 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
       {sources.map(source => {
         const Icon = ({ youtube: Youtube, pdf: FileText, md: BookOpen, markdown: BookOpen, html: FileCode, docx: FileType, pptx: Presentation })[source.file_type] || FileText
         return <li key={source.id} className="workspace-source">
-          <label className="workspace-source-label">
+          <div className="workspace-source-label">
             <input type="checkbox" aria-label={source.display_name} disabled={source.status !== 'ready'}
               checked={source.status === 'ready' && Boolean(selected[source.id])}
               onChange={event => setSelected(current => ({ ...current, [source.id]: event.target.checked }))} />
             <Icon size={18} aria-label={source.file_type} />
-            <span className="workspace-source-name" title={source.display_name}>{source.display_name}</span>
-          </label>
+            <button type="button" className="workspace-source-name" title={source.display_name}
+              aria-label={`Open ${source.display_name}`} onClick={event => onOpenSource?.(source.id, event.currentTarget)}>{source.display_name}</button>
+          </div>
           {source.status === 'processing' ? <p className="workspace-badge"><Loader2 size={14} className="workspace-reading" />Reading...</p>
             : source.status === 'failed' ? <div className="workspace-error"><span className="workspace-badge">Failed</span><p className="text-sm">{source.error_message || 'Failed'}</p></div>
               : <p className="workspace-badge">Ready</p>}

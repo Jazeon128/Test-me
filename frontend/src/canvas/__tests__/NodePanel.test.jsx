@@ -10,8 +10,8 @@ vi.mock('../../services/api', () => ({
 }))
 vi.mock('../layout', () => ({
   toGraph: () => ({ nodes: [
-    { id: 'A', data: { label: 'Node A' } },
-    { id: 'B', data: { label: 'Node B' } },
+    { id: 'A', data: { label: 'Node A', source_section_id: 's1' } },
+    { id: 'B', data: { label: 'Node B', source_section_id: 's2' } },
   ], edges: [] }),
   layout: async (_, graph) => graph,
 }))
@@ -48,7 +48,7 @@ async function open() {
     <Routes><Route path="/canvas/:canvasId" element={<Canvas />} /></Routes>
   </MemoryRouter>)
   fireEvent.click(await screen.findByRole('button', { name: 'Open Node A' }))
-  await screen.findByText('Passage A')
+  await screen.findByText('Passage A…')
   await screen.findByRole('button', { name: 'Test me on this' })
 }
 
@@ -61,7 +61,7 @@ it('removes node A questions when the Canvas parent selects node B', async () =>
   await screen.findByText('Question for A')
   expect(canvasAPI.questionsForNode).toHaveBeenCalledWith(7, 'A')
   fireEvent.click(screen.getByRole('button', { name: 'Open Node B' }))
-  await screen.findByText('Passage B')
+  await screen.findByText('Passage B…')
   expect(screen.queryByText('Question for A')).not.toBeInTheDocument()
 })
 

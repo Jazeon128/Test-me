@@ -13,6 +13,7 @@ import uuid
 from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
 from ..models.document import Document, DocumentType
+from ..models.passage import DocumentPassage
 from ..models.question import Question, QuestionOption
 from ..models.test import Test
 from ..models.generation_status import GenerationStatus
@@ -711,6 +712,24 @@ def process_document(
         finish_document(error=str(e))
     finally:
         db.close()
+
+
+@router.get("/{document_id}/passages")
+def get_document_passages(document_id: int, db: Session = Depends(get_db)):
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    passages = (db.query(DocumentPassage)
+                .filter(DocumentPassage.document_id == document_id)
+                .order_by(DocumentPassage.ordinal).all())
+    return {
+        "document_id": document_id,
+        "passages": [
+            {"ordinal": passage.ordinal, "page": passage.page,
+             "heading": passage.heading, "text": passage.text}
+            for passage in passages
+        ],
+    }
 
 
 @router.get("/{document_id}")

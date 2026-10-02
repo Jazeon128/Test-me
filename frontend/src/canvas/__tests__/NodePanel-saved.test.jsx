@@ -28,7 +28,7 @@ it('loads saved questions, hides and toggles answers, and links to practice and 
   mount()
   expect(await screen.findByText('Saved stem')).toBeInTheDocument()
   expect(screen.getByText('First option', { exact: false })).toBeInTheDocument()
-  expect(screen.getByText('Original passage')).toBeInTheDocument()
+  expect(screen.getByText('Original passage…')).toBeInTheDocument()
   expect(canvasAPI.savedQuestionsForNode).toHaveBeenCalledWith(3, 'node')
   expect(canvasAPI.questionsForNode).not.toHaveBeenCalled()
   expect(screen.queryByText(/Saved explanation/)).not.toBeInTheDocument()

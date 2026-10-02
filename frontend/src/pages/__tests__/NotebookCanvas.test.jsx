@@ -160,7 +160,7 @@ it('hides only the embedded inner title and retains the canvas header controls',
   expect(screen.getByText('Cells.pdf')).toBeInTheDocument()
   expect(screen.getByText('Saved')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Restore original' })).toBeInTheDocument()
-  expect(screen.getByText('flowchart')).toBeInTheDocument()
+  expect(screen.getByText('Drawn as: flowchart')).toBeInTheDocument()
   expect(screen.getByLabelText('What do you want to see?')).toBeInTheDocument()
 })
 it('keeps the standalone inner title', async () => {

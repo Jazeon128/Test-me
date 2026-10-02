@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict
@@ -8,6 +9,7 @@ from ..db import get_db
 from ..models.question import Question, QuestionOption
 from ..models.deck import Deck, DeckQuestion
 from ..models.tag import Tag
+from ..services.workspace import question_notebook_ids
 from ..services.ai import curation
 from ..services.typesafe_key import typesafe_key as _typesafe_key
 
@@ -556,7 +558,10 @@ def suggested_tags(question_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Question not found")
 
     applied = {tag.id for tag in question.tags}
-    candidates = [tag for tag in db.query(Tag).order_by(Tag.name).all() if tag.id not in applied]
+    notebooks = question_notebook_ids(db, question_id)
+    candidates = [tag for tag in db.query(Tag).filter(or_(
+        Tag.notebook_id.in_(notebooks), Tag.notebook_id.is_(None),
+    )).order_by(Tag.name).all() if tag.id not in applied]
 
     if not candidates:
         reason = "Every tag is already on this card." if applied else "Create a tag first."

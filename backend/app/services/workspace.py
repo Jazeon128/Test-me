@@ -30,14 +30,27 @@ def _deck_counts(db, notebook_id, now):
     return {row[0]: dict(question_count=row[1], due_count=row[2], new_count=row[3]) for row in rows}
 
 
+def question_notebook_membership(db):
+    """Union document and deck membership for either direction of lookup."""
+    via_document = db.query(
+        Question.id.label("question_id"), Document.notebook_id.label("notebook_id"),
+    ).join(Document, Question.document_id == Document.id)
+    via_deck = db.query(DeckQuestion.question_id, Deck.notebook_id).join(Deck)
+    return via_document.union(via_deck).subquery()
+
+
+def question_notebook_ids(db, question_id):
+    membership = question_notebook_membership(db)
+    return [row[0] for row in db.query(membership.c.notebook_id).filter(
+        membership.c.question_id == question_id, membership.c.notebook_id.isnot(None),
+    ).all()]
+
+
 def _progress(db, notebook_id, now):
-    # Match progress.get_stats_by_notebook: union both membership routes and
-    # use times_seen / times_correct for attempts and the correct rate.
-    via_document = db.query(Question.id.label("question_id")).join(
-        Document, Question.document_id == Document.id,
-    ).filter(Document.notebook_id == notebook_id)
-    via_deck = db.query(DeckQuestion.question_id).join(Deck).filter(Deck.notebook_id == notebook_id)
-    ids = via_document.union(via_deck).subquery()
+    membership = question_notebook_membership(db)
+    ids = db.query(membership.c.question_id).filter(
+        membership.c.notebook_id == notebook_id,
+    ).subquery()
     row = db.query(
         func.count(ids.c.question_id),
         func.count(UserProgress.id),

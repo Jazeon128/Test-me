@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Table, ForeignKey
+from sqlalchemy import Column, String, Integer, Table, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from .base import Base
 
@@ -15,8 +15,18 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=True, index=True)
+
+    __table_args__ = (
+        Index("ix_tags_notebook_name", "notebook_id", "name", unique=True),
+        Index("ix_tags_shared_name", "name", unique=True, sqlite_where=notebook_id.is_(None)),
+    )
     color = Column(String, default="blue")  # For UI display
+
+    @property
+    def shared(self):
+        return self.notebook_id is None
 
     # Relationships
     questions = relationship("Question", secondary=question_tags, back_populates="tags")

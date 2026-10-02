@@ -285,7 +285,8 @@ export const canvasAPI = {
 
 // Tags API
 export const tagsAPI = {
-  list: () => api.get('/tags/'),
+  list: (notebook_id) => api.get('/tags/', { params: { notebook_id } }),
+  get: (tagId) => api.get(`/tags/${tagId}`),
   create: (data) => api.post('/tags/', data),
   delete: (tagId) => api.delete(`/tags/${tagId}`),
   addToQuestion: (questionId, tagId) => api.post(`/tags/questions/${questionId}/tags/${tagId}`),

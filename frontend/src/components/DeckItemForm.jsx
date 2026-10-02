@@ -7,7 +7,7 @@ function isFlashcard(item) {
         item.options[0].text === 'Flip to see answer')
 }
 
-export default function DeckItemForm({ item, defaultType = 'mcq', onSave, onCancel }) {
+export default function DeckItemForm({ item, notebook_id, defaultType = 'mcq', onSave, onCancel }) {
     const [type, setType] = useState(item ? (isFlashcard(item) ? 'flashcard' : 'mcq') : defaultType)
     const [front, setFront] = useState(item?.question_text || '')
     const [back, setBack] = useState(item?.explanation || '')
@@ -87,7 +87,7 @@ export default function DeckItemForm({ item, defaultType = 'mcq', onSave, onCanc
                 <option value="hard">Hard</option>
             </select>
         </label>
-        {!item && <TagManager selectedTags={tags} onTagsChange={setTags} mode="select" />}
+        {!item && <TagManager notebook_id={notebook_id} selectedTags={tags} onTagsChange={setTags} mode="select" />}
         {error && <p role="alert" className="workspace-error">{error}</p>}
         <div className="flex gap-3">
             <button type="submit" className="btn-primary" disabled={saving}>{item ? 'Save' : 'Save Card'}</button>

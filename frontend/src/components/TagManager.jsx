@@ -1,5 +1,5 @@
 import Spinner from './Spinner'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { tagsAPI } from '../services/api'
 import { Tag, Plus, X } from 'lucide-react'
 
@@ -29,6 +29,7 @@ export const TagBadge = ({ tag, onClick, onRemove, size = 'md' }) => {
         >
             <Tag size={size === 'sm' ? 12 : 14} />
             {tag.name}
+            {tag.shared && <span className="text-xs opacity-75">Shared</span>}
             {onRemove && (
                 <button
                     onClick={(e) => {
@@ -46,6 +47,7 @@ export const TagBadge = ({ tag, onClick, onRemove, size = 'md' }) => {
 }
 
 export default function TagManager({
+    notebook_id,
     selectedTags = [],
     onTagsChange,
     mode = 'select' // 'select' or 'manage'
@@ -55,21 +57,22 @@ export default function TagManager({
     const [showCreateForm, setShowCreateForm] = useState(false)
     const [newTagName, setNewTagName] = useState('')
     const [newTagColor, setNewTagColor] = useState('blue')
+    const [pendingDelete, setPendingDelete] = useState(null)
 
-    useEffect(() => {
-        loadTags()
-    }, [])
-
-    const loadTags = async () => {
+    const loadTags = useCallback(async () => {
         try {
-            const response = await tagsAPI.list()
+            const response = await tagsAPI.list(notebook_id)
             setTags(response.data)
         } catch (error) {
             console.error('Failed to load tags:', error)
         } finally {
             setLoading(false)
         }
-    }
+    }, [notebook_id])
+
+    useEffect(() => {
+        loadTags()
+    }, [loadTags])
 
     const handleCreateTag = async () => {
         if (!newTagName.trim()) {
@@ -80,7 +83,8 @@ export default function TagManager({
         try {
             const response = await tagsAPI.create({
                 name: newTagName.trim(),
-                color: newTagColor
+                color: newTagColor,
+                ...(notebook_id != null ? { notebook_id } : {})
             })
             setTags([...tags, response.data])
             setNewTagName('')
@@ -98,10 +102,9 @@ export default function TagManager({
     }
 
     const handleDeleteTag = async (tagId) => {
-        if (!confirm('Delete this tag? It will be removed from all questions.')) return
-
         try {
             await tagsAPI.delete(tagId)
+            setPendingDelete(null)
             setTags(tags.filter(t => t.id !== tagId))
 
             // Remove from selected tags if present
@@ -111,6 +114,16 @@ export default function TagManager({
         } catch (error) {
             console.error('Failed to delete tag:', error)
             alert('Failed to delete tag')
+        }
+    }
+
+    const requestDelete = async (tag) => {
+        try {
+            const response = await tagsAPI.get(tag.id)
+            setPendingDelete(response.data)
+        } catch (error) {
+            console.error('Failed to load tag:', error)
+            alert('Failed to load tag')
         }
     }
 
@@ -135,6 +148,15 @@ export default function TagManager({
 
     return (
         <div className="space-y-3">
+            {pendingDelete && (
+                <div role="dialog" aria-label="Delete tag" className="rounded-lg border p-3 space-y-2">
+                    <p>{pendingDelete.shared
+                        ? `This tag is shared by every notebook. Remove it from ${pendingDelete.question_count} questions everywhere?`
+                        : 'Delete this tag? It will be removed from all questions.'}</p>
+                    <button type="button" onClick={() => handleDeleteTag(pendingDelete.id)}>Remove tag</button>
+                    <button type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
+                </div>
+            )}
             {/* Tag List */}
             <div className="flex flex-wrap gap-2">
                 {tags.length === 0 ? (
@@ -145,7 +167,7 @@ export default function TagManager({
                             key={tag.id}
                             tag={tag}
                             onClick={mode === 'select' ? () => toggleTagSelection(tag) : undefined}
-                            onRemove={mode === 'manage' ? () => handleDeleteTag(tag.id) : undefined}
+                            onRemove={mode === 'manage' ? () => requestDelete(tag) : undefined}
                             size="md"
                         />
                     ))

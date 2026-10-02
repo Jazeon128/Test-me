@@ -9,6 +9,7 @@ vi.mock('../../services/api', () => ({
         list: vi.fn(),
         create: vi.fn(),
         delete: vi.fn(),
+        get: vi.fn(),
     },
 }));
 
@@ -63,4 +64,43 @@ describe('TagManager', () => {
             expect(screen.getByText('New Tag')).toBeInTheDocument();
         });
     });
+});
+
+test('lists and creates tags in its notebook and reloads when the notebook changes', async () => {
+    tagsAPI.list.mockResolvedValue({ data: [] });
+    tagsAPI.create.mockResolvedValue({ data: { id: 8, name: 'Local', notebook_id: 5, shared: false } });
+    const { rerender } = render(<TagManager notebook_id={5} />);
+    await screen.findByText('No tags yet. Create one below!');
+    expect(tagsAPI.list).toHaveBeenCalledWith(5);
+    fireEvent.click(screen.getByText('Create New Tag'));
+    fireEvent.change(screen.getByPlaceholderText(/e.g., Important/i), { target: { value: 'Local' } });
+    fireEvent.click(screen.getByText('Create Tag'));
+    await screen.findByText('Local');
+    expect(tagsAPI.create).toHaveBeenCalledWith({ name: 'Local', color: 'blue', notebook_id: 5 });
+    rerender(<TagManager notebook_id={6} />);
+    await waitFor(() => expect(tagsAPI.list).toHaveBeenCalledWith(6));
+});
+
+test('labels shared tags and requires an in-page confirmation with the fetched count', async () => {
+    const tag = { id: 4, name: 'Global', color: 'blue', notebook_id: null, shared: true };
+    tagsAPI.list.mockResolvedValue({ data: [tag] });
+    tagsAPI.get.mockResolvedValue({ data: { ...tag, question_count: 17 } });
+    tagsAPI.delete.mockResolvedValue({ data: { affected_questions: 17 } });
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    render(<TagManager notebook_id={5} mode="manage" />);
+    expect(await screen.findByText('Shared')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Global' }));
+    expect(await screen.findByText('This tag is shared by every notebook. Remove it from 17 questions everywhere?')).toBeInTheDocument();
+    expect(tagsAPI.get).toHaveBeenCalledWith(4);
+    expect(tagsAPI.delete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(tagsAPI.delete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Global' }));
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }));
+    await waitFor(() => expect(tagsAPI.delete).toHaveBeenCalledWith(4));
+    await waitFor(() => expect(screen.queryByText('Global')).not.toBeInTheDocument());
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
 });

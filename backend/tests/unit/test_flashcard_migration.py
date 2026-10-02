@@ -2,7 +2,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import MetaData, create_engine, inspect, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, inspect, text
 
 from app.config import settings
 from app.models import Base
@@ -21,6 +21,11 @@ def test_full_upgrade_and_downgrade(tmp_path, monkeypatch):
     for table in Base.metadata.sorted_tables:
         table.to_metadata(previous)
     previous.tables["questions"]._columns.remove(previous.tables["questions"].c.card_type)
+    previous.remove(previous.tables["tags"])
+    Table("tags", previous,
+          Column("id", Integer, primary_key=True, index=True),
+          Column("name", String, unique=True, index=True, nullable=False),
+          Column("color", String))
     previous.create_all(engine)
     command.stamp(config, "b4d6e8f0a2c5")
     try:

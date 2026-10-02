@@ -74,7 +74,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
         setEditingTagsFor(questionId)
         // Reload each time: tags may have been created in the filter panel.
         try {
-            const response = await tagsAPI.list()
+            const response = await tagsAPI.list(deck.notebook_id)
             setAllTags(response.data)
         } catch (error) {
             console.error('Failed to load tags:', error)
@@ -213,6 +213,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                     {showFilters && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <TagManager
+                                notebook_id={deck.notebook_id}
                                 selectedTags={filterTags}
                                 onTagsChange={setFilterTags}
                                 mode="select"
@@ -296,7 +297,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                                         </button>
                                     </div>
                                 </div>
-                                {editingItem?.id === question.id && <DeckItemForm
+                                {editingItem?.id === question.id && <DeckItemForm notebook_id={deck.notebook_id}
                                     item={editingItem} onSave={handleEditQuestion}
                                     onCancel={() => setEditingItem(null)} />}
                                 {editingTagsFor === question.id && (
@@ -328,7 +329,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                         </div>
 
                         <div className="p-6">
-                            <DeckItemForm defaultType={deck.kind === 'flashcards' ? 'flashcard' : 'mcq'}
+                            <DeckItemForm notebook_id={deck.notebook_id} defaultType={deck.kind === 'flashcards' ? 'flashcard' : 'mcq'}
                                 onSave={handleAddQuestion} onCancel={() => setShowAddModal(false)} />
                         </div>
                     </div>

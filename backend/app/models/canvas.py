@@ -27,6 +27,7 @@ class Canvas(Base, TimestampMixin):
     # Node positions after the user has dragged things. Null until they do,
     # which is how the frontend knows to run automatic layout instead.
     layout_json = Column(JSON, nullable=True)
+    edited_json = Column(JSON, nullable=True)
 
     # The sections the payload cites, so a node can show its source without
     # re-parsing the document.

@@ -9,19 +9,20 @@ import {
   useEdgesState,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText, Wand2, Hand } from 'lucide-react'
-import PropTypes from 'prop-types'
-
+import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText } from 'lucide-react'
 import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../services/api'
 import { nodeTypes } from '../canvas/nodeTypes'
 import { layout, toGraph } from '../canvas/layout'
 import TemplatePicker from '../canvas/TemplatePicker'
 import NodePanel from '../canvas/NodePanel'
+import useCanvasSave from '../canvas/useCanvasSave'
+import useCanvasEditing, { editedGraph } from '../canvas/useCanvasEditing'
+import CanvasToolbar from '../canvas/CanvasToolbar'
+import { Generating, EmptyState, TemplateBadge } from '../canvas/CanvasChrome'
 import '../canvas/canvas.css'
 
 const POLL_MS = 900
 
-/** elk algorithm per template. Mirrors backend/app/services/viz/templates.py. */
 const LAYOUTS = {
   flowchart: 'layered',
   architecture: 'layered',
@@ -63,8 +64,13 @@ export default function Canvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
 
+  const { status: saveStatus, save, flush, retry } = useCanvasSave(canvas?.id)
+  const { displayNodes, startEditing } = useCanvasEditing({ nodes, edges, setNodes, setCanvas, save })
+  const [restoring, setRestoring] = useState(false)
+
   const pollRef = useRef(null)
   const jobRef = useRef(null)
+
   const drawnIdRef = useRef(null)
 
   useEffect(() => {
@@ -74,6 +80,7 @@ export default function Canvas() {
     Promise.all(sourceIds.map(id => documentsAPI.get(String(id)).then(({ data }) => data).catch(() => null))).then(data => {
       if (!cancelled) setDocumentContext(data.filter(Boolean))
     })
+
     return () => { cancelled = true }
   }, [canvasId, sourceIds])
 
@@ -84,11 +91,10 @@ export default function Canvas() {
     notebooksAPI.get(sourceNotebookId).then(({ data }) => {
       if (!cancelled) setNotebookContext(data)
     }).catch(() => {})
+
     return () => { cancelled = true }
   }, [canvasId, sourceNotebookId])
 
-  // Stop polling when the component goes away, so a long generation does not
-  // keep firing requests after the user navigates off.
   useEffect(() => () => clearTimeout(pollRef.current), [])
 
   const openSource = useCallback(
@@ -107,13 +113,11 @@ export default function Canvas() {
 
   const draw = useCallback(
     async (record) => {
-      const graph = toGraph(record.template, record.payload)
-      const laidOut = await layout(record.template, graph, {
+      const laidOut = record.edited || await layout(record.template, toGraph(record.template, record.payload), {
         algorithm: LAYOUTS[record.template] || 'layered',
         orientation: record.payload?.orientation || 'horizontal',
       })
-
-      const saved = record.layout || {}
+      const saved = record.edited ? {} : record.layout || {}
       setNodes(
         laidOut.nodes.map((node) => ({
           ...node,
@@ -132,7 +136,6 @@ export default function Canvas() {
     [openSource, setEdges, setNodes]
   )
 
-  // Load an existing canvas by id.
   useEffect(() => {
     if (!canvasId || drawnIdRef.current === canvasId) return
     let cancelled = false
@@ -147,6 +150,7 @@ export default function Canvas() {
           setPhase('error')
         }
       })
+
     return () => {
       cancelled = true
     }
@@ -158,7 +162,6 @@ export default function Canvas() {
         const { data } = await statusAPI.get(jobId)
         setStep(data.current_step || '')
         setProgress(data.progress || 0)
-
         if (data.status === 'completed') {
           const response = await canvasAPI.get(data.result_id ?? data.deck_id)
           await draw(response.data)
@@ -209,16 +212,31 @@ export default function Canvas() {
     [selectedSourceIds, poll, request]
   )
 
-  const persistLayout = useCallback(async () => {
+  const persistLayout = useCallback((_, dragged) => {
     if (!canvas) return
-    const positions = Object.fromEntries(nodes.map((node) => [node.id, node.position]))
-    try {
-      await canvasAPI.update(canvas.id, { layout: positions })
-    } catch {
-      // A failed position save is not worth interrupting the person over; the
-      // canvas still works, it just opens laid out automatically next time.
+    const next = nodes.map(node => node.id === dragged?.id ? { ...node, position: dragged.position } : node)
+    setNodes(next)
+    if (canvas.has_edits || canvas.edited) {
+      const edited = editedGraph(next, edges)
+      setCanvas(record => ({ ...record, edited, has_edits: true }))
+      save({ edited })
+    } else {
+      const positions = Object.fromEntries(next.map(node => [node.id, node.position]))
+      setCanvas(record => ({ ...record, layout: positions }))
+      save({ layout: positions })
     }
-  }, [canvas, nodes])
+  }, [canvas, nodes, edges, save, setNodes])
+
+  const restore = async () => {
+    save({ edited: null, layout: null })
+    if (await flush()) {
+      startEditing(null)
+      setSelected(null)
+      setSource(null)
+      await draw({ ...canvas, edited: null, has_edits: false, layout: null })
+      setRestoring(false)
+    }
+  }
 
   const documentName = useMemo(() => canvas?.title || request, [canvas, request])
   const notebookId = canvas ? canvas.notebook_id : sourceNotebookId || documentContext[0]?.notebook_id
@@ -268,11 +286,13 @@ export default function Canvas() {
             >
               {canvas.request_text}
             </h1>
-
+            <span aria-live="polite">{saveStatus}</span>
+            {saveStatus === 'Save failed' && <button type="button" onClick={restoring ? restore : retry}>Retry</button>}
+            {(canvas.has_edits || canvas.edited || canvas.layout) &&
+              <button type="button" onClick={() => setRestoring(true)}>Restore original</button>}
             <TemplateBadge canvas={canvas} />
           </div>
         )}
-
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="canvas-request" className="sr-only">
             What do you want to see?
@@ -313,16 +333,18 @@ export default function Canvas() {
           </button>
         </div>
       </header>
-
+      {restoring && <div className="tm-restore" role="dialog" aria-label="Restore original">
+        <p>Restore the generated diagram? Your edits and positions on this canvas will be lost.</p>
+        <button type="button" onClick={restore}>Restore</button>
+        <button type="button" onClick={() => setRestoring(false)}>Cancel</button>
+      </div>}
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           {phase === 'idle' && <EmptyState name={documentName} onExample={example => {
             setRequest(example)
             document.getElementById('canvas-request')?.focus()
           }} />}
-
           {phase === 'generating' && <Generating step={step} progress={progress} />}
-
           {phase === 'error' && (
             <div className="flex h-full items-center justify-center p-6">
               <div className="flex max-w-md items-start gap-3">
@@ -338,7 +360,6 @@ export default function Canvas() {
               </div>
             </div>
           )}
-
           {phase === 'choosing' && picker && (
             <TemplatePicker
               reason={picker.reason}
@@ -346,34 +367,48 @@ export default function Canvas() {
               onPick={(template) => start(template)}
             />
           )}
-
           {phase === 'ready' && (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onNodeDragStop={persistLayout}
-              onNodeClick={(_, node) => openSource(canvas.id, node)}
-              onPaneClick={() => {
-                setSelected(null)
-                setSource(null)
+            <div
+              className="tm-flow-editor"
+              inert={restoring ? '' : undefined}
+              tabIndex={0}
+              onKeyDown={event => {
+                if (event.target.closest('input, textarea, [contenteditable="true"]')) return
+                if (event.key === 'Enter' && selected) {
+                  event.preventDefault()
+                  startEditing(selected.id)
+                }
               }}
-              fitView
-              proOptions={{ hideAttribution: false }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
-              <Controls showInteractive={false} />
-            </ReactFlow>
+              <CanvasToolbar selected={selected} onEdit={startEditing} />
+              <ReactFlow
+                nodes={displayNodes}
+                deleteKeyCode={null}
+                onNodeDoubleClick={(_, node) => startEditing(node.id)}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeDragStop={persistLayout}
+                onNodeClick={(_, node) => openSource(canvas.id, node)}
+                onPaneClick={() => {
+                  setSelected(null)
+                  setSource(null)
+                }}
+                fitView
+                proOptions={{ hideAttribution: false }}
+              >
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
+                <Controls showInteractive={false} />
+              </ReactFlow>
+            </div>
           )}
         </div>
-
         {phase === 'ready' && selected && (
           <NodePanel
             key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}
-            node={selected}
+            node={nodes.find(node => node.id === selected.id) || selected}
             source={source}
             onClose={() => {
               setSelected(null)
@@ -384,102 +419,4 @@ export default function Canvas() {
       </div>
     </div>
   )
-}
-
-function Generating({ step, progress }) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <Loader2 size={22} className="animate-spin" style={{ color: 'var(--accent)' }} />
-      <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-        {step || 'Working'}
-      </p>
-      <div
-        className="h-1 w-64 overflow-hidden rounded-full"
-        style={{ background: 'var(--s3)' }}
-        role="progressbar"
-        aria-valuenow={progress}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="h-full transition-all duration-500"
-          style={{ width: `${progress}%`, background: 'var(--accent)' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function EmptyState({ onExample }) {
-  return (
-    <div className="canvas-empty-state">
-      <div className="max-w-md text-center">
-        <h2 className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-          What should this canvas show?
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>
-          The canvas picks how to draw the answer: a flowchart, an architecture
-          diagram, a fishbone, a timeline. You do not choose the form, and every
-          node traces back to the passage it came from.
-        </p>
-        <div className="canvas-examples">
-          {['How does a request flow through this?', 'Compare the main options side by side', 'What are the key ideas and how do they connect?'].map(example => (
-            <button key={example} type="button" onClick={() => onExample(example)}>{example}</button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-EmptyState.propTypes = {
-  onExample: PropTypes.func.isRequired,
-}
-
-Generating.propTypes = {
-  step: PropTypes.string,
-  progress: PropTypes.number,
-}
-
-/**
- * Which visual form this canvas is drawn as, and who decided.
- *
- * Whether the app chose the form or the person did is not a detail: the whole
- * premise is that you do not pick the diagram type, so when it picks, it should
- * say so and show how sure it was.
- */
-function TemplateBadge({ canvas }) {
-  const chosenByModel = canvas.routing_confidence != null
-  const Icon = chosenByModel ? Wand2 : Hand
-  const label = canvas.template_title || canvas.template
-
-  const attribution = chosenByModel
-    ? `chosen for you, ${Math.round(canvas.routing_confidence * 100)}% confident`
-    : canvas.chosen_by_user
-      ? 'you chose this form'
-      : null
-
-  return (
-    <span
-      className="flex flex-none items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
-      style={{
-        borderColor: 'var(--accent-line)',
-        background: 'var(--accent-soft)',
-        color: 'var(--accent)',
-      }}
-      title={attribution ? `${label} — ${attribution}` : label}
-    >
-      <Icon size={12} />
-      <span className="font-medium">{label}</span>
-      {attribution && (
-        <span style={{ color: 'var(--text3)' }} className="hidden sm:inline">
-          {'·'} {attribution}
-        </span>
-      )}
-    </span>
-  )
-}
-
-TemplateBadge.propTypes = {
-  canvas: PropTypes.object.isRequired,
 }

@@ -21,6 +21,7 @@ def test_full_upgrade_and_downgrade(tmp_path, monkeypatch):
     for table in Base.metadata.sorted_tables:
         table.to_metadata(previous)
     previous.tables["questions"]._columns.remove(previous.tables["questions"].c.card_type)
+    previous.tables["canvases"]._columns.remove(previous.tables["canvases"].c.edited_json)
     previous.remove(previous.tables["tags"])
     Table("tags", previous,
           Column("id", Integer, primary_key=True, index=True),

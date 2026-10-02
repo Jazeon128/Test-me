@@ -1,6 +1,7 @@
 import { Handle, Position } from '@xyflow/react'
 import { FileText, AlertCircle } from 'lucide-react'
 import PropTypes from 'prop-types'
+import NodeEditor, { EditedMarker } from './NodeEditor'
 
 /**
  * The node types the canvas draws.
@@ -54,7 +55,7 @@ Cite.propTypes = {
   onOpen: PropTypes.func,
 }
 
-function NodeShell({ data, selected, shape = 'rect', caption }) {
+function NodeShell({ data, selected, shape = 'rect', caption, detail = true }) {
   return (
     <div
       className={`tm-node shape-${shape} ${colorClass(data.color)}${selected ? ' is-selected' : ''}`}
@@ -64,9 +65,16 @@ function NodeShell({ data, selected, shape = 'rect', caption }) {
         <span className="tm-sw" />
         <span className="tm-kind">{caption}</span>
         <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+        <EditedMarker data={data} />
       </div>
-      <div className="tm-label">{data.label}</div>
-      {data.detail ? <div className="tm-detail">{data.detail}</div> : null}
+      {data.editing ? (
+        <NodeEditor data={data} detail={detail} />
+      ) : (
+        <>
+          <div className="tm-label">{data.label}</div>
+          {data.detail ? <div className="tm-detail">{data.detail}</div> : null}
+        </>
+      )}
       <Handle type="source" position={Position.Right} />
     </div>
   )
@@ -77,6 +85,7 @@ NodeShell.propTypes = {
   selected: PropTypes.bool,
   shape: PropTypes.string,
   caption: PropTypes.string,
+  detail: PropTypes.bool,
 }
 
 /** A step in a process, a state, or an idea. The default node. */
@@ -108,8 +117,9 @@ export function BoneNode({ data, selected }) {
   return (
     <div className={`tm-bone${selected ? ' is-selected' : ''}`}>
       <Handle type="source" position={Position.Right} />
-      <span>{data.label}</span>
+      {data.editing ? <NodeEditor data={data} /> : <span>{data.label}</span>}
       <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+      <EditedMarker data={data} />
     </div>
   )
 }
@@ -122,6 +132,7 @@ export function MatrixCell({ data, selected }) {
       data={{ ...data, color: verdictColor[data.verdict] || 'slate' }}
       selected={selected}
       shape="rect"
+      detail={false}
       caption={data.criterion}
     />
   )
@@ -131,7 +142,8 @@ export function MatrixCell({ data, selected }) {
 export function GroupNode({ data }) {
   return (
     <div className={`tm-group${data.kind === 'boundary' ? ' is-boundary' : ''}`}>
-      <div className="tm-group-label">{data.label}</div>
+      <EditedMarker data={data} />
+      {data.editing ? <NodeEditor data={data} /> : <div className="tm-group-label">{data.label}</div>}
     </div>
   )
 }
@@ -151,7 +163,8 @@ export function ActorNode({ data, selected }) {
       className={`tm-node shape-pill ${colorClass(data.color)}${selected ? ' is-selected' : ''}`}
       style={{ minWidth: 120, textAlign: 'center' }}
     >
-      <div className="tm-label">{data.label}</div>
+      <EditedMarker data={data} />
+      {data.editing ? <NodeEditor data={data} /> : <div className="tm-label">{data.label}</div>}
     </div>
   )
 }
@@ -172,8 +185,9 @@ export function MessageNode({ data, selected }) {
           {arrow} {data.kind || 'call'}
         </span>
         <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+        <EditedMarker data={data} />
       </div>
-      <div className="tm-label">{data.label}</div>
+      {data.editing ? <NodeEditor data={data} /> : <div className="tm-label">{data.label}</div>}
       <Handle type="source" position={Position.Right} />
     </div>
   )

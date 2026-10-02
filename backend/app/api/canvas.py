@@ -5,6 +5,7 @@ shape of the material; the configured AI provider fills that form's schema. When
 Jev is not confident enough, or is not configured at all, the person picks.
 """
 
+import json
 import uuid
 from typing import Dict, List, Optional
 
@@ -60,6 +61,55 @@ class GenerateCanvasRequest(BaseModel):
 class UpdateCanvasRequest(BaseModel):
     layout: Optional[Dict] = None
     title: Optional[str] = None
+    edited: Optional[Dict] = None
+
+    @model_validator(mode="after")
+    def validate_edited(self):
+        if self.edited is not None:
+            _validate_edited(self.edited)
+        return self
+
+
+def _check_strings(value):
+    if isinstance(value, str) and len(value) > 2000:
+        raise ValueError("String fields must be at most 2000 characters")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _check_strings(key)
+            _check_strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            _check_strings(item)
+
+
+def _graph_ids(items, limit):
+    if not isinstance(items, list) or len(items) > limit:
+        raise ValueError(f"Expected at most {limit} graph items")
+    ids = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            raise ValueError("Graph items require string ids")
+        ids.append(item["id"])
+    if len(set(ids)) != len(ids):
+        raise ValueError("Graph ids must be unique")
+    return set(ids)
+
+
+def _validate_edited(graph):
+    if type(graph.get("schema_version")) is not int or graph["schema_version"] != 1:
+        raise ValueError("Expected schema_version 1")
+    node_ids = _graph_ids(graph.get("nodes"), 400)
+    _graph_ids(graph.get("edges"), 800)
+    for node in graph["nodes"]:
+        if not isinstance(node.get("data"), dict) or not isinstance(node.get("position"), dict):
+            raise ValueError("Nodes require data and position")
+    for edge in graph["edges"]:
+        endpoints = [edge.get("source"), edge.get("target")]
+        if any(not isinstance(value, str) or value not in node_ids for value in endpoints):
+            raise ValueError("Edge endpoints must exist")
+    _check_strings(graph)
+    if len(json.dumps(graph, ensure_ascii=False).encode("utf-8")) > 1_000_000:
+        raise ValueError("Edited graph must be at most 1000000 bytes")
 
 
 def _sections_for(document: Document) -> List[Dict]:
@@ -403,6 +453,8 @@ def _serialize(canvas: Canvas) -> Dict:
         "title": canvas.title,
         "payload": canvas.payload_json,
         "layout": canvas.layout_json,
+        "edited": canvas.edited_json,
+        "has_edits": canvas.edited_json is not None,
         "routing_confidence": canvas.routing_confidence,
         "chosen_by_user": canvas.chosen_by_user,
         "created_at": canvas.created_at.isoformat() if canvas.created_at else None,
@@ -475,8 +527,10 @@ async def update_canvas(
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
 
-    if request.layout is not None:
+    if "layout" in request.model_fields_set:
         canvas.layout_json = request.layout
+    if "edited" in request.model_fields_set:
+        canvas.edited_json = request.edited
     if request.title is not None:
         canvas.title = request.title
 
@@ -492,7 +546,7 @@ async def node_source(canvas_id: int, node_id: str, db: Session = Depends(get_db
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
 
-    node = _find_node(canvas.payload_json, node_id)
+    node = _find_canvas_node(canvas, node_id)
     if node is None:
         raise HTTPException(status_code=404, detail="Node not found on this canvas")
 
@@ -519,7 +573,7 @@ def _node_canvas(db, canvas_id, node_id):
     canvas = db.get(Canvas, canvas_id)
     if canvas is None:
         raise HTTPException(404, "Canvas not found")
-    node = _find_node(canvas.payload_json, node_id)
+    node = _find_canvas_node(canvas, node_id)
     if node is None:
         raise HTTPException(404, "Node not found on this canvas")
     return canvas, node
@@ -635,6 +689,14 @@ async def questions_for_node(
         raise
     invalidate_stats_cache()
     return _node_questions(db, db.get(Canvas, canvas_id), node_id, generated=True)
+
+
+def _find_canvas_node(canvas, node_id):
+    if canvas.edited_json is not None:
+        for node in canvas.edited_json["nodes"]:
+            if node["id"] == node_id:
+                return node["data"]
+    return _find_node(canvas.payload_json, node_id)
 
 
 def _matrix_cell(payload: Dict, node_id: str) -> Optional[Dict]:

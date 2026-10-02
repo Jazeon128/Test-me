@@ -335,3 +335,17 @@ button:disabled { cursor: not-allowed; }
 
 .question-bank .bank-action-bar .btn-primary { background: var(--accent); color: white; }
 .bank-action-menu input { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); }
+
+/* Canvas editing surfaces. */
+.tm-canvas { --canvas-editor-bg: #ffffff; --canvas-editor-ink: #20243c; --canvas-editor-line: #626a83; }
+.dark .tm-canvas { --canvas-editor-bg: #20243c; --canvas-editor-ink: #f8f9fd; --canvas-editor-line: #a5acc5; }
+.tm-flow-editor { height: 100%; position: relative; }
+.tm-edit-toolbar { position: absolute; top: 12px; left: 50%; z-index: 10; }
+.tm-edit-toolbar button { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.tm-edit-toolbar, .tm-editor, .tm-restore { background: var(--canvas-editor-bg); color: var(--canvas-editor-ink); border: 1px solid var(--canvas-editor-line); border-radius: 6px; padding: 8px; }
+.tm-editor label { display: block; font-size: 12px; }
+.tm-editor input, .tm-editor textarea { display: block; width: 100%; color: var(--canvas-editor-ink); background: var(--canvas-editor-bg); border: 1px solid var(--canvas-editor-line); }
+.tm-editor button, .tm-restore button { min-height: 44px; padding: 4px 8px; }
+.tm-edited { font-size: 10px; color: var(--canvas-editor-ink); margin-left: 4px; }
+
+.tm-canvas .tm-detail { white-space: pre-wrap; }

@@ -130,7 +130,7 @@ it('draws another answer from the source of a reopened canvas', async () => {
   await screen.findByText('Existing canvas')
   fireEvent.change(screen.getByLabelText('What do you want to see?'), { target: { value: 'Show the next step' } })
   fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
-  await waitFor(() => expect(canvasAPI.generate).toHaveBeenCalledWith(42, 'Show the next step', null))
+  await waitFor(() => expect(canvasAPI.generate).toHaveBeenCalledWith({ sourceIds: [42], requestText: 'Show the next step', template: null }))
 })
 
 it.each([
@@ -146,4 +146,37 @@ it.each([
   fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
   await waitFor(() => expect(statusAPI.get).toHaveBeenCalledWith('fixture-job'))
   await waitFor(() => expect(canvasAPI.get).toHaveBeenLastCalledWith(expected))
+})
+
+
+it('shows every selected source and sends ids in selection order', async () => {
+  documentsAPI.get.mockImplementation(id => Promise.resolve({ data: {
+    id: Number(id), notebook_id: 3, display_name: `Source ${id}`,
+  } }))
+  renderCanvas('/canvas?sources=43,42,44&notebook=3')
+  await screen.findByText('Source 44')
+  expect(screen.getAllByText('Drawn from')).toHaveLength(3)
+  expect(screen.getByText('Source 43')).toHaveAttribute('title', 'Source 43')
+  fireEvent.change(screen.getByLabelText('What do you want to see?'), { target: { value: 'Combine' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
+  await waitFor(() => expect(canvasAPI.generate).toHaveBeenCalledWith({
+    sourceIds: [43, 42, 44], requestText: 'Combine', template: null,
+  }))
+})
+
+it('shows all saved sources and reuses them', async () => {
+  canvasAPI.get.mockResolvedValueOnce({ data: {
+    id: 7, document_id: 42, source_ids: [43, 42],
+    sources: [{ id: 43, name: 'Second' }, { id: 42, name: 'First' }],
+    template: 'flowchart', payload: {},
+  } })
+  renderCanvas('/canvas/7')
+  await screen.findByText('Second')
+  expect(screen.getByText('First')).toBeInTheDocument()
+  expect(screen.getAllByText('Drawn from')).toHaveLength(2)
+  fireEvent.change(screen.getByLabelText('What do you want to see?'), { target: { value: 'Again' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
+  await waitFor(() => expect(canvasAPI.generate).toHaveBeenCalledWith({
+    sourceIds: [43, 42], requestText: 'Again', template: null,
+  }))
 })

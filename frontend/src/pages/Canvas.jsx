@@ -43,9 +43,10 @@ export default function Canvas() {
   const { canvasId } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const sourceDocumentId = searchParams.get('document')
+  const sourceQuery = searchParams.get('sources') || searchParams.get('document') || ''
+  const sourceIds = useMemo(() => [...new Set(sourceQuery.split(',').filter(Boolean).map(Number))], [sourceQuery])
   const sourceNotebookId = searchParams.get('notebook')
-  const [documentContext, setDocumentContext] = useState(null)
+  const [documentContext, setDocumentContext] = useState([])
   const [notebookContext, setNotebookContext] = useState(null)
 
   const [request, setRequest] = useState('')
@@ -54,7 +55,7 @@ export default function Canvas() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState(null)
   const [canvas, setCanvas] = useState(null)
-  const documentId = canvasId ? canvas?.document_id : sourceDocumentId
+  const selectedSourceIds = useMemo(() => canvasId ? canvas?.source_ids || (canvas ? [canvas.document_id] : []) : sourceIds, [canvasId, canvas, sourceIds])
   const [picker, setPicker] = useState(null)
   const [selected, setSelected] = useState(null)
   const [source, setSource] = useState(null)
@@ -67,14 +68,14 @@ export default function Canvas() {
   const drawnIdRef = useRef(null)
 
   useEffect(() => {
-    if (canvasId || !sourceDocumentId) return
+    if (canvasId || !sourceIds.length) return
     let cancelled = false
-    setDocumentContext(null)
-    documentsAPI.get(sourceDocumentId).then(({ data }) => {
-      if (!cancelled) setDocumentContext(data)
-    }).catch(() => {})
+    setDocumentContext([])
+    Promise.all(sourceIds.map(id => documentsAPI.get(String(id)).then(({ data }) => data).catch(() => null))).then(data => {
+      if (!cancelled) setDocumentContext(data.filter(Boolean))
+    })
     return () => { cancelled = true }
-  }, [canvasId, sourceDocumentId])
+  }, [canvasId, sourceIds])
 
   useEffect(() => {
     if (canvasId || !sourceNotebookId) return
@@ -186,7 +187,7 @@ export default function Canvas() {
 
   const start = useCallback(
     async (template = null) => {
-      if (!documentId) {
+      if (!selectedSourceIds.length) {
         setError('Open a canvas from a document.')
         setPhase('error')
         return
@@ -197,15 +198,15 @@ export default function Canvas() {
       setProgress(0)
       setStep('Starting')
       try {
-        const { data } = await canvasAPI.generate(Number(documentId), request, template)
+        const { data } = await canvasAPI.generate({ sourceIds: selectedSourceIds, requestText: request, template })
         jobRef.current = data.job_id
         poll(data.job_id)
       } catch (err) {
-        setError(err.response?.data?.detail || 'Could not start the canvas.')
+        setError(err.response?.data?.detail || err.message || 'Could not start the canvas.')
         setPhase('error')
       }
     },
-    [documentId, poll, request]
+    [selectedSourceIds, poll, request]
   )
 
   const persistLayout = useCallback(async () => {
@@ -220,12 +221,13 @@ export default function Canvas() {
   }, [canvas, nodes])
 
   const documentName = useMemo(() => canvas?.title || request, [canvas, request])
-  const notebookId = canvas ? canvas.notebook_id : sourceNotebookId || documentContext?.notebook_id
+  const notebookId = canvas ? canvas.notebook_id : sourceNotebookId || documentContext[0]?.notebook_id
   const notebookName = canvas ? canvas.notebook_name : notebookContext?.name || (
-    String(documentContext?.notebook_id) === String(notebookId) ? documentContext?.notebook_name : null
+    String(documentContext[0]?.notebook_id) === String(notebookId) ? documentContext[0]?.notebook_name : null
   )
   const backLabel = notebookId && notebookName ? `Back to ${notebookName}` : 'Back to notebooks'
-  const sourceName = canvas?.source_name || canvas?.document_name || documentContext?.display_name
+  const sources = canvas ? canvas.sources || [{ id: canvas.document_id, name: canvas.source_name || canvas.document_name }] :
+    documentContext.map(doc => ({ id: doc.id, name: doc.display_name }))
 
   return (
     <div className="tm-canvas flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-xl border"
@@ -245,16 +247,17 @@ export default function Canvas() {
             <ArrowLeft size={15} aria-hidden="true" />
             {backLabel}
           </button>
-          {sourceName && (
+          {sources.filter(source => source.name).map(source => (
             <span
+              key={source.id}
               className="flex min-w-0 max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:max-w-xs"
               style={{ borderColor: 'var(--line)', color: 'var(--text2)' }}
             >
               <FileText size={14} className="shrink-0" aria-hidden="true" />
               <span className="sr-only">Drawn from</span>
-              <span className="truncate" title={sourceName}>{sourceName}</span>
+              <span className="truncate" title={source.name}>{source.name}</span>
             </span>
-          )}
+          ))}
         </div>
         {canvas && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

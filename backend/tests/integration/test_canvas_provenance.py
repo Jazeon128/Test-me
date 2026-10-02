@@ -14,6 +14,8 @@ def test_finished_canvas_provenance(client, db_session, sample_document, monkeyp
     db_session.flush()
     sample_document.notebook_id = notebook.id
     db_session.commit()
+    sample_document.status = "ready"
+    db_session.commit()
     monkeypatch.setattr(canvas_api, "SessionLocal", sessionmaker(bind=db_session.get_bind()))
     monkeypatch.setattr(canvas_api, "_sections_for", lambda document: [
         dict(id="s0", text="Source text", heading="Topic", page=1),

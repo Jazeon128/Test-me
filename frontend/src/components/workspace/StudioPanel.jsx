@@ -39,7 +39,7 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
     <div className="workspace-tiles">
       <button aria-label="Quiz" onClick={() => { setKind('quiz'); setPending(null); setError('') }}><ListChecks aria-hidden="true" /><strong>Quiz</strong><span>Test recall</span></button>
       <button aria-label="Flashcards" onClick={() => { setKind('flashcards'); setPending(null); setError('') }}><Layers aria-hidden="true" /><strong>Flashcards</strong><span>Review terms</span></button>
-      <button aria-label="Canvas" disabled={!sourceIds.length} onClick={() => onCanvas(sourceIds[0])}><Network aria-hidden="true" /><strong>Canvas</strong><span>Connect ideas</span></button>
+      <button aria-label="Canvas" disabled={!sourceIds.length} onClick={() => onCanvas(sourceIds)}><Network aria-hidden="true" /><strong>Canvas</strong><span>Connect ideas</span></button>
     </div>
     {kind && <form className="card workspace-generate space-y-3" onSubmit={event => {
       event.preventDefault()

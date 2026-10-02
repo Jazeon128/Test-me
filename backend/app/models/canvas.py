@@ -14,6 +14,8 @@ class Canvas(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
 
+    source_ids = Column(JSON, nullable=True)
+
     # What was asked, and what was drawn in answer.
     request_text = Column(Text, nullable=False)
     template = Column(String(40), nullable=False)
@@ -70,3 +72,8 @@ class CanvasRoutingLog(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<CanvasRoutingLog {self.id}: {self.chosen_template} @ {self.confidence:.2f}>"
+
+
+def canvas_source_ids(canvas):
+    """Ordered sources, including canvases saved before multi-source support."""
+    return canvas.source_ids or [canvas.document_id]

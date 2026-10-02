@@ -266,9 +266,9 @@ export const notebooksAPI = {
 export const canvasAPI = {
   templates: () => api.get('/canvas/templates'),
   listAll: () => api.get('/canvas/'),
-  generate: (documentId, requestText, template = null) =>
+  generate: ({ sourceIds, requestText, template = null }) =>
     api.post('/canvas/generate', {
-      document_id: documentId,
+      source_ids: sourceIds,
       request_text: requestText,
       template,
     }),

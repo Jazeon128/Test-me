@@ -52,12 +52,14 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('Notebook workspace', () => {
-  it('opens a canvas with the first selected source and notebook context', async () => {
+  it('opens a canvas with all selected sources in tick order and notebook context', async () => {
     mount()
     await loaded()
+    fireEvent.click(screen.getByLabelText('Cells.pdf'))
+    fireEvent.click(screen.getByLabelText('Cells.pdf'))
     click('Canvas')
     expect(screen.getByText('Canvas page')).toBeInTheDocument()
-    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?document=1&notebook=7')
+    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?sources=1,2&notebook=7')
   })
   it('renders sources, artifacts, progress and chat centre', async () => {
     mount(); await loaded()
@@ -143,9 +145,9 @@ describe('Notebook workspace', () => {
     await screen.findByText('Deck editor 9'); click('Deleted deck'); await loaded()
     expect(notebooksAPI.workspace).toHaveBeenCalledTimes(2)
   })
-  it('opens canvas from the first ticked source and from the editor', async () => {
+  it('opens canvas from the remaining ticked source', async () => {
     mount(); await loaded(); fireEvent.click(screen.getByLabelText('Cells.pdf')); click('Canvas')
-    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?document=2')
+    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?sources=2')
   })
   it('collapses to rails with persisted aria-expanded state', async () => {
     const rendered = mount(); await loaded(); click('Collapse sources'); click('Collapse studio')

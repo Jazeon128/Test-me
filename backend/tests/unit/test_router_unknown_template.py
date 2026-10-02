@@ -17,7 +17,7 @@ def test_unknown_template_opens_picker(db_session, sample_document, monkeypatch)
     db_session.add(status)
     db_session.commit()
     result = canvas._decide_template(
-        db_session, request, sample_document, [{"id": "s0", "text": "Source"}], status,
+        db_session, request, sample_document.title, [{"id": "s0", "text": "Source"}], status,
         lambda *args: None,
     )
     assert result is None

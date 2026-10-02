@@ -9,11 +9,11 @@ import uuid
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, model_validator
+from sqlalchemy.orm import Session, object_session
 
 from ..db import SessionLocal, get_db
-from ..models.canvas import Canvas, CanvasRoutingLog
+from ..models.canvas import Canvas, CanvasRoutingLog, canvas_source_ids
 from ..models.document import Document
 from ..models.generation_status import GenerationStatus
 from ..services.ai.question_generator import QuestionGenerator
@@ -32,11 +32,24 @@ router = APIRouter()
 
 
 class GenerateCanvasRequest(BaseModel):
-    document_id: int
+    document_id: Optional[int] = None
+    source_ids: Optional[List[int]] = Field(default=None, min_length=1, max_length=10)
     request_text: str
     # Set when the person picked from the low-confidence picker, which skips
     # routing entirely.
     template: Optional[str] = None
+
+    @model_validator(mode="after")
+    def resolve_sources(self):
+        if self.source_ids is None:
+            if self.document_id is None:
+                raise ValueError("Provide source_ids or document_id")
+            self.source_ids = [self.document_id]
+        elif self.document_id is not None and self.source_ids != [self.document_id]:
+            raise ValueError("source_ids must equal [document_id] when both are given")
+        self.source_ids = list(dict.fromkeys(self.source_ids))
+        self.document_id = self.source_ids[0]
+        return self
 
 
 class UpdateCanvasRequest(BaseModel):
@@ -94,7 +107,7 @@ def _ask_for_a_choice(db, status, message: str, routing_log_id: int) -> None:
     db.commit()
 
 
-def _decide_template(db, request, document, sections, status, step):
+def _decide_template(db, request, title, sections, status, step):
     """Settle which template to draw.
 
     Returns (template, routing, routing_log_id), or None when the decision has
@@ -109,7 +122,7 @@ def _decide_template(db, request, document, sections, status, step):
     try:
         routing = viz_router.route(
             request_text=request.request_text,
-            title=document.title or document.original_filename,
+            title=title,
             sections=sections,
             api_key=_typesafe_key(db),
         )
@@ -154,12 +167,20 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         status.status = "processing"
         step("Reading the document", 10)
 
-        document = db.query(Document).filter(Document.id == request.document_id).first()
-        sections = _sections_for(document)
+        documents = _load_sources(db, request.source_ids)
+        document = documents[0]
+        names = [display_name(doc) for doc in documents]
+        title = names[0] if len(names) == 1 else f"{len(names)} sources: " + "; ".join(names)
+        sections = viz_generator.pick_sections([
+            [{**section, "id": f"d{doc.id}-{section['id']}",
+              "document_id": doc.id, "source_name": display_name(doc)}
+             for section in _sections_for(doc)]
+            for doc in documents
+        ])
         if not sections:
             raise ValueError("This document has no readable text to draw from.")
 
-        decision = _decide_template(db, request, document, sections, status, step)
+        decision = _decide_template(db, request, title, sections, status, step)
         if decision is None:
             return
         template, routing, routing_log_id = decision
@@ -168,8 +189,9 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
             db=db,
             template=template,
             request_text=request.request_text,
-            title=document.title or document.original_filename,
+            title=title,
             sections=sections,
+            source_count=len(documents),
             granularity_index=routing.granularity_index if routing else 1,
             orientation=routing.orientation if routing else "horizontal",
             needs_grouping=routing.needs_grouping if routing else False,
@@ -179,6 +201,7 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
 
         canvas = Canvas(
             document_id=document.id,
+            source_ids=request.source_ids,
             request_text=request.request_text,
             template=template.id,
             title=request.request_text[:200],
@@ -209,7 +232,7 @@ def _run_generation(job_id: str, request: GenerateCanvasRequest) -> None:
         status.add_log(f"Drew {template.title.lower()} #{canvas.id}")
         db.commit()
 
-    except Exception as exc:  # noqa: BLE001 - the job records its own failure
+    except Exception as exc:
         logger.error("canvas_generation_failed", job_id=job_id, error=str(exc))
         status = db.query(GenerationStatus).filter(GenerationStatus.job_id == job_id).first()
         if status:
@@ -249,6 +272,25 @@ def _log_routing(
     return row.id
 
 
+def _load_sources(db, source_ids, validate_status=False):
+    documents = []
+    for source_id in source_ids:
+        document = db.get(Document, source_id)
+        if document is None:
+            raise HTTPException(404, f"Source {source_id} not found")
+        documents.append(document)
+    if not validate_status:
+        return documents
+    if len({doc.notebook_id for doc in documents}) != 1:
+        raise HTTPException(400, "All sources must belong to the same notebook")
+    for document in documents:
+        if document.status == "processing":
+            raise HTTPException(409, f"Source {document.id} is still processing")
+        if document.status == "failed":
+            raise HTTPException(400, f"Source {document.id} failed processing")
+    return documents
+
+
 @router.post("/generate")
 async def generate_canvas(
     request: GenerateCanvasRequest,
@@ -256,9 +298,8 @@ async def generate_canvas(
     db: Session = Depends(get_db),
 ):
     """Start a canvas. Returns a job id to poll at /api/status/{job_id}."""
-    document = db.query(Document).filter(Document.id == request.document_id).first()
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+    documents = _load_sources(db, request.source_ids, validate_status=True)
+    document = documents[0]
 
     if request.template and request.template not in viz_templates.TEMPLATES:
         raise HTTPException(status_code=400, detail=f"Unknown template: {request.template}")
@@ -266,7 +307,7 @@ async def generate_canvas(
     job_id = f"canvas-{uuid.uuid4().hex[:12]}"
     status = GenerationStatus(job_id=job_id, status="pending", progress=0,
                               kind="canvas", notebook_id=document.notebook_id,
-                              source_ids=[document.id])
+                              source_ids=request.source_ids)
     status.add_log("Queued")
     db.add(status)
     db.commit()
@@ -339,7 +380,11 @@ def _serialize(canvas: Canvas) -> Dict:
     document = canvas.document
     notebook = document.notebook if document else None
 
+    db = object_session(canvas)
+    sources = [db.get(Document, source_id) for source_id in canvas_source_ids(canvas)]
     return {
+        "source_ids": canvas_source_ids(canvas),
+        "sources": [{"id": doc.id, "name": display_name(doc)} for doc in sources if doc],
         "id": canvas.id,
         "document_id": canvas.document_id,
         "document_name": (document.title or document.original_filename) if document else None,
@@ -395,13 +440,17 @@ def _walk_labelled(payload):
 
 @router.get("/document/{document_id}")
 async def list_canvases(document_id: int, db: Session = Depends(get_db)):
+    document = db.get(Document, document_id)
+    if document is None:
+        return []
     canvases = (
         db.query(Canvas)
-        .filter(Canvas.document_id == document_id)
+        .join(Document, Canvas.document_id == Document.id)
+        .filter(Document.notebook_id == document.notebook_id)
         .order_by(Canvas.created_at.desc())
         .all()
     )
-    return [_serialize(c) for c in canvases]
+    return [_serialize(c) for c in canvases if document_id in canvas_source_ids(c)]
 
 
 @router.get("/{canvas_id}")
@@ -451,6 +500,8 @@ async def node_source(canvas_id: int, node_id: str, db: Session = Depends(get_db
         "node_id": node_id,
         "label": node.get("label"),
         "section": {
+            "document_id": section.get("document_id", canvas.document_id),
+            "source_name": section.get("source_name") or display_name(canvas.document),
             "id": section["id"],
             "heading": section.get("heading"),
             "page": section.get("page"),

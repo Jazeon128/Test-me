@@ -42,7 +42,8 @@ def test_matrix_cell_source(client, db_session, matrix, index, label):
     response = client.get(f"/api/canvas/{matrix.id}/nodes/cell-{index}/source")
     assert response.status_code == 200
     assert response.json() == {
-        "node_id": f"cell-{index}", "label": label, "section": matrix.sources_json[index],
+        "node_id": f"cell-{index}", "label": label, "section": {**matrix.sources_json[index],
+                    "document_id": matrix.document_id, "source_name": "Test Document"},
     }
     db_session.refresh(matrix)
     assert matrix.payload_json == original

@@ -28,6 +28,37 @@ logger = get_logger(__name__)
 #: context on long sources; the router has already decided the shape, so this
 #: pass needs enough text to name things accurately, not everything.
 SECTION_EXCERPT_CHARS = 1_400
+MAX_FILL_CHARS = 90_000
+
+
+def pick_sections(source_sections):
+    """Spend the fill budget fairly, then restore source and section order."""
+    picked = set()
+    used = 0
+    rounds = max((len(sections) for sections in source_sections), default=0)
+    for index in range(rounds):
+        for source_index, sections in enumerate(source_sections):
+            if index >= len(sections):
+                continue
+            section = sections[index]
+            cost = min(len(section["text"]), SECTION_EXCERPT_CHARS) + len(section.get("heading") or "")
+            if used + cost > MAX_FILL_CHARS:
+                return _ordered_sections(source_sections, picked)
+            picked.add((source_index, index))
+            used += cost
+    return _ordered_sections(source_sections, picked)
+
+
+def _ordered_sections(source_sections, picked):
+    return [section for source_index, sections in enumerate(source_sections)
+            for index, section in enumerate(sections) if (source_index, index) in picked]
+
+
+def _heading(section, multiple_sources):
+    heading = section.get("heading") or "Section"
+    if multiple_sources:
+        return f"{section['source_name']} / {heading}"
+    return heading
 
 
 class CanvasGenerationError(QuestionGenerationError):
@@ -43,9 +74,11 @@ def _prompt(
     max_nodes: int,
     orientation: str,
     needs_grouping: bool,
+    source_count: Optional[int] = None,
 ) -> str:
+    multiple_sources = (source_count or len({s.get("document_id") for s in sections})) > 1
     source = "\n\n".join(
-        f"[{s['id']}] {s.get('heading') or 'Section'}\n{s['text'][:SECTION_EXCERPT_CHARS]}"
+        f"[{s['id']}] {_heading(s, multiple_sources)}\n{s['text'][:SECTION_EXCERPT_CHARS]}"
         for s in sections
     )
     schema = json.dumps(template.schema_for_prompt(), indent=2)
@@ -156,6 +189,7 @@ def generate(
     orientation: str = "horizontal",
     needs_grouping: bool = False,
     progress_callback=None,
+    source_count: Optional[int] = None,
 ) -> Dict:
     """Produce the payload for one canvas, retrying once on invalid output."""
     generator = QuestionGenerator(db=db)
@@ -171,6 +205,7 @@ def generate(
         max_nodes,
         orientation,
         needs_grouping,
+        source_count,
     )
 
     last_error: Optional[str] = None

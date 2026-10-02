@@ -756,15 +756,17 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     if not document:
         raise ResourceNotFoundError("Document", document_id)
 
-    from ..models.canvas import Canvas, CanvasRoutingLog
+    from ..models.canvas import Canvas, CanvasRoutingLog, canvas_source_ids
 
     file_path = document.file_path
-    canvas_ids = db.query(Canvas.id).filter_by(document_id=document_id)
+    canvases = [canvas for canvas in db.query(Canvas).all()
+                if document_id in canvas_source_ids(canvas)]
+    canvas_ids = [canvas.id for canvas in canvases]
     db.query(CanvasRoutingLog).filter(or_(
         CanvasRoutingLog.document_id == document_id,
         CanvasRoutingLog.canvas_id.in_(canvas_ids),
     )).delete(synchronize_session="fetch")
-    for canvas in db.query(Canvas).filter_by(document_id=document_id).all():
+    for canvas in canvases:
         db.delete(canvas)
     db.flush()
     db.query(FlaggedQuestion).filter_by(document_id=document_id).delete(synchronize_session="fetch")

@@ -8,6 +8,8 @@ from app.services.viz.router import Routing
 
 
 def test_candidates_stay_with_their_job(client, db_session, sample_document, monkeypatch):
+    sample_document.status = "ready"
+    db_session.commit()
     monkeypatch.setattr(canvas, "SessionLocal", sessionmaker(bind=db_session.bind))
     monkeypatch.setattr(canvas, "_sections_for", lambda doc: [{"id": "s0", "text": "Source"}])
     decisions = iter([
@@ -39,6 +41,8 @@ def test_pending_job_has_no_choices(client, db_session):
 
 
 def test_unavailable_routing_offers_fallback_choices(client, db_session, sample_document, monkeypatch):
+    sample_document.status = "ready"
+    db_session.commit()
     monkeypatch.setattr(canvas, "SessionLocal", sessionmaker(bind=db_session.bind))
     monkeypatch.setattr(canvas, "_sections_for", lambda doc: [{"id": "s0", "text": "Source"}])
 

@@ -126,7 +126,7 @@ function Workspace({ notebookId }) {
       return next
     })
   }, [setParams])
-  const onCanvas = id => navigate(`/canvas?document=${id}&notebook=${notebookId}`)
+  const onCanvas = ids => navigate(`/canvas?sources=${ids.join(",")}&notebook=${notebookId}`)
   const toggle = side => {
     const next = { ...collapsed, [side]: !collapsed[side] }
     setCollapsed(next)
@@ -168,7 +168,7 @@ function Workspace({ notebookId }) {
         {view === 'practice' ? <PracticeSession embedded key={`practice-${deckId}`} deckId={deckId}
           onExit={close} onFinished={close} onEmpty={close} />
           : <DeckEditor embedded key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}
-            onPractice={id => open(id, 'practice')} onOpenCanvas={onCanvas} />}
+            onPractice={id => open(id, 'practice')} onOpenCanvas={id => onCanvas([id])} />}
       </>}
     </section>
     {desktop && panel('studio')}

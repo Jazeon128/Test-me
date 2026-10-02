@@ -32,7 +32,7 @@ router = APIRouter()
 class SubmitAnswerRequest(BaseModel):
     question_id: int
     selected_option: str = ""  # Empty for a timeout or a written answer.
-    written_answer: Optional[str] = Field(default=None, min_length=1, max_length=10000)
+    written_answer: Optional[str] = Field(default=None, max_length=10000)
     time_taken_seconds: float = Field(ge=0)
     manual_quality: Optional[int] = Field(default=None, ge=0, le=5)
     # Written and explain modes only.
@@ -49,6 +49,14 @@ class ReviewSessionRequest(BaseModel):
     include_new: bool = True
     include_review: bool = True
     deck_id: Optional[int] = None
+
+
+def validate_flashcard_rating(request):
+    if request.manual_quality is None:
+        raise HTTPException(status_code=422, detail="Rate this card.")
+    if any((request.selected_option, request.written_answer, request.explain,
+            request.retry_allowed, request.after_feedback)):
+        raise HTTPException(status_code=422, detail="Only a rating is allowed for flashcards.")
 
 
 @router.post("/submit")
@@ -74,14 +82,15 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    if question.card_type == "flashcard" and (request.written_answer is not None or request.explain):
-        raise HTTPException(status_code=422, detail="Written and explain modes are unavailable for flashcards")
+    flashcard = question.card_type == "flashcard"
+    if flashcard:
+        validate_flashcard_rating(request)
 
     # Check if answer is correct
     correct_option = None
-    is_correct = False
+    is_correct = request.manual_quality >= 3 if flashcard else False
 
-    for opt in question.options:
+    for opt in ([] if flashcard else question.options):
         if opt.is_correct:
             correct_option = chr(65 + opt.order)
             if correct_option == request.selected_option.upper():
@@ -90,7 +99,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
 
     # Grade before writing progress. Unavailable grading must not count as failure.
     written_grade = None
-    if request.written_answer is not None:
+    if not flashcard and request.written_answer is not None:
         if not request.written_answer.strip():
             raise HTTPException(status_code=422, detail="Write an answer before submitting.")
         # Only the network call leaves the event loop. The read, update and
@@ -207,7 +216,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
         repetitions=int(progress.repetitions),
         quality=quality,
         time_taken_seconds=request.time_taken_seconds,
-        apply_time_penalty=request.written_answer is None and not request.explain,
+        apply_time_penalty=not flashcard and request.written_answer is None and not request.explain,
     )
 
     # Update spaced repetition data
@@ -391,6 +400,7 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
                 "id": q.id,
                 "question_text": q.question_text,
                 "card_type": q.card_type,
+                "source_reference": q.source_reference,
                 "options": [
                     {
                         "option": chr(65 + opt.order),

@@ -125,7 +125,7 @@ def test_flashcard_read_paths_and_mode_guards(client, db_session):
         assert response.status_code == 422
     assert client.post(f"/api/questions/{question.id}/grade", json=dict(answer="Reviews.")).status_code == 422
     assert client.post('/api/progress/submit', json=dict(
-        question_id=question.id, time_taken_seconds=1,
+        question_id=question.id, time_taken_seconds=1, manual_quality=4,
     )).status_code == 200
     for format_name in ("anki", "csv", "anki-csv"):
         exported = client.get(f"/api/decks/{deck.id}/export/{format_name}")

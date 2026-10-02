@@ -32,9 +32,9 @@ export default function GenerationProgress({ status }) {
           <Loader2 className="generation-spinner h-6 w-6 text-primary-600 dark:text-primary-300 animate-spin" />
         </div>
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Generating questions</h3>
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Generating {status.kind === 'flashcards' ? 'cards' : 'questions'}</h3>
           <p className="text-primary-600 dark:text-primary-300 font-medium">{status.current_step}</p>
-          {total > 0 && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Section {done} of {total}</p>}
+          {total > 0 && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{status.kind === 'flashcards' ? 'Cards' : 'Section'} {done} of {total}</p>}
           <p className="text-gray-600 dark:text-gray-400 text-sm">Elapsed {elapsed}</p>
         </div>
       </div>
@@ -53,6 +53,7 @@ export default function GenerationProgress({ status }) {
 
 GenerationProgress.propTypes = {
   status: PropTypes.shape({
+    kind: PropTypes.string,
     current_step: PropTypes.string,
     current_question: PropTypes.number,
     total_questions: PropTypes.number,

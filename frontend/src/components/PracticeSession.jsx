@@ -1,11 +1,14 @@
 import Spinner from './Spinner'
+import FlashcardCard from './FlashcardCard'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { progressAPI } from '../services/api'
+import { progressAPI, decksAPI } from '../services/api'
 import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, Lightbulb } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, embedded = false }) {
 
+  const [deckHasItems, setDeckHasItems] = useState(false)
+  const [complete, setComplete] = useState(false)
   const [mode, setMode] = useState('choice')
   const [writtenAnswer, setWrittenAnswer] = useState('')
   // Feedback from a failed first attempt: a hint (written) or flagged
@@ -55,6 +58,10 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     const loadQuestions = async () => {
       try {
         const response = await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
+        if (deckId && response.data.questions.length === 0) {
+          const deck = await decksAPI.get(deckId)
+          if (!cancelled) setDeckHasItems(deck.data.num_questions > 0)
+        }
         if (!cancelled) setQuestions(response.data.questions)
       } catch (error) {
         if (!cancelled) {
@@ -85,15 +92,15 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
   }, [currentIndex, showResult, questions, typed, flashcard, handleSubmit])
 
   useEffect(() => {
-    if (!loading && questions.length === 0 && !embedded) onEmpty()
-  }, [loading, questions.length, embedded, onEmpty])
+    if (!loading && questions.length === 0 && !embedded && !deckHasItems) onEmpty()
+  }, [loading, questions.length, embedded, deckHasItems, onEmpty])
 
   const handleGrading = async (quality) => {
     if (submitLock.current) return
     submitLock.current = true
     setSubmitting(true)
     setSubmitError('')
-    const timeTaken = typed ? (Date.now() - startTime.current) / 1000 : answerDuration.current
+    const timeTaken = typed || flashcard ? (Date.now() - startTime.current) / 1000 : answerDuration.current
     const currentQuestion = questions[currentIndex]
 
     try {
@@ -150,7 +157,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
       setResult(null)
     } else {
       // Session complete
-      onFinished()
+      setComplete(true)
     }
   }
 
@@ -162,13 +169,25 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     )
   }
 
+  if (complete) {
+    return (
+      <div className="glass-panel card text-center">
+        <h2 className="text-2xl font-bold mb-4">Session complete</h2>
+        <p>Correct: {sessionStats.correct}</p>
+        <p>Incorrect: {sessionStats.incorrect}</p>
+        <p>Points: {sessionStats.totalPoints}</p>
+        <button className="flashcard-button mt-4" onClick={onFinished}>Finish</button>
+      </div>
+    )
+  }
+
   if (questions.length === 0) {
-    if (!embedded) return null
+    if (!embedded && !deckHasItems) return null
     return (
       <div className="max-w-2xl mx-auto px-4">
         <div className="glass-panel bg-white rounded-lg shadow p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No questions available</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">This deck has no questions yet. Generate some in the Studio.</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{deckHasItems ? 'Nothing is due in this deck. Come back later.' : 'This deck has no questions yet. Generate some in the Studio.'}</p>
         </div>
       </div>
     )
@@ -179,9 +198,9 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
 
   return (
     <div className="max-w-4xl mx-auto px-4">
-      <div className="mb-6">
+      {!flashcard && <div className="mb-6">
         <label htmlFor="answer-mode" className="mr-3 font-medium text-gray-700 dark:text-gray-200">Answer mode</label>
-        <select id="answer-mode" value={flashcard ? 'choice' : mode} disabled={showResult || submitting || flashcard}
+        <select id="answer-mode" value={mode} disabled={showResult || submitting}
           className="input-field max-w-xs"
           onChange={(event) => {
             setMode(event.target.value)
@@ -191,13 +210,13 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
             setSubmitError('')
             startTime.current = Date.now()
           }}>
-          <option value="choice">{flashcard ? 'Flashcard' : 'Multiple choice'}</option>
-          {!flashcard && <option value="written">Written answer</option>}
-          {!flashcard && <option value="explain">Explain it</option>}
+          <option value="choice">Multiple choice</option>
+          <option value="written">Written answer</option>
+          <option value="explain">Explain it</option>
         </select>
-        {!flashcard && mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
-        {!flashcard && mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
-      </div>
+        {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
+        {mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
+      </div>}
       {/* Header Stats */}
       <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatBadge
@@ -236,8 +255,10 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
         />
       </div>
 
-      {/* Question Card */}
-      <AnimatePresence mode="wait">
+      {flashcard ? (
+        <FlashcardCard key={currentQuestion.id} question={currentQuestion}
+          submitting={submitting} error={submitError} onRate={handleGrading} />
+      ) : <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
           initial={{ opacity: 0, x: 50 }}
@@ -253,13 +274,12 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
             <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}>
               <Clock size={18} />
-              <span className="font-bold">{typed || flashcard ? 'Untimed' : `${timeLeft}s`}</span>
+              <span className="font-bold">{typed ? 'Untimed' : `${timeLeft}s`}</span>
             </div>
           </div>
 
           {/* Question Text */}
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            {flashcard && <span className="block text-sm mb-2">Front</span>}
             {currentQuestion.question_text}
           </h2>
 
@@ -273,7 +293,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
                 value={writtenAnswer} onChange={(event) => setWrittenAnswer(event.target.value)}
                 disabled={showResult || submitting} />
             </div>
-          ) : !flashcard && <div className="space-y-3 mb-6">
+          ) : <div className="space-y-3 mb-6">
             {(currentQuestion.options || []).map((option, idx) => {
               const isSelected = selectedOption === option.option
               const isCorrect = result?.correct_answer === option.option
@@ -328,7 +348,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
                 )}
                 <div>
                   <h3 className={`font-bold mb-2 ${result.correct ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'}`}>
-                    {flashcard ? 'Back' : result.correct ? 'Correct' : 'Incorrect'}
+                    {result.correct ? 'Correct' : 'Incorrect'}
                   </h3>
                   <p className={`text-sm mb-2 ${result.correct ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                     {result.explanation}
@@ -407,14 +427,14 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
           ) : (
             <button
               onClick={() => handleSubmit(selectedOption)}
-              disabled={!flashcard && !selectedOption}
+              disabled={!selectedOption}
               className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:hover:bg-primary-600 disabled:cursor-not-allowed transition"
             >
               Show Answer
             </button>
           )}
         </motion.div>
-      </AnimatePresence>
+      </AnimatePresence>}
 
       {/* Motivational Message */}
       {sessionStats.streak >= 3 && !showResult && (

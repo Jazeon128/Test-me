@@ -258,3 +258,20 @@ button:disabled { cursor: not-allowed; }
   .notebook-workspace *, .notebook-workspace *::before, .notebook-workspace *::after { animation: none !important; transition: none !important; }
   .notebook-workspace .btn-primary:hover { transform: none; }
 }
+
+/* Flashcard practice */
+.flashcard-card { padding: 32px; color: var(--ink); background: var(--surface-solid); border: 1px solid var(--line); border-radius: 24px; }
+.flashcard-face { text-align: center; animation: flashcard-flip 180ms ease-out; }
+.flashcard-front { font-size: 28px; font-weight: 700; min-height: 160px; display: grid; place-items: center; }
+.flashcard-front-small { font-size: 16px; color: var(--muted); margin-bottom: 24px; }
+.flashcard-label { display: block; font-size: 14px; color: var(--muted); }
+.flashcard-back { font-size: 24px; white-space: pre-wrap; }
+.flashcard-ratings { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 8px; margin-top: 24px; }
+.flashcard-button { min-width: 44px; min-height: 44px; padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--field); color: var(--ink); cursor: pointer; }
+.flashcard-button:hover { border-color: var(--accent); }
+.flashcard-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.flashcard-button:disabled { opacity: .5; cursor: wait; }
+.flashcard-button kbd { display: block; font-size: 12px; color: var(--muted); }
+.flashcard-reveal { width: 100%; margin-top: 24px; }
+@keyframes flashcard-flip { from { transform: rotateX(-12deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .flashcard-face { animation: none; transform: none; } }

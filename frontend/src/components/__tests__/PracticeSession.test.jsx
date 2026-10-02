@@ -5,6 +5,7 @@ import PracticeSession from '../PracticeSession'
 import { progressAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
+  decksAPI: { get: vi.fn() },
   progressAPI: { getReviewSession: vi.fn(), submit: vi.fn() },
 }))
 
@@ -38,8 +39,9 @@ describe('Written practice', () => {
     expect(screen.queryByText('Reviews.')).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Written answer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Explain it' })).not.toBeInTheDocument()
-    expect(screen.getByText('Untimed')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
+    expect(screen.queryByText('Untimed')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Answer mode')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
     expect(screen.getByText('Back')).toBeInTheDocument()
     expect(screen.getByText('Reviews.')).toBeInTheDocument()
   })

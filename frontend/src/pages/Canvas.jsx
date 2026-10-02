@@ -16,7 +16,7 @@ import { layout, toGraph } from '../canvas/layout'
 import TemplatePicker from '../canvas/TemplatePicker'
 import NodePanel from '../canvas/NodePanel'
 import useCanvasSave from '../canvas/useCanvasSave'
-import useCanvasEditing, { editedGraph } from '../canvas/useCanvasEditing'
+import useCanvasEditing from '../canvas/useCanvasEditing'
 import CanvasToolbar from '../canvas/CanvasToolbar'
 import { Generating, EmptyState, TemplateBadge } from '../canvas/CanvasChrome'
 import '../canvas/canvas.css'
@@ -59,13 +59,17 @@ export default function Canvas() {
   const selectedSourceIds = useMemo(() => canvasId ? canvas?.source_ids || (canvas ? [canvas.document_id] : []) : sourceIds, [canvasId, canvas, sourceIds])
   const [picker, setPicker] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [selectedEdge, setSelectedEdge] = useState(null)
+  const flowRef = useRef(null)
+  const wrapperRef = useRef(null)
   const [source, setSource] = useState(null)
 
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
 
   const { status: saveStatus, save, flush, retry } = useCanvasSave(canvas?.id)
-  const { displayNodes, startEditing } = useCanvasEditing({ nodes, edges, setNodes, setCanvas, save })
+  const { displayNodes, startEditing, applyGraph, add, connect, canDelete, remove,
+    recolour, labelEdge } = useCanvasEditing({ nodes, edges, setNodes, setEdges, setCanvas, save })
   const [restoring, setRestoring] = useState(false)
 
   const pollRef = useRef(null)
@@ -100,7 +104,9 @@ export default function Canvas() {
   const openSource = useCallback(
     async (targetCanvasId, node) => {
       setSelected(node)
+      setSelectedEdge(null)
       setSource(null)
+      if (node.data.added) return
       try {
         const response = await canvasAPI.nodeSource(targetCanvasId, node.id)
         setSource(response.data)
@@ -212,26 +218,43 @@ export default function Canvas() {
     [selectedSourceIds, poll, request]
   )
 
-  const persistLayout = useCallback((_, dragged) => {
+  const persistLayout = useCallback((_, dragged, draggedNodes) => {
     if (!canvas) return
-    const next = nodes.map(node => node.id === dragged?.id ? { ...node, position: dragged.position } : node)
-    setNodes(next)
+    const moved = new Map((draggedNodes || [dragged]).filter(Boolean).map(node => [node.id, node.position]))
+    const next = nodes.map(node => moved.has(node.id) ? { ...node, position: moved.get(node.id) } : node)
     if (canvas.has_edits || canvas.edited) {
-      const edited = editedGraph(next, edges)
-      setCanvas(record => ({ ...record, edited, has_edits: true }))
-      save({ edited })
+      applyGraph(next, edges)
     } else {
+      setNodes(next)
       const positions = Object.fromEntries(next.map(node => [node.id, node.position]))
       setCanvas(record => ({ ...record, layout: positions }))
       save({ layout: positions })
     }
-  }, [canvas, nodes, edges, save, setNodes])
+  }, [canvas, nodes, edges, save, setNodes, applyGraph])
+
+  const addNode = note => {
+    const rect = wrapperRef.current.getBoundingClientRect()
+    const position = flowRef.current.screenToFlowPosition({
+      x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
+    })
+    setSelected(add(position, note))
+    setSelectedEdge(null)
+    setSource(null)
+  }
+  const deleteSelected = () => {
+    if (remove(selected, selectedEdge)) {
+      setSelected(null)
+      setSelectedEdge(null)
+      setSource(null)
+    }
+  }
 
   const restore = async () => {
     save({ edited: null, layout: null })
     if (await flush()) {
       startEditing(null)
       setSelected(null)
+      setSelectedEdge(null)
       setSource(null)
       await draw({ ...canvas, edited: null, has_edits: false, layout: null })
       setRestoring(false)
@@ -370,22 +393,39 @@ export default function Canvas() {
           {phase === 'ready' && (
             <div
               className="tm-flow-editor"
+              ref={wrapperRef}
               inert={restoring ? '' : undefined}
               tabIndex={0}
               onKeyDown={event => {
                 if (event.target.closest('input, textarea, [contenteditable="true"]')) return
-                if (event.key === 'Enter' && selected) {
+                if (event.key === 'Delete' || event.key === 'Backspace') {
+                  event.preventDefault()
+                  deleteSelected()
+                }
+                if (event.key === 'Enter' && selected && !event.target.closest('button')) {
                   event.preventDefault()
                   startEditing(selected.id)
                 }
               }}
             >
-              <CanvasToolbar selected={selected} onEdit={startEditing} />
+              <CanvasToolbar key={selected?.id || selectedEdge?.id || 'none'}
+                selected={nodes.find(node => node.id === selected?.id)}
+                edge={edges.find(edge => edge.id === selectedEdge?.id)} onEdit={startEditing}
+                onAdd={addNode} onDelete={deleteSelected} canDelete={canDelete(selected)}
+                onColour={color => recolour(selected, color)}
+                onLabel={label => labelEdge(selectedEdge, label)} />
               <ReactFlow
+                onInit={instance => { flowRef.current = instance }}
+                onConnect={connect}
                 nodes={displayNodes}
                 deleteKeyCode={null}
                 onNodeDoubleClick={(_, node) => startEditing(node.id)}
-                edges={edges}
+                edges={edges.map(edge => ({ ...edge, selectable: true }))}
+                onEdgeClick={(_, edge) => {
+                  setSelectedEdge(edge)
+                  setSelected(null)
+                  setSource(null)
+                }}
                 nodeTypes={nodeTypes}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -393,6 +433,7 @@ export default function Canvas() {
                 onNodeClick={(_, node) => openSource(canvas.id, node)}
                 onPaneClick={() => {
                   setSelected(null)
+                  setSelectedEdge(null)
                   setSource(null)
                 }}
                 fitView
@@ -404,7 +445,7 @@ export default function Canvas() {
             </div>
           )}
         </div>
-        {phase === 'ready' && selected && (
+        {phase === 'ready' && selected && !selected.data.added && (
           <NodePanel
             key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}

@@ -88,3 +88,25 @@ def test_edited_without_source_409(client, canvas, monkeypatch):
     monkeypatch.setattr(api, "QuestionGenerator", factory)
     assert client.post(f"/api/canvas/{canvas.id}/nodes/edited/questions").status_code == 409
     factory.assert_not_called()
+
+
+def test_unknown_node_type_422(client, canvas):
+    edited = graph()
+    edited["nodes"][0]["type"] = "UnknownNode"
+    assert client.patch(f"/api/canvas/{canvas.id}", json={"edited": edited}).status_code == 422
+
+
+@pytest.mark.parametrize("node_type", ["StepNode", "NoteNode"])
+def test_added_node_without_source(client, canvas, monkeypatch, node_type):
+    edited = graph()
+    edited["nodes"][0]["type"] = node_type
+    edited["nodes"][0]["data"] = {"label": "Added", "added": True}
+    response = client.patch(f"/api/canvas/{canvas.id}", json={"edited": edited})
+    assert response.status_code == 200
+    assert response.json()["edited"] == edited
+    url = f"/api/canvas/{canvas.id}/nodes/edited"
+    assert client.get(url + "/source").json()["section"] is None
+    factory = Mock()
+    monkeypatch.setattr(api, "QuestionGenerator", factory)
+    assert client.post(url + "/questions").status_code == 409
+    factory.assert_not_called()

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 
-export default function NodeEditor({ data, detail = false }) {
+export default function NodeEditor({ data, detail = false, note = false }) {
   const [label, setLabel] = useState(data.label || '')
   const [text, setText] = useState(data.detail || '')
-  const valid = label.trim().length > 0 && label.length <= 120 && (!detail || text.length <= 400)
+  const valid =
+    label.trim().length > 0 && label.length <= (note ? 400 : 120) && (!detail || text.length <= 400)
   const submit = event => {
     event.preventDefault()
     if (valid) data.onSaveText({ label, ...(detail ? { detail: text } : {}) })
@@ -21,18 +22,28 @@ export default function NodeEditor({ data, detail = false }) {
           event.preventDefault()
           data.onCancelText()
         }
-        if (event.key === 'Enter' && !event.shiftKey) submit(event)
+        if (event.key === 'Enter' && (note ? event.ctrlKey : !event.shiftKey)) submit(event)
       }}
     >
       <label>
-        Label
-        <input
-          autoFocus
-          required
-          value={label}
-          aria-invalid={!label.trim() || label.length > 120}
-          onChange={event => setLabel(event.target.value)}
-        />
+        {note ? 'Text' : 'Label'}
+        {note ? (
+          <textarea
+            autoFocus
+            required
+            value={label}
+            aria-invalid={!label.trim() || label.length > 400}
+            onChange={event => setLabel(event.target.value)}
+          />
+        ) : (
+          <input
+            autoFocus
+            required
+            value={label}
+            aria-invalid={!label.trim() || label.length > 120}
+            onChange={event => setLabel(event.target.value)}
+          />
+        )}
       </label>
       {detail && (
         <label>
@@ -45,7 +56,11 @@ export default function NodeEditor({ data, detail = false }) {
         </label>
       )}
       {!valid && (
-        <p role="alert">Label must be 1 to 120 characters. Detail must be at most 400 characters.</p>
+        <p role="alert">
+          {note
+            ? 'Text must be 1 to 400 characters.'
+            : 'Label must be 1 to 120 characters. Detail must be at most 400 characters.'}
+        </p>
       )}
       <button type="submit" disabled={!valid}>
         Save
@@ -56,11 +71,18 @@ export default function NodeEditor({ data, detail = false }) {
     </form>
   )
 }
-NodeEditor.propTypes = { data: PropTypes.object.isRequired, detail: PropTypes.bool }
+NodeEditor.propTypes = {
+  data: PropTypes.object.isRequired,
+  detail: PropTypes.bool,
+  note: PropTypes.bool,
+}
 
 export function EditedMarker({ data }) {
   return data.edited ? (
-    <span className="tm-edited" title="Edited by you. The source passage supported the original wording.">
+    <span
+      className="tm-edited"
+      title="Edited by you. The source passage supported the original wording."
+    >
       edited
     </span>
   ) : null

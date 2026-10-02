@@ -1,4 +1,14 @@
-import { StepNode, ActorNode, MessageNode, ServiceNode, MilestoneNode, BoneNode, MatrixCell, GroupNode } from './nodes'
+import {
+  StepNode,
+  ActorNode,
+  MessageNode,
+  ServiceNode,
+  MilestoneNode,
+  BoneNode,
+  MatrixCell,
+  GroupNode,
+  NoteNode,
+} from './nodes'
 
 export const nodeTypes = {
   StepNode,
@@ -9,4 +19,5 @@ export const nodeTypes = {
   BoneNode,
   MatrixCell,
   GroupNode,
+  NoteNode,
 }

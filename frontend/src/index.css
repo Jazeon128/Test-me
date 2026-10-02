@@ -337,10 +337,10 @@ button:disabled { cursor: not-allowed; }
 .bank-action-menu input { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); }
 
 /* Canvas editing surfaces. */
-.tm-canvas { --canvas-editor-bg: #ffffff; --canvas-editor-ink: #20243c; --canvas-editor-line: #626a83; }
-.dark .tm-canvas { --canvas-editor-bg: #20243c; --canvas-editor-ink: #f8f9fd; --canvas-editor-line: #a5acc5; }
+.tm-canvas { --canvas-editor-bg: #ffffff; --canvas-editor-ink: #20243c; --canvas-editor-line: #626a83; --canvas-note-bg: #fff1a8; --canvas-note-ink: #3f3512; }
+.dark .tm-canvas { --canvas-editor-bg: #20243c; --canvas-editor-ink: #f8f9fd; --canvas-editor-line: #a5acc5; --canvas-note-bg: #594c20; --canvas-note-ink: #fff3bd; }
 .tm-flow-editor { height: 100%; position: relative; }
-.tm-edit-toolbar { position: absolute; top: 12px; left: 50%; z-index: 10; }
+.tm-edit-toolbar { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; gap: 4px; flex-wrap: wrap; max-width: calc(100% - 24px); }
 .tm-edit-toolbar button { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 .tm-edit-toolbar, .tm-editor, .tm-restore { background: var(--canvas-editor-bg); color: var(--canvas-editor-ink); border: 1px solid var(--canvas-editor-line); border-radius: 6px; padding: 8px; }
 .tm-editor label { display: block; font-size: 12px; }
@@ -349,3 +349,21 @@ button:disabled { cursor: not-allowed; }
 .tm-edited { font-size: 10px; color: var(--canvas-editor-ink); margin-left: 4px; }
 
 .tm-canvas .tm-detail { white-space: pre-wrap; }
+
+.tm-colour-menu { display: flex; }
+.tm-colour-swatch { width: 24px; height: 24px; border-radius: 50%; background: var(--i); border: 1px solid var(--canvas-editor-line); }
+.tm-colour-menu [aria-checked="true"] { outline: 2px solid var(--canvas-editor-ink); }
+.tm-note { padding: 16px; width: 220px; background: var(--canvas-note-bg); color: var(--canvas-note-ink); white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--canvas-editor-line); }
+.tm-note.is-selected { outline: 2px solid var(--canvas-editor-ink); }
+.tm-canvas .react-flow__edge.selected .react-flow__edge-path { stroke: var(--canvas-editor-ink); stroke-width: 3; }
+.tm-canvas .tm-bone { color: var(--i); }
+.tm-canvas .tm-group, .tm-canvas .tm-group.is-boundary { border-color: var(--i); }
+.tm-canvas .tm-group .tm-group-label, .tm-canvas .tm-group.is-boundary .tm-group-label { color: var(--i); }
+.tm-canvas .c-blue { --i: var(--blue-i); }
+.tm-canvas .c-teal { --i: var(--teal-i); }
+.tm-canvas .c-amber { --i: var(--amber-i); }
+.tm-canvas .c-violet { --i: var(--violet-i); }
+.tm-canvas .c-rose { --i: var(--rose-i); }
+.tm-canvas .c-slate { --i: var(--slate-i); }
+
+.tm-canvas .tm-group.is-selected { outline: 2px solid var(--canvas-editor-ink); }

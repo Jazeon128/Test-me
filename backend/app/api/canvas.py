@@ -100,7 +100,11 @@ def _validate_edited(graph):
         raise ValueError("Expected schema_version 1")
     node_ids = _graph_ids(graph.get("nodes"), 400)
     _graph_ids(graph.get("edges"), 800)
+    allowed_types = {"StepNode", "ActorNode", "MessageNode", "ServiceNode", "MilestoneNode",
+                     "BoneNode", "MatrixCell", "GroupNode", "NoteNode"}
     for node in graph["nodes"]:
+        if not isinstance(node.get("type"), str) or node["type"] not in allowed_types:
+            raise ValueError("Unknown node type")
         if not isinstance(node.get("data"), dict) or not isinstance(node.get("position"), dict):
             raise ValueError("Nodes require data and position")
     for edge in graph["edges"]:

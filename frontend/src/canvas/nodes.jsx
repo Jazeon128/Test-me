@@ -2,6 +2,7 @@ import { Handle, Position } from '@xyflow/react'
 import { FileText, AlertCircle } from 'lucide-react'
 import PropTypes from 'prop-types'
 import NodeEditor, { EditedMarker } from './NodeEditor'
+import { COLORS } from './useCanvasEditing'
 
 /**
  * The node types the canvas draws.
@@ -12,9 +13,7 @@ import NodeEditor, { EditedMarker } from './NodeEditor'
  * caption above the label says.
  */
 
-const COLORS = ['blue', 'teal', 'amber', 'violet', 'rose', 'slate']
-
-const colorClass = (color) => `c-${COLORS.includes(color) ? color : 'slate'}`
+const colorClass = color => `c-${COLORS.includes(color) ? color : 'slate'}`
 
 /**
  * The citation affordance every node carries.
@@ -23,12 +22,15 @@ const colorClass = (color) => `c-${COLORS.includes(color) ? color : 'slate'}`
  * leads nowhere. The canvas promises every node traces back to the source, so a
  * node that cannot must be visibly the exception.
  */
-function Cite({ sectionId, active, onOpen }) {
+function Cite({ sectionId, active, onOpen, added }) {
   if (!sectionId) {
     return (
-      <span className="tm-cite is-missing" title="No source passage for this node">
+      <span
+        className="tm-cite is-missing"
+        title={added ? 'Added by you. No source passage.' : 'No source passage for this node'}
+      >
         <AlertCircle size={10} />
-        <span>no source</span>
+        <span>{added ? 'added' : 'no source'}</span>
       </span>
     )
   }
@@ -37,7 +39,7 @@ function Cite({ sectionId, active, onOpen }) {
     <button
       type="button"
       className={`tm-cite${active ? ' is-active' : ''}`}
-      onClick={(event) => {
+      onClick={event => {
         event.stopPropagation()
         onOpen?.()
       }}
@@ -51,6 +53,7 @@ function Cite({ sectionId, active, onOpen }) {
 
 Cite.propTypes = {
   sectionId: PropTypes.string,
+  added: PropTypes.bool,
   active: PropTypes.bool,
   onOpen: PropTypes.func,
 }
@@ -64,7 +67,12 @@ function NodeShell({ data, selected, shape = 'rect', caption, detail = true }) {
       <div className="tm-node-head">
         <span className="tm-sw" />
         <span className="tm-kind">{caption}</span>
-        <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+        <Cite
+          added={data.added}
+          sectionId={data.source_section_id}
+          active={selected}
+          onOpen={data.onOpenSource}
+        />
         <EditedMarker data={data} />
       </div>
       {data.editing ? (
@@ -115,10 +123,16 @@ export function MilestoneNode({ data, selected }) {
 /** One rib of a fishbone: a cause written on the bone, not in a box. */
 export function BoneNode({ data, selected }) {
   return (
-    <div className={`tm-bone${selected ? ' is-selected' : ''}`}>
+    <div className={`tm-bone ${colorClass(data.color)}${selected ? ' is-selected' : ''}`}>
+      <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       {data.editing ? <NodeEditor data={data} /> : <span>{data.label}</span>}
-      <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+      <Cite
+        added={data.added}
+        sectionId={data.source_section_id}
+        active={selected}
+        onOpen={data.onOpenSource}
+      />
       <EditedMarker data={data} />
     </div>
   )
@@ -139,11 +153,19 @@ export function MatrixCell({ data, selected }) {
 }
 
 /** A labelled container: dashed for a group, solid for a boundary. */
-export function GroupNode({ data }) {
+export function GroupNode({ data, selected }) {
   return (
-    <div className={`tm-group${data.kind === 'boundary' ? ' is-boundary' : ''}`}>
+    <div
+      className={`tm-group ${colorClass(data.color)}${data.kind === 'boundary' ? ' is-boundary' : ''}${selected ? ' is-selected' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} />
       <EditedMarker data={data} />
-      {data.editing ? <NodeEditor data={data} /> : <div className="tm-group-label">{data.label}</div>}
+      {data.editing ? (
+        <NodeEditor data={data} />
+      ) : (
+        <div className="tm-group-label">{data.label}</div>
+      )}
+      <Handle type="source" position={Position.Right} />
     </div>
   )
 }
@@ -154,7 +176,7 @@ ServiceNode.propTypes = nodeShape
 MilestoneNode.propTypes = nodeShape
 BoneNode.propTypes = nodeShape
 MatrixCell.propTypes = nodeShape
-GroupNode.propTypes = { data: PropTypes.object.isRequired }
+GroupNode.propTypes = nodeShape
 
 /** A participant in a sequence diagram: a column header. */
 export function ActorNode({ data, selected }) {
@@ -163,8 +185,10 @@ export function ActorNode({ data, selected }) {
       className={`tm-node shape-pill ${colorClass(data.color)}${selected ? ' is-selected' : ''}`}
       style={{ minWidth: 120, textAlign: 'center' }}
     >
+      <Handle type="target" position={Position.Left} />
       <EditedMarker data={data} />
       {data.editing ? <NodeEditor data={data} /> : <div className="tm-label">{data.label}</div>}
+      <Handle type="source" position={Position.Right} />
     </div>
   )
 }
@@ -184,7 +208,12 @@ export function MessageNode({ data, selected }) {
         <span className="tm-kind">
           {arrow} {data.kind || 'call'}
         </span>
-        <Cite sectionId={data.source_section_id} active={selected} onOpen={data.onOpenSource} />
+        <Cite
+          added={data.added}
+          sectionId={data.source_section_id}
+          active={selected}
+          onOpen={data.onOpenSource}
+        />
         <EditedMarker data={data} />
       </div>
       {data.editing ? <NodeEditor data={data} /> : <div className="tm-label">{data.label}</div>}
@@ -195,3 +224,12 @@ export function MessageNode({ data, selected }) {
 
 ActorNode.propTypes = nodeShape
 MessageNode.propTypes = nodeShape
+
+export function NoteNode({ data, selected }) {
+  return (
+    <div className={`tm-note${selected ? ' is-selected' : ''}`}>
+      {data.editing ? <NodeEditor data={data} note /> : <div>{data.label}</div>}
+    </div>
+  )
+}
+NoteNode.propTypes = nodeShape

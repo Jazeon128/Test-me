@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { notebooksAPI, statusAPI } from '../services/api'
 import QuestionBank from '../components/bank/QuestionBank'
 import PracticeSession from '../components/PracticeSession'
@@ -12,6 +12,8 @@ import WorkspaceDrawer from '../components/workspace/WorkspaceDrawer'
 import useMediaQuery from '../hooks/useMediaQuery'
 import { FileText, Sparkles, X, Library, Loader2 } from 'lucide-react'
 
+const CanvasView = lazy(() => import('../canvas/CanvasView'))
+
 const storageKey = 'testme.workspace.collapsed'
 const jobId = job => job.job_id || job.id
 const running = job => !['completed', 'finished', 'failed', 'cancelled'].includes(job.status)
@@ -22,17 +24,24 @@ export default function NotebookWorkspace() {
 }
 
 function Workspace({ notebookId }) {
-  const navigate = useNavigate()
   const desktop = useMediaQuery('(min-width: 1024px)')
   const [drawer, setDrawer] = useState(null)
   const deckHeader = useRef(null)
   const opener = useRef(null)
+  const canvasOpener = useRef(null)
   const questionsButton = useRef(null)
   const centre = useRef(null)
 
   const [params, setParams] = useSearchParams()
   const deckId = Number(params.get('deck'))
   const view = params.get('view')
+  const hasOpenCanvas = view === 'canvas'
+  const canvasId = params.get('canvas')
+  const canvasRef = useRef(null)
+  const [canvasTitle, setCanvasTitle] = useState('')
+  const [canvasCollapsed, setCanvasCollapsed] = useState({})
+  useEffect(() => { setCanvasCollapsed({}) }, [hasOpenCanvas])
+  useEffect(() => { setCanvasTitle('') }, [canvasId])
   const hasOpenDeck = Number.isInteger(deckId) && deckId > 0 && ['practice', 'edit'].includes(view)
   const [bankSelected, setBankSelected] = useState(new Set())
   const [practiceIds, setPracticeIds] = useState(null)
@@ -45,7 +54,7 @@ function Workspace({ notebookId }) {
       setParams(current => { const next = new URLSearchParams(current); next.set('view', 'questions'); return next }, { replace: true })
     }
   }, [view, practiceIds, setParams])
-  const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice
+  const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice || hasOpenCanvas
   const [workspace, setWorkspace] = useState(null)
   const loaded = Boolean(workspace)
   const wasOpen = useRef(false)
@@ -56,10 +65,12 @@ function Workspace({ notebookId }) {
     }
     else if (wasOpen.current) {
       if (opener.current?.isConnected && !opener.current.closest('[hidden]')) opener.current.focus()
+      else if (canvasOpener.current && centre.current?.parentElement.querySelector(canvasOpener.current)) centre.current.parentElement.querySelector(canvasOpener.current).focus()
       else centre.current?.querySelector('textarea')?.focus()
+      canvasOpener.current = null
     }
     wasOpen.current = hasOpenCentre
-  }, [hasOpenCentre, hasOpenBank, deckId, view, loaded])
+  }, [hasOpenCentre, hasOpenBank, deckId, canvasId, view, loaded])
   useEffect(() => { if (desktop) setDrawer(null) }, [desktop])
   const [selected, setSelected] = useState({})
   const seenReady = useRef(new Set())
@@ -126,22 +137,24 @@ function Workspace({ notebookId }) {
     const timer = setInterval(refresh, 2000)
     return () => clearInterval(timer)
   }, [shouldPoll, refresh])
-  const close = useCallback(() => {
+  const close = useCallback(async () => {
+    if (hasOpenCanvas && canvasRef.current && !await canvasRef.current.flush()) return
     setParams(current => {
       const next = new URLSearchParams(current)
       if (hasSelectionPractice) { next.set('view', 'questions'); return next }
-      next.delete('deck'); next.delete('view')
+      next.delete('deck'); next.delete('view'); next.delete('canvas'); next.delete('sources')
       const bankKeys = ['q', 'deck_id', 'source_id', 'tag_id', 'card_type', 'difficulty', 'status', 'offset', 'bank_tab']
       bankKeys.forEach(key => next.delete(key))
       return next
     })
     refresh()
-  }, [setParams, refresh, hasSelectionPractice])
+  }, [setParams, refresh, hasSelectionPractice, hasOpenCanvas])
   const open = useCallback((id, view, trigger) => {
     if (trigger) opener.current = trigger
     setDrawer(null)
     setParams(current => {
       const next = new URLSearchParams(current)
+      next.delete('canvas'); next.delete('sources')
       next.set('deck', String(id)); next.set('view', view)
       return next
     })
@@ -151,34 +164,51 @@ function Workspace({ notebookId }) {
     setBankNote('')
     setParams(current => { const next = new URLSearchParams(current); next.delete('deck'); next.set('view', 'practice-selection'); return next })
   }
-  const onCanvas = ids => navigate(`/canvas?sources=${ids.join(",")}&notebook=${notebookId}`)
+  const openCanvas = (id, trigger, ids) => {
+    opener.current = trigger || document.activeElement
+    canvasOpener.current = id ? `a[href="/notebooks/${notebookId}?view=canvas&canvas=${id}"]` : 'button[aria-label="Canvas"]'
+    setDrawer(null)
+    setParams(current => {
+      const next = new URLSearchParams(current)
+      next.delete('deck'); next.delete('sources'); next.delete('canvas')
+      next.set('view', 'canvas')
+      if (id) next.set('canvas', String(id))
+      if (ids) next.set('sources', ids.join(','))
+      return next
+    })
+  }
+  const onCanvas = (_, trigger) => openCanvas(null, trigger)
+  const canvasSources = params.get('sources')
+  const sourceIds = useMemo(() => workspace?.sources.filter(source => source.status === 'ready' && selected[source.id]).map(source => source.id) || [], [workspace, selected])
+  const canvasSourceIds = useMemo(() => canvasSources === null ? sourceIds : [...new Set(canvasSources.split(',').filter(Boolean).map(Number))], [canvasSources, sourceIds])
+  const effectiveCollapsed = hasOpenCanvas ? { sources: true, studio: true, ...canvasCollapsed } : collapsed
   const toggle = side => {
+    if (hasOpenCanvas) { setCanvasCollapsed(current => ({ ...current, [side]: !effectiveCollapsed[side] })); return }
     const next = { ...collapsed, [side]: !collapsed[side] }
     setCollapsed(next)
     try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* Storage can be unavailable. */ }
   }
   if (!workspace) return <div className="notebook-workspace">{error ? <p role="alert">{error}</p> : <p>Loading notebook...</p>}</div>
-  const sourceIds = workspace.sources.filter(source => source.status === 'ready' && selected[source.id]).map(source => source.id)
   const deckName = workspace.artifacts.decks.find(deck => deck.id === deckId)?.name || 'deck'
   const panels = {
     sources: <SourcesPanel notebookId={notebookId} sources={workspace.sources}
       selected={selected} setSelected={setSelected} refresh={refresh} />,
     studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} jobs={jobs}
-      artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas}
+      artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas} onOpenCanvas={openCanvas}
       onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
   }
   const counts = { sources: workspace.sources.length,
     studio: workspace.artifacts.decks.length + workspace.artifacts.canvases.length }
   const runningCount = jobs.filter(running).length
-  const panel = side => <WorkspacePanel side={side} count={counts[side]} runningCount={side === 'studio' ? runningCount : 0} collapsed={desktop && collapsed[side]}
+  const panel = side => <WorkspacePanel side={side} count={counts[side]} runningCount={side === 'studio' ? runningCount : 0} collapsed={desktop && effectiveCollapsed[side]}
     toggle={desktop ? () => toggle(side) : null}>{panels[side]}</WorkspacePanel>
-  return <div className="notebook-workspace" style={{ '--sources-width': collapsed.sources ? '44px' : '280px', '--studio-width': collapsed.studio ? '44px' : '320px' }}>
+  return <div className="notebook-workspace" style={{ '--sources-width': effectiveCollapsed.sources ? '44px' : '280px', '--studio-width': effectiveCollapsed.studio ? '44px' : '320px' }}>
     {!desktop && <div className="workspace-topbar" inert={drawer ? '' : undefined}>
       <button className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{counts.sources}</span></button>
       <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{counts.studio}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</button>
     </div>}
     {desktop && panel('sources')}
-    <section ref={centre} className="workspace-centre" aria-label={hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
+    <section ref={centre} className="workspace-centre" aria-label={hasOpenCanvas ? 'Canvas' : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
       {error && <p role="alert" className="workspace-error">{error}</p>}
       <div className="workspace-chat" hidden={hasOpenCentre}>
         <p className="eyebrow">Notebook</p>
@@ -198,16 +228,24 @@ function Workspace({ notebookId }) {
       </div>
       {hasOpenCentre && <>
         <header ref={deckHeader} tabIndex={-1} className="workspace-deck-header">
-          <h1>{hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
+          <h1>{hasOpenCanvas ? (canvasId ? `Canvas: ${canvasTitle || workspace.artifacts.canvases.find(canvas => String(canvas.id) === canvasId)?.title || 'Loading...'}` : 'New canvas') : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
           <button onClick={close} className="icon-button" aria-label="Close"><X size={20} aria-hidden="true" /></button>
         </header>
-        {hasOpenBank ? <>{bankNote && <p role="status">{bankNote}</p>}<QuestionBank notebookId={notebookId} workspace={workspace} open={open}
+        {hasOpenCanvas ? <Suspense fallback={<p role="status">Loading canvas...</p>}>
+          <CanvasView ref={canvasRef} key={canvasId || 'new'} embedded canvasId={canvasId}
+            sourceIds={canvasSourceIds} notebookId={notebookId} onTitle={setCanvasTitle} onClose={close}
+            onCreated={id => setParams(current => {
+              const next = new URLSearchParams(current)
+              next.set('view', 'canvas'); next.set('canvas', String(id)); next.delete('sources')
+              return next
+            }, { replace: true })} />
+        </Suspense> : hasOpenBank ? <>{bankNote && <p role="status">{bankNote}</p>}<QuestionBank notebookId={notebookId} workspace={workspace} open={open}
           selected={bankSelected} setSelected={setBankSelected} practise={practise} refreshWorkspace={refresh} /></>
           : hasSelectionPractice ? <PracticeSession embedded questionIds={practiceIds} onExit={close} onFinished={close} onEmpty={close} />
           : view === 'practice' ? <PracticeSession embedded key={`practice-${deckId}`} deckId={deckId}
           onExit={close} onFinished={close} onEmpty={close} />
           : <DeckEditor embedded key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}
-            onPractice={id => open(id, 'practice')} onOpenCanvas={id => onCanvas([id])} />}
+            onPractice={id => open(id, 'practice')} onOpenCanvas={id => openCanvas(null, null, [id])} />}
       </>}
     </section>
     {desktop && panel('studio')}

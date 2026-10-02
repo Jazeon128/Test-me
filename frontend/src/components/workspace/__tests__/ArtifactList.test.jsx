@@ -6,7 +6,7 @@ import ArtifactList from '../ArtifactList'
 const deck = (id, kind) => ({ id, kind, name: `Deck ${id}`, question_count: 10, due_count: 2, held_back_count: 1 })
 function mount(artifacts, progress = { answered_count: 0, due_count: 0 }) {
   const open = vi.fn()
-  const view = render(<MemoryRouter><ArtifactList artifacts={artifacts} progress={progress} open={open} /></MemoryRouter>)
+  const view = render(<MemoryRouter><ArtifactList notebookId="7" artifacts={artifacts} progress={progress} open={open} /></MemoryRouter>)
   return { ...view, open }
 }
 it('groups decks and canvases with counts and preserves row actions and details', () => {
@@ -30,7 +30,7 @@ it('groups decks and canvases with counts and preserves row actions and details'
   const edit = within(row).getByRole('button', { name: 'Open' })
   fireEvent.click(edit)
   expect(open).toHaveBeenLastCalledWith(1, 'edit', edit)
-  expect(screen.getByRole('link', { name: 'Open Connections' })).toHaveAttribute('href', '/canvas/4')
+  expect(screen.getByRole('link', { name: 'Open Connections' })).toHaveAttribute('href', '/notebooks/7?view=canvas&canvas=4')
   expect(screen.getByText('Open', { selector: 'span' })).toHaveClass('sr-only')
 })
 it.each(['quiz', 'flashcards', 'canvas'])('hides empty groups when only %s exists', kind => {
@@ -53,4 +53,22 @@ it('shows answered, rounded correct percentage and due above the artifact groups
   const { container } = mount({ decks: [deck(1, 'quiz')], canvases: [] }, { answered_count: 7, correct_rate: 0.714, due_count: 3 })
   expect([...container.querySelectorAll('dd')].map(value => value.textContent)).toEqual(['7', '71%', '3'])
   expect([...container.querySelectorAll('h3')].map(heading => heading.textContent)).toEqual(['Notebook progress', 'Quizzes (1)'])
+})
+
+it('keeps canvas URLs available to modified clicks and records the ordinary opener', () => {
+  const onOpenCanvas = vi.fn()
+  render(<MemoryRouter><ArtifactList notebookId="7" onOpenCanvas={onOpenCanvas}
+    artifacts={{ decks: [], canvases: [{ id: 4, title: 'Connections' }] }} progress={{}} /></MemoryRouter>)
+  const link = screen.getByRole('link', { name: 'Open Connections' })
+  expect(link).toHaveAttribute('href', '/notebooks/7?view=canvas&canvas=4')
+  // Let React handle the modified click, then emulate the browser's new tab
+  // without asking jsdom to navigate the current window.
+  document.addEventListener('click', event => {
+    expect(event.defaultPrevented).toBe(false)
+    event.preventDefault()
+  }, { once: true })
+  fireEvent.click(link, { ctrlKey: true })
+  expect(onOpenCanvas).not.toHaveBeenCalled()
+  fireEvent.click(link)
+  expect(onOpenCanvas).toHaveBeenCalledWith(4, link)
 })

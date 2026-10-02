@@ -1,7 +1,7 @@
 import { Layers, ListChecks, Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-export default function ArtifactList({ artifacts, progress, open }) {
+export default function ArtifactList({ artifacts, progress, open, notebookId, onOpenCanvas }) {
   const groups = [
     { title: 'Quizzes', items: artifacts.decks.filter(deck => deck.kind !== 'flashcards') },
     { title: 'Flashcards', items: artifacts.decks.filter(deck => deck.kind === 'flashcards') },
@@ -33,7 +33,12 @@ export default function ArtifactList({ artifacts, progress, open }) {
     {artifacts.canvases.length > 0 && <section>
       <h3 className="font-bold mt-6 mb-3">Canvases ({artifacts.canvases.length})</h3>
       <ul className="space-y-4">
-        {artifacts.canvases.map(canvas => <li key={canvas.id} className="workspace-artifact"><Network aria-hidden="true" size={20} /><Link to={`/canvas/${canvas.id}`}><span className="sr-only">Open </span>{canvas.title}</Link></li>)}
+        {artifacts.canvases.map(canvas => <li key={canvas.id} className="workspace-artifact"><Network aria-hidden="true" size={20} /><Link to={`/notebooks/${notebookId}?view=canvas&canvas=${canvas.id}`} onClick={event => {
+          if (onOpenCanvas && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+            event.preventDefault()
+            onOpenCanvas(canvas.id, event.currentTarget)
+          }
+        }}><span className="sr-only">Open </span>{canvas.title}</Link></li>)}
       </ul>
     </section>}
     {!artifacts.decks.length && !artifacts.canvases.length && <p className="mt-6">Nothing made yet. Tick sources and choose Quiz, Flashcards or Canvas.</p>}

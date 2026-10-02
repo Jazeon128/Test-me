@@ -37,7 +37,7 @@ it('toggles each form with aria-pressed and closes it with Close form', () => {
   const canvas = screen.getByRole('button', { name: 'Canvas' })
   expect(canvas).not.toHaveAttribute('aria-pressed')
   fireEvent.click(canvas)
-  expect(onCanvas).toHaveBeenCalledWith([9])
+  expect(onCanvas).toHaveBeenCalledWith([9], canvas)
 })
 it('labels each kind, keeps the deck name and resets the count when switching', () => {
   mount()

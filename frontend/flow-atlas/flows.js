@@ -13,7 +13,10 @@ const deck = (key, view) => async (page, ctx) => {
 }
 const canvas = async (page, ctx) => {
   if (!ctx.canvasId) throw new Error('The notebook has no saved canvas')
-  await page.goto(`${ctx.baseUrl}/canvas/${ctx.canvasId}`)
+  await page.goto(`${ctx.baseUrl}/notebooks/${ctx.notebookId}`)
+  await visible(page.locator('.workspace-chat h1'))
+  if (await button(page, /^Studio /).isVisible()) await button(page, /^Studio /).click()
+  await page.locator(`a[href="/notebooks/${ctx.notebookId}?view=canvas&canvas=${ctx.canvasId}"]`).click()
   await visible(page.getByRole('toolbar', { name: 'Canvas tools' }))
   await visible(page.locator('.react-flow__node').first())
 }
@@ -162,7 +165,7 @@ export const flows = [
       await button(page, 'Restore original').click()
       await visible(page.getByRole('dialog', { name: 'Restore original' }))
     }),
-    step('back', 'Notebook after canvas', 'Cancel and click Back to AWS GenAI certification', async page => { await button(page, 'Cancel').click(); await button(page, 'Back to AWS GenAI certification').click(); await visible(button(page, 'Add source')) }),
+    step('close', 'Notebook after closing the canvas', 'Cancel and click Close', async page => { await button(page, 'Cancel').click(); await page.locator('.workspace-deck-header').getByRole('button', { name: 'Close', exact: true }).click(); await visible(button(page, 'Add source')) }),
   ]),
   flow('mobile', 'Mobile', [
     step('home', 'Mobile notebooks', 'Open home', async (page, ctx) => { await page.goto(ctx.baseUrl); await visible(button(page, /AWS GenAI certification/)) }, 'mobile'),

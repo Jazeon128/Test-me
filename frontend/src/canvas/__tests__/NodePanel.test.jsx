@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
-import Canvas from '../../pages/Canvas'
+import Canvas from './CanvasRouteHarness'
 import { canvasAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({

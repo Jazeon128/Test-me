@@ -2,11 +2,11 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import PropTypes from 'prop-types'
-import Canvas from '../../pages/Canvas'
+import Canvas from './CanvasRouteHarness'
 import { canvasAPI } from '../../services/api'
 
 const state = vi.hoisted(() => ({ status: 'Saved', flush: vi.fn(), save: vi.fn(), convert: vi.fn(point => point), flow: null }))
-vi.mock('../useCanvasSave', () => ({ default: () => ({
+vi.mock('../useCanvasPersistence', () => ({ default: () => ({
   status: state.status, save: state.save, flush: state.flush, retry: vi.fn(),
 }) }))
 vi.mock('../../services/api', () => ({

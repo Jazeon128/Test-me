@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { vi, it, expect, beforeEach } from 'vitest'
-import Canvas from '../Canvas'
+import Canvas from '../../canvas/__tests__/CanvasRouteHarness'
 import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
@@ -94,7 +94,7 @@ it.each(['/canvas?document=42&notebook=3', '/canvas?document=42'])(
     fireEvent.keyDown(back, { key: 'Escape' })
     expect(screen.getByLabelText('Current URL')).toHaveTextContent(url)
     fireEvent.click(back)
-    expect(screen.getByText('Notebook workspace')).toBeInTheDocument()
+    expect(await screen.findByText('Notebook workspace')).toBeInTheDocument()
     expect(screen.getByLabelText('Current URL')).toHaveTextContent('/notebooks/3')
   }
 )
@@ -105,7 +105,7 @@ it('keeps the notebook list available while context is unknown or fails', async 
   const back = screen.getByRole('button', { name: 'Back to notebooks' })
   await waitFor(() => expect(documentsAPI.get).toHaveBeenCalledWith('42'))
   fireEvent.click(back)
-  expect(screen.getByText('Notebook list')).toBeInTheDocument()
+  expect(await screen.findByText('Notebook list')).toBeInTheDocument()
 })
 
 it('shows saved canvas context and returns to its notebook', async () => {
@@ -120,7 +120,7 @@ it('shows saved canvas context and returns to its notebook', async () => {
   expect(screen.getByText('Flowchart')).toBeInTheDocument()
   expect(screen.getByText('How cells work')).toHaveAttribute('title', 'How cells work')
   fireEvent.click(back)
-  expect(screen.getByText('Notebook workspace')).toBeInTheDocument()
+  expect(await screen.findByText('Notebook workspace')).toBeInTheDocument()
 })
 
 it('replaces the new canvas URL after drawing and reloads the saved canvas', async () => {
@@ -137,7 +137,7 @@ it('replaces the new canvas URL after drawing and reloads the saved canvas', asy
   expect(canvasAPI.get).toHaveBeenCalledTimes(1)
   expect(canvasAPI.generate).toHaveBeenCalledTimes(1)
   fireEvent.click(screen.getByRole('button', { name: 'Previous page' }))
-  expect(screen.getByText('Notebook workspace')).toBeInTheDocument()
+  expect(await screen.findByText('Notebook workspace')).toBeInTheDocument()
   view.unmount()
   renderCanvas('/canvas/19')
   await screen.findByRole('heading', { name: 'Generated answer' })

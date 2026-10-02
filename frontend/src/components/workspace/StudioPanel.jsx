@@ -5,7 +5,7 @@ import { notebooksAPI } from '../../services/api'
 import GenerationProgress from '../GenerationProgress'
 import ArtifactList from './ArtifactList'
 
-export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs, artifacts, progress, refresh, onJob, open, onCanvas }) {
+export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs, artifacts, progress, refresh, onJob, open, onCanvas, onOpenCanvas }) {
   const [dismissed, setDismissed] = useState([])
   const [kind, setKind] = useState(null)
   const [count, setCount] = useState(10)
@@ -49,7 +49,7 @@ export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs,
     <div className="workspace-tiles">
       <button aria-label="Quiz" aria-pressed={kind === 'quiz'} onClick={() => chooseKind('quiz')}><ListChecks aria-hidden="true" /><strong>Quiz</strong><span>Multiple choice</span></button>
       <button aria-label="Flashcards" aria-pressed={kind === 'flashcards'} onClick={() => chooseKind('flashcards')}><Layers aria-hidden="true" /><strong>Flashcards</strong><span>Flip and recall</span></button>
-      <button aria-label="Canvas" disabled={!sourceIds.length} onClick={() => onCanvas(sourceIds)}><Network aria-hidden="true" /><strong>Canvas</strong><span>Draw a diagram</span></button>
+      <button aria-label="Canvas" disabled={!sourceIds.length} onClick={event => onCanvas(sourceIds, event.currentTarget)}><Network aria-hidden="true" /><strong>Canvas</strong><span>Draw a diagram</span></button>
     </div>
     {kind && <form aria-labelledby="studio-generate-heading" className="card workspace-generate space-y-3" onSubmit={event => {
       event.preventDefault()
@@ -89,6 +89,6 @@ export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs,
           <button onClick={() => setDismissed(current => [...current, job.job_id || job.id])}>Continue</button>}
       </div>)}
     </div>
-    <ArtifactList artifacts={artifacts} progress={progress} open={open} />
+    <ArtifactList notebookId={notebookId} onOpenCanvas={onOpenCanvas} artifacts={artifacts} progress={progress} open={open} />
   </>
 }

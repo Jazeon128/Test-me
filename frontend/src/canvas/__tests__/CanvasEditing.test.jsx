@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import PropTypes from 'prop-types'
-import Canvas from '../../pages/Canvas'
+import Canvas from './CanvasRouteHarness'
 import { canvasAPI } from '../../services/api'
 import { layout, toGraph } from '../layout'
 

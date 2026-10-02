@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import PropTypes from 'prop-types'
-import useCanvasSave from '../useCanvasSave'
+import useCanvasSave from '../useCanvasPersistence'
 import { canvasAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({ canvasAPI: { update: vi.fn() } }))

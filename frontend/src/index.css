@@ -198,7 +198,7 @@ button:disabled { cursor: not-allowed; }
 .workspace-panel-header h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
 .workspace-panel-header .icon-button { margin-left: auto; }
 .workspace-count { color: var(--muted); font-size: 12px; }
-.notebook-workspace :is(button, a, select, input:not([type="checkbox"])) { min-height: 44px; min-width: 44px; }
+.notebook-workspace :is(button, a, select, input:not([type="checkbox"])):not(.tm-canvas-embedded .react-flow *) { min-height: 44px; min-width: 44px; }
 .notebook-workspace button { transition: opacity 180ms, transform 180ms; }
 .notebook-workspace button:disabled { opacity: .5; }
 .workspace-rail { padding: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -391,3 +391,6 @@ button:disabled { cursor: not-allowed; }
 .review-notebook { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
 .workspace-add-source { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .workspace-add-source[aria-expanded="true"] { border-color: var(--accent); background: var(--workspace-tile-active); }
+
+/* Canvas surfaces use the same theme variables in light and dark modes. */
+.tm-canvas-embedded .tm-canvas-body { height: max(520px, calc(100vh - var(--canvas-top, 420px))); flex: none; }

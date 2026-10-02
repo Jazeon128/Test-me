@@ -9,7 +9,14 @@ vi.mock('../../services/api', () => ({
   notebooksAPI: { workspace: vi.fn(), addSources: vi.fn(), generate: vi.fn(), chatHistory: vi.fn() },
   statusAPI: { get: vi.fn() },
 }))
-vi.mock('../../components/PracticeSession', () => ({ default: ({ deckId, onFinished, onExit, onEmpty }) =>
+vi.mock('../../canvas/CanvasView', async () => {
+  const { forwardRef, useImperativeHandle } = await import('react')
+  return { default: forwardRef(function Canvas({ sourceIds }, ref) {
+    useImperativeHandle(ref, () => ({ flush: async () => true }), [])
+    return <p>Canvas sources {sourceIds.join(',')}</p>
+  }) }
+})
+vi.mock('../../components/PracticeSession' , () => ({ default: ({ deckId, onFinished, onExit, onEmpty }) =>
   <div>Practice session {deckId}<button onClick={onFinished}>Finish session</button>
     <button onClick={onExit}>Exit session</button><button onClick={onEmpty}>Empty session</button></div> }))
 vi.mock('../../components/DeckEditor', () => ({ default: ({ deckId, onPractice, onDeleted, onOpenCanvas }) =>
@@ -58,8 +65,8 @@ describe('Notebook workspace', () => {
     fireEvent.click(screen.getByLabelText('Cells.pdf'))
     fireEvent.click(screen.getByLabelText('Cells.pdf'))
     click('Canvas')
-    expect(screen.getByText('Canvas page')).toBeInTheDocument()
-    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?sources=1,2&notebook=7')
+    expect(await screen.findByText('Canvas sources 1,2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Location')).toHaveTextContent('/notebooks/7?view=canvas')
   })
   it('renders sources, artifacts, progress and chat centre', async () => {
     mount(); await loaded()
@@ -76,7 +83,7 @@ describe('Notebook workspace', () => {
     expect(screen.getByRole('heading', { name: 'Quizzes (1)' })).toBeInTheDocument()
     expect(screen.getByText('10 questions \u00b7 2 due')).toBeInTheDocument()
     expect(screen.getByText('1 held back')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open Cell diagram' })).toHaveAttribute('href', '/canvas/5')
+    expect(screen.getByRole('link', { name: 'Open Cell diagram' })).toHaveAttribute('href', '/notebooks/7?view=canvas&canvas=5')
     expect(within(screen.getByRole('region', { name: 'Notebook progress' })).getByText('4', { selector: 'dd' })).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Notebook progress' })).getByText('75%', { selector: 'dd' })).toBeInTheDocument()
   })
@@ -150,7 +157,8 @@ describe('Notebook workspace', () => {
   })
   it('opens canvas from the remaining ticked source', async () => {
     mount(); await loaded(); fireEvent.click(screen.getByLabelText('Cells.pdf')); click('Canvas')
-    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?sources=2')
+    expect(await screen.findByText('Canvas sources 2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Location')).toHaveTextContent('/notebooks/7?view=canvas')
   })
   it('collapses to rails with persisted aria-expanded state', async () => {
     const rendered = mount(); await loaded(); click('Collapse sources'); click('Collapse studio')

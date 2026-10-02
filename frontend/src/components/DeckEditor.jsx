@@ -2,10 +2,16 @@ import { serverMessage } from '../utils/serverMessage'
 import Spinner from './Spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { decksAPI, questionsAPI, tagsAPI } from '../services/api'
-import { ArrowLeft, Plus, Play, Trash2, Save, X, Filter, Network, Tag } from 'lucide-react'
+import { ArrowLeft, Plus, Play, Trash2, X, Filter, Network, Tag, Pencil } from 'lucide-react'
 import TagManager, { TagBadge } from './TagManager'
 import QuestionTagEditor from './QuestionTagEditor'
 import HeldBackQuestions from './HeldBackQuestions'
+import DeckItemForm from './DeckItemForm'
+
+function isFlashcard(item) {
+    return item.card_type === 'flashcard' || (item.options?.length === 1 &&
+        item.options[0].text === 'Flip to see answer')
+}
 
 export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, onOpenCanvas, onBack, embedded = false }) {
     const [deck, setDeck] = useState(null)
@@ -21,19 +27,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
     const [editingTagsFor, setEditingTagsFor] = useState(null)
     const [allTags, setAllTags] = useState([])
 
-    // New Question State
-    const [newQuestion, setNewQuestion] = useState({
-        question_text: '',
-        options: [
-            { text: '', is_correct: true },
-            { text: '', is_correct: false },
-            { text: '', is_correct: false },
-            { text: '', is_correct: false }
-        ],
-        explanation: '',
-        difficulty: 'medium',
-        tags: []
-    })
+    const [editingItem, setEditingItem] = useState(null)
 
     const loadDeck = useCallback(async () => {
         setLoading(true)
@@ -52,51 +46,24 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
         loadDeck()
     }, [loadDeck])
 
-    const handleAddQuestion = async () => {
-        // Validate
-        if (!newQuestion.question_text.trim()) {
-            alert('Question text is required')
-            return
-        }
-        if (newQuestion.options.some(opt => !opt.text.trim())) {
-            alert('All options must have text')
-            return
-        }
-
-        try {
-            const response = await questionsAPI.create({
-                ...newQuestion,
-                deck_id: parseInt(deckId)
-            })
-
-            // Add tags to the newly created question
-            const questionId = response.data.id
-            for (const tag of newQuestion.tags) {
-                try {
-                    await tagsAPI.addToQuestion(questionId, tag.id)
-                } catch (err) {
-                    console.error('Failed to add tag:', err)
-                }
+    const handleAddQuestion = async (data, tags) => {
+        const response = await questionsAPI.create({ ...data, deck_id: Number(deckId) })
+        for (const tag of tags) {
+            try {
+                await tagsAPI.addToQuestion(response.data.id, tag.id)
+            } catch (error) {
+                console.error('Failed to add tag:', error)
             }
-
-            setShowAddModal(false)
-            setNewQuestion({
-                question_text: '',
-                options: [
-                    { text: '', is_correct: true },
-                    { text: '', is_correct: false },
-                    { text: '', is_correct: false },
-                    { text: '', is_correct: false }
-                ],
-                explanation: '',
-                difficulty: 'medium',
-                tags: []
-            })
-            loadDeck()
-        } catch (error) {
-            console.error('Failed to create question:', error)
-            alert('Failed to create question')
         }
+        setShowAddModal(false)
+        await loadDeck()
+    }
+
+    const handleEditQuestion = async (data) => {
+        const response = await questionsAPI.update(editingItem.id, data)
+        setDeck(current => ({ ...current, questions: current.questions.map(question =>
+            question.id === editingItem.id ? { ...question, ...response.data } : question) }))
+        setEditingItem(null)
     }
 
     const toggleTagEditor = async (questionId) => {
@@ -131,20 +98,6 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
             console.error('Failed to delete question:', error)
             alert('Failed to delete question')
         }
-    }
-
-    const updateOption = (index, field, value) => {
-        const newOptions = [...newQuestion.options]
-        newOptions[index] = { ...newOptions[index], [field]: value }
-
-        // Ensure only one correct answer if setting to true
-        if (field === 'is_correct' && value === true) {
-            newOptions.forEach((opt, i) => {
-                if (i !== index) opt.is_correct = false
-            })
-        }
-
-        setNewQuestion({ ...newQuestion, options: newOptions })
     }
 
     // Filter questions by selected tags
@@ -271,13 +224,15 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                 {getFilteredQuestions().length > 0 ? (
                     <div className="divide-y divide-gray-200">
                         {getFilteredQuestions().map((question, index) => (
-                            <div key={question.id} className="p-6 hover:bg-gray-50 transition group">
+                            <div key={question.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition group">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full font-medium">
                                                 #{index + 1}
                                             </span>
+                                            <span className="text-xs">{isFlashcard(question) ? 'Flashcard' : 'Question'}</span>
+                                            {question.source_reference?.edited && <span className="text-xs">Edited</span>}
                                             <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${question.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200' :
                                                 question.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200' :
                                                     'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-200'
@@ -285,8 +240,8 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                                                 {question.difficulty}
                                             </span>
                                         </div>
-                                        <p className="text-gray-900 dark:text-white font-medium mb-2">{question.card_type === 'flashcard' && <strong>Front: </strong>}{question.question_text}</p>
-                                        {question.card_type === 'flashcard' && <details className="mb-2">
+                                        <p className="text-gray-900 dark:text-white font-medium mb-2">{isFlashcard(question) && <strong>Front: </strong>}{question.question_text}</p>
+                                        {isFlashcard(question) && <details className="mb-2">
                                             <summary className="cursor-pointer">Show back</summary>
                                             <p><strong>Back: </strong>{question.explanation}</p>
                                         </details>}
@@ -315,6 +270,13 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
+                                            aria-label={`Edit item ${index + 1}`}
+                                            className="flex min-w-[44px] min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+                                            onClick={() => setEditingItem(question)}>
+                                            <Pencil size={16} aria-hidden="true" />
+                                            Edit
+                                        </button>
+                                        <button
                                             onClick={() => toggleTagEditor(question.id)}
                                             aria-expanded={editingTagsFor === question.id}
                                             className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition ${editingTagsFor === question.id
@@ -334,6 +296,9 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                                         </button>
                                     </div>
                                 </div>
+                                {editingItem?.id === question.id && <DeckItemForm
+                                    item={editingItem} onSave={handleEditQuestion}
+                                    onCancel={() => setEditingItem(null)} />}
                                 {editingTagsFor === question.id && (
                                     <QuestionTagEditor
                                         question={question}
@@ -362,97 +327,9 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            {/* Question Text */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Question</label>
-                                <textarea
-                                    value={newQuestion.question_text}
-                                    onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    rows="3"
-                                    placeholder="Enter your question here..."
-                                />
-                            </div>
-
-                            {/* Options */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Options (Select correct answer)</label>
-                                <div className="space-y-3">
-                                    {newQuestion.options.map((option, idx) => (
-                                        <div key={idx} className="flex items-center gap-3">
-                                            <input
-                                                type="radio"
-                                                name="correct_option"
-                                                checked={option.is_correct}
-                                                onChange={() => updateOption(idx, 'is_correct', true)}
-                                                className="h-4 w-4 text-primary-600 dark:text-primary-300 focus:ring-primary-500 border-gray-300"
-                                            />
-                                            <span className="font-mono text-gray-500 dark:text-gray-400 w-6">{String.fromCharCode(65 + idx)}.</span>
-                                            <input
-                                                type="text"
-                                                value={option.text}
-                                                onChange={(e) => updateOption(idx, 'text', e.target.value)}
-                                                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${option.is_correct ? 'border-green-300 bg-green-50 dark:bg-green-900/30' : 'border-gray-300'
-                                                    }`}
-                                                placeholder={`Option ${String.fromCharCode(65 + idx)}`}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Explanation */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Explanation</label>
-                                <textarea
-                                    value={newQuestion.explanation}
-                                    onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    rows="2"
-                                    placeholder="Why is the answer correct?"
-                                />
-                            </div>
-
-                            {/* Difficulty */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Difficulty</label>
-                                <select
-                                    value={newQuestion.difficulty}
-                                    onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                >
-                                    <option value="easy">Easy</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="hard">Hard</option>
-                                </select>
-                            </div>
-
-                            {/* Tags */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Tags</label>
-                                <TagManager
-                                    selectedTags={newQuestion.tags}
-                                    onTagsChange={(tags) => setNewQuestion({ ...newQuestion, tags })}
-                                    mode="select"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 rounded-lg transition"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAddQuestion}
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
-                            >
-                                <Save size={18} />
-                                Save Card
-                            </button>
+                        <div className="p-6">
+                            <DeckItemForm defaultType={deck.kind === 'flashcards' ? 'flashcard' : 'mcq'}
+                                onSave={handleAddQuestion} onCancel={() => setShowAddModal(false)} />
                         </div>
                     </div>
                 </div>

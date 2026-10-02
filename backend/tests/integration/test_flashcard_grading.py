@@ -1,21 +1,16 @@
 """CSV flashcards use their back text when grading written practice."""
 
 from app.api import progress, questions
-from app.models.deck import Deck
+from app.models.question import Question, QuestionOption
 from app.models.user_progress import UserProgress
 
 
-def test_imported_flashcard_written_answer(client, db_session, monkeypatch):
-    response = client.post(
-        "/api/decks/import/csv",
-        files={
-            "file": ("cards.csv", b"What is the capital of France?,Paris\n", "text/csv")
-        },
-    )
-    assert response.status_code == 200
-    assert response.json()["num_questions"] == 1
-    deck = db_session.get(Deck, response.json()["id"])
-    question, = deck.questions
+def test_legacy_flashcard_written_answer(client, db_session, monkeypatch):
+    question = Question(question_text="What is the capital of France?", explanation="Paris",
+                        options=[QuestionOption(option_text="Flip to see answer",
+                                                is_correct=True, order=0)])
+    db_session.add(question)
+    db_session.commit()
     captured = {}
 
     def grade(question_text, expected, answer, api_key):

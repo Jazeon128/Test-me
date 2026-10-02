@@ -21,7 +21,7 @@ export default function ArtifactList({ artifacts, progress, open }) {
       {group.items.map(deck => <li key={deck.id} className="workspace-artifact">
         {deck.kind === 'flashcards' ? <Layers aria-hidden="true" size={20} /> : <ListChecks aria-hidden="true" size={20} />}
         <p className="font-medium">{deck.name}</p>
-        <p className="workspace-artifact-meta">{deck.question_count} questions &middot; {deck.due_count || 0} due</p>
+        <p className="workspace-artifact-meta">{deck.question_count} {deck.kind === 'flashcards' ? 'cards' : 'questions'} &middot; {deck.due_count || 0} due</p>
         {deck.held_back_count > 0 && <p className="text-sm">{deck.held_back_count} held back</p>}
         <div className="flex gap-3">
           <button className="btn-primary workspace-small-button" onClick={event => open(deck.id, 'practice', event.currentTarget)}>Practise</button>

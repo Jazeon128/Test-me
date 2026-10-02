@@ -14,7 +14,7 @@ from app.models.flagged_question import FlaggedQuestion
 from app.models.generation_status import GenerationStatus
 from app.models.notebook import Notebook
 from app.models.passage import DocumentPassage
-from app.models.question import Question
+from app.models.question import Question, QuestionOption
 from app.services import jev
 from app.services.ai.question_generator import QuestionGenerator
 
@@ -146,11 +146,12 @@ def test_restore_rejects_unknown_card_type(client, db_session):
 
 
 def test_legacy_csv_placeholder_unchanged(client, db_session):
-    response = client.post('/api/decks/import/csv', files={
-        "file": ("legacy.csv", b"SM-2?,Reviews.\n", "text/csv"),
-    })
-    assert response.status_code == 200
-    question = db_session.get(Deck, response.json()["id"]).questions[0]
+    question = Question(question_text="SM-2?", explanation="Reviews.",
+                        options=[QuestionOption(option_text="Flip to see answer",
+                                                is_correct=True, order=0)])
+    db_session.add(question)
+    db_session.commit()
+    assert client.get(f"/api/questions/{question.id}").json()["card_type"] == "mcq"
     assert question.card_type == "mcq"
     assert len(question.options) == 1
     assert question.options[0].option_text == "Flip to see answer"

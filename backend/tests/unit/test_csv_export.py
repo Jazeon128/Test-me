@@ -67,19 +67,19 @@ class TestCSVExporter:
         exporter = CSVExporter()
         row = exporter._format_question_row(sample_question)
 
-        # Row format: [Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Source, Difficulty]
-        assert row[5] == "A"  # CorrectAnswer field
-        assert row[1] == "A programming language"  # OptionA
+        # Row format: [Type, Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Source, Difficulty]
+        assert row[6] == "A"  # CorrectAnswer field
+        assert row[2] == "A programming language"  # OptionA
 
     def test_format_question_row_with_all_options(self, sample_question):
         """Test formatting with all 4 options"""
         exporter = CSVExporter()
         row = exporter._format_question_row(sample_question)
 
-        assert row[1] == "A programming language"
-        assert row[2] == "A snake"
-        assert row[3] == "A framework"
-        assert row[4] == "A database"
+        assert row[2] == "A programming language"
+        assert row[3] == "A snake"
+        assert row[4] == "A framework"
+        assert row[5] == "A database"
 
     def test_format_question_row_with_missing_options(self, db_session, sample_document):
         """Test formatting when question has less than 4 options"""
@@ -103,10 +103,10 @@ class TestCSVExporter:
         exporter = CSVExporter()
         row = exporter._format_question_row(question)
 
-        assert row[1] == "Yes"
-        assert row[2] == "No"
-        assert row[3] == ""  # Padded empty option
+        assert row[2] == "Yes"
+        assert row[3] == "No"
         assert row[4] == ""  # Padded empty option
+        assert row[5] == ""  # Padded empty option
 
     def test_format_source_reference_full(self):
         """Test formatting complete source reference"""
@@ -153,6 +153,7 @@ class TestCSVExporter:
         """Test that CSV headers match expected format"""
         exporter = CSVExporter()
         expected_headers = [
+            "Type",
             "Question",
             "OptionA",
             "OptionB",
@@ -252,7 +253,7 @@ class TestCSVExporter:
 
             row = exporter._format_question_row(question)
             expected_letter = chr(65 + correct_index)  # A, B, C, or D
-            assert row[5] == expected_letter
+            assert row[6] == expected_letter
 
     def test_missing_explanation_default(self, db_session, sample_document):
         """Test default explanation when none provided"""
@@ -268,7 +269,7 @@ class TestCSVExporter:
         exporter = CSVExporter()
         row = exporter._format_question_row(question)
 
-        assert row[6] == "No explanation provided."
+        assert row[7] == "No explanation provided."
 
     def test_missing_difficulty_default(self, db_session, sample_document):
         """Test default difficulty when none provided"""
@@ -283,4 +284,4 @@ class TestCSVExporter:
         exporter = CSVExporter()
         row = exporter._format_question_row(question)
 
-        assert row[8] == "medium"  # Default difficulty
+        assert row[9] == "medium"  # Default difficulty

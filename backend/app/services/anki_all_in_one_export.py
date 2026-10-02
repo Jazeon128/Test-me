@@ -1,6 +1,7 @@
 import csv
 import html
 from typing import List
+from .anki_export import is_flashcard
 from ..models.question import Question
 from ..models.test import Test
 from sqlalchemy.orm import Session
@@ -64,6 +65,10 @@ class AnkiAllInOneExporter:
         Returns:
             List of strings representing the CSV row
         """
+        if is_flashcard(question):
+            return [_escape_text(question.question_text),
+                    _escape_text(question.explanation or "")]
+
         # Sort options by order
         options = sorted(question.options, key=lambda x: x.order)
 

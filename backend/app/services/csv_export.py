@@ -1,6 +1,7 @@
 import csv
 from typing import List
 from io import StringIO
+from .anki_export import is_flashcard
 from ..models.question import Question
 from ..models.test import Test
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ class CSVExporter:
 
     # CSV Headers for simplified format
     HEADERS = [
+        "Type",
         "Question",
         "OptionA",
         "OptionB",
@@ -120,15 +122,21 @@ class CSVExporter:
         # Format source reference from JSON
         source = self._format_source_reference(question.source_reference or {})  # type: ignore[arg-type]
 
+        flashcard = is_flashcard(question)
+        if flashcard:
+            option_texts = [""] * 4
+
         # Build row
         row = [
+            "flashcard" if flashcard else "question",
             question.question_text,
             option_texts[0],
             option_texts[1],
             option_texts[2],
             option_texts[3],
-            correct_answer or "A",  # Default to A if no correct answer found
-            question.explanation or "No explanation provided.",
+            "" if flashcard else correct_answer or "A",
+            (question.explanation or "") if flashcard else
+            (question.explanation or "No explanation provided."),
             source,
             question.difficulty or "medium",
         ]

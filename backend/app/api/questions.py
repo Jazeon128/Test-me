@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict
 
 from ..utils.cache import invalidate_stats_cache
@@ -29,7 +29,8 @@ class CreateQuestionRequest(BaseModel):
     """Schema for creating a new question"""
 
     question_text: str
-    options: List[QuestionOptionCreate]
+    card_type: Literal["mcq", "flashcard"] = "mcq"
+    options: Optional[List[QuestionOptionCreate]] = None
     explanation: str = ""
     difficulty: str = "medium"
     deck_id: Optional[int] = None
@@ -119,13 +120,14 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
     - Testing and development
     """
 
-    # Validate options
-    if len(request.options) < 2:
-        raise HTTPException(status_code=400, detail="Question must have at least 2 options")
-
-    correct_count = sum(1 for opt in request.options if opt.is_correct)
-    if correct_count != 1:
-        raise HTTPException(status_code=400, detail="Question must have exactly one correct option")
+    if request.card_type == "flashcard":
+        validate_flashcard(request)
+    else:
+        options = request.options or []
+        if len(options) < 2:
+            raise HTTPException(status_code=400, detail="Question must have at least 2 options")
+        if sum(opt.is_correct for opt in options) != 1:
+            raise HTTPException(status_code=400, detail="Question must have exactly one correct option")
 
     deck = None
     if request.deck_id is not None:
@@ -135,6 +137,7 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
 
     # Create question
     question = Question(
+        card_type=request.card_type,
         document_id=request.document_id,
         question_text=request.question_text,
         explanation=request.explanation,
@@ -150,7 +153,7 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
         deck.deck_questions.append(DeckQuestion(question_id=question.id, order=next_order))
 
     # Create options
-    for i, opt_data in enumerate(request.options):
+    for i, opt_data in enumerate(request.options or []):
         option = QuestionOption(
             question_id=question.id,
             option_text=opt_data.text,
@@ -163,6 +166,51 @@ async def create_question(request: CreateQuestionRequest, db: Session = Depends(
     invalidate_stats_cache()
     db.refresh(question)
 
+    return format_question(question)
+
+
+class UpdateQuestionRequest(BaseModel):
+    question_text: str
+    explanation: str = ""
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    options: Optional[List[QuestionOptionCreate]] = None
+    card_type: Optional[Literal["mcq", "flashcard"]] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def validate_flashcard(request):
+    if "options" in request.model_fields_set:
+        raise HTTPException(status_code=422, detail="Flashcards cannot have options")
+    if not request.question_text.strip() or len(request.question_text) > 200:
+        raise HTTPException(status_code=422, detail="Front must be 1 to 200 characters")
+    if not request.explanation.strip() or len(request.explanation) > 600:
+        raise HTTPException(status_code=422, detail="Back must be 1 to 600 characters")
+
+
+@router.put("/{question_id}")
+async def update_question(question_id: int, request: UpdateQuestionRequest,
+                          db: Session = Depends(get_db)):
+    question = db.query(Question).filter_by(id=question_id).first()
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+    if "card_type" in request.model_fields_set and request.card_type != question.card_type:
+        raise HTTPException(status_code=422, detail="Card type cannot change")
+    if question.card_type == "flashcard" or _has_flashcard_answer(question):
+        validate_flashcard(request)
+    else:
+        options = request.options or []
+        if len(options) != 4 or sum(opt.is_correct for opt in options) != 1:
+            raise HTTPException(status_code=422, detail="Supply four options with exactly one correct")
+        question.options = [QuestionOption(option_text=opt.text, is_correct=opt.is_correct,
+                                           order=i) for i, opt in enumerate(options)]
+    question.question_text = request.question_text
+    question.explanation = request.explanation
+    question.difficulty = request.difficulty
+    question.source_reference = {**(question.source_reference or {}), "edited": True}
+    db.commit()
+    invalidate_stats_cache()
+    db.refresh(question)
     return format_question(question)
 
 

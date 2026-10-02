@@ -11,7 +11,6 @@ from ..db import get_db
 from ..models.test import Test
 from ..models.flagged_question import FlaggedQuestion
 from ..utils.http_headers import content_disposition
-from .questions import FLASHCARD_PLACEHOLDER
 
 router = APIRouter()
 
@@ -108,6 +107,7 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
     return {
         "id": deck.id,
         "notebook_id": deck.notebook_id,
+        "kind": deck.kind,
         "name": deck.name,
         "description": deck.description,
         "num_questions": len(deck.questions),
@@ -118,6 +118,9 @@ async def get_deck(deck_id: int, db: Session = Depends(get_db)):
                 "question_text": q.question_text,
                 "card_type": q.card_type,
                 "explanation": q.explanation,
+                "source_reference": q.source_reference,
+                "options": [{"text": o.option_text, "is_correct": o.is_correct}
+                            for o in sorted(q.options, key=lambda o: o.order)],
                 "difficulty": q.difficulty,
                 "document_id": q.document_id,
                 # The deck page filters and edits by tag, so it needs them here.
@@ -178,7 +181,7 @@ async def import_csv(
     """Import a deck from a CSV file (Front, Back format)"""
     import csv
     import io
-    from ..models.question import Question, QuestionOption
+    from ..models.question import Question
     from ..models.test import TestQuestion
 
     # Read file content
@@ -207,16 +210,10 @@ async def import_csv(
             continue
 
         # Create Question
-        question = Question(question_text=front, explanation=back, difficulty="medium")
+        question = Question(card_type="flashcard", question_text=front,
+                            explanation=back, difficulty="medium")
         db.add(question)
         db.flush()
-
-        # Create a default option (since our model requires options for MCQs)
-        # For flashcard mode, this might be ignored or used as the "reveal"
-        option = QuestionOption(
-            question_id=question.id, option_text=FLASHCARD_PLACEHOLDER, is_correct=True, order=0
-        )
-        db.add(option)
 
         # Link to Deck
         test_question = TestQuestion(deck_id=deck.id, question_id=question.id, order=count)

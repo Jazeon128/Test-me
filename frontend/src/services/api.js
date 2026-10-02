@@ -198,6 +198,7 @@ export const decksAPI = {
 
 // Questions API
 export const questionsAPI = {
+  update: (id, data) => api.put(`/questions/${id}`, data),
   create: (data) => api.post('/questions/', data),
   get: (id) => api.get(`/questions/${id}`),
   getByDocument: (documentId) => api.get(`/questions/document/${documentId}`),

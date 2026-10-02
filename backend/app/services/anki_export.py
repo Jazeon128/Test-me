@@ -9,10 +9,18 @@ from sqlalchemy.orm import Session
 
 # New fixed ID: adding CorrectA-D fields requires a new Anki note type.
 MODEL_ID = 1874562391
+BASIC_MODEL_ID = 1874562392
 
 
 def _escape_text(text: str) -> str:
     return html.escape(text, quote=False).replace("\n", "<br>")
+
+
+def is_flashcard(question: Question) -> bool:
+    return question.card_type == "flashcard" or (
+        len(question.options) == 1
+        and question.options[0].option_text == "Flip to see answer"
+    )
 
 
 class AnkiExporter:
@@ -124,6 +132,14 @@ class AnkiExporter:
             """,
         )
 
+        self.basic_model = genanki.Model(
+            BASIC_MODEL_ID, "Test Me - Basic",
+            fields=[{"name": "Front"}, {"name": "Back"}, {"name": "Source"}],
+            templates=[{"name": "Basic", "qfmt": "{{Front}}",
+                        "afmt": '{{FrontSide}}<hr id="answer">{{Back}}'
+                                '{{#Source}}<hr>{{Source}}{{/Source}}'}],
+        )
+
     def export_test(self, db: Session, test: Test, output_path: str) -> str:
         """
         Export a test to an Anki deck
@@ -204,6 +220,14 @@ class AnkiExporter:
                 text = ref["text"][:100] + "..." if len(ref["text"]) > 100 else ref["text"]
                 parts.append(f'"{text}"')
             reference = ", ".join(parts)
+
+        if is_flashcard(question):
+            return genanki.Note(
+                model=self.basic_model,
+                fields=[_escape_text(question.question_text),
+                        _escape_text(question.explanation or ""), _escape_text(reference)],
+                tags=[f"difficulty:{question.difficulty}"],
+            )
 
         # Create note
         note = genanki.Note(

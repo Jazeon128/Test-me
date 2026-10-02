@@ -28,7 +28,7 @@ const fixture = () => ({
   notebook: { id: 7, name: 'Biology', description: 'Study cells' },
   sources: [
     { id: 1, display_name: 'Cells.pdf', file_type: 'pdf', status: 'ready' },
-    { id: 2, display_name: 'Notes.md', file_type: 'md', status: 'ready', preflight: { worth_generating: false } },
+    { id: 2, display_name: 'Notes.md', file_type: 'md', status: 'ready' },
     { id: 3, display_name: 'Broken.pdf', file_type: 'pdf', status: 'failed', error_message: 'Unreadable file' },
   ],
   artifacts: { decks: [{ id: 9, name: 'Cell quiz', kind: 'quiz', question_count: 10, due_count: 2, held_back_count: 1 }],
@@ -79,7 +79,6 @@ describe('Notebook workspace', () => {
     expect(screen.getByLabelText('Broken.pdf')).toBeDisabled()
     expect(screen.getByLabelText('Broken.pdf')).not.toBeChecked()
     expect(screen.getByText('Unreadable file')).toBeInTheDocument()
-    expect(screen.getByText('May not be worth studying')).toBeInTheDocument()
     expect(screen.getByText('Cell quiz')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Quizzes (1)' })).toBeInTheDocument()
     expect(screen.getByText('10 questions \u00b7 2 due')).toBeInTheDocument()
@@ -95,7 +94,7 @@ describe('Notebook workspace', () => {
     fireEvent.change(screen.getByLabelText('Difficulty'), { target: { value: 'hard' } })
     click('Generate quiz')
     await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledWith('7', {
-      source_ids: [1], kind: 'quiz', num_questions: 15, difficulty: 'hard', custom_prompt: '', deck_name: '', allow_unteachable: false,
+      source_ids: [1], kind: 'quiz', num_questions: 15, difficulty: 'hard', custom_prompt: '', deck_name: '',
     }))
     await screen.findByText('Reading sources')
     expect(screen.getByLabelText('Notes.md')).not.toBeChecked()
@@ -103,17 +102,6 @@ describe('Notebook workspace', () => {
     expect(screen.getByRole('button', { name: 'Generate quiz' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Canvas' })).toBeDisabled()
     click('Select all'); expect(screen.getByLabelText('Notes.md')).toBeChecked()
-  })
-  it('reads wrapped 409 unteachable body and resends with explicit consent', async () => {
-    notebooksAPI.generate.mockRejectedValueOnce({ status: 409, message: 'Low teachability', originalError: { response: {
-      status: 409, data: { detail: 'Low teachability', unteachable: [{ id: 2, display_name: 'Notes.md', is_teachable: 0.2 }] },
-    } } })
-    mount(); await loaded(); click('Flashcards'); click('Generate flashcards')
-    expect(await screen.findByText('Notes.md: 20% teachable')).toBeInTheDocument()
-    click('Generate anyway')
-    await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledTimes(2))
-    expect(notebooksAPI.generate.mock.calls[1][1]).toEqual({ ...notebooksAPI.generate.mock.calls[0][1], allow_unteachable: true })
-    expect(notebooksAPI.generate.mock.calls[1][1].kind).toBe('flashcards')
   })
   it('shows processing conflicts and error envelope messages', async () => {
     notebooksAPI.generate.mockRejectedValueOnce({ status: 409, originalError: { response: { data: { processing: [1] } } } })

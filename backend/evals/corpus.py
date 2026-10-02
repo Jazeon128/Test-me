@@ -1,108 +1,22 @@
 """Deterministic sampling and immutable passage manifests."""
 
-import json
 import fnmatch
 import os
 import random
 import re
 import subprocess
-from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
 
-from app.services import jev
-from app.services.ai import sourcing
 from app.services.passages import split_passages
 from . import adapters
-from .budget import Budget, BudgetStop, MILLION, tokens
 from .config import ROOT, digest, load, write
 
 SKIP = {'node_modules', '.git', '.venv', '__pycache__'}
 MAX_BYTES = 20 * 1024 * 1024
-SCREEN_CHARS = 12000
-SCREEN_INSTRUCTION_TOKENS = 1024
-ASSESSMENT_VERSION = 2
 
 
-def assessment_key(sha, parser, title, notebook_name="", notebook_description=""):
-    context = {"name": notebook_name or "", "description": notebook_description or ""}
-    return digest(json.dumps({
-        "sha256": sha, "version": ASSESSMENT_VERSION, "model": sourcing.PREFLIGHT_MODEL,
-        "parser": parser,
-        "text_policy": {"selection": "joined_sections_prefix", "characters": SCREEN_CHARS},
-        "title": title or "Untitled", "context": digest(json.dumps(context, sort_keys=True)),
-    }, sort_keys=True))
-
-
-def prepared(path, sha, notebook_name="", title=None, notebook_description="", source=None):
-    source = source if source is not None else adapters.parse(path)
-    text = '\n'.join(section.text for section in source.sections)[:SCREEN_CHARS]
-    title = path.stem if title is None else title
-    cache_key = assessment_key(sha, source.parser, title, notebook_name, notebook_description)
-    return title, text, cache_key
-
-
-def assess(path, key, budget, sha, notebook_name="", preparation=None):
-    title, text, cache_key = preparation or prepared(path, sha, notebook_name)
-    identifier = f'screen:{cache_key}'
-    estimated = (tokens(title + text + notebook_name) + SCREEN_INSTRUCTION_TOKENS)
-    estimated = estimated * Decimal('0.042') / MILLION
-    budget.reserve(identifier, estimated)
-    reported = None
-    original = jev.ask
-
-    def ask(*args, **kwargs):
-        nonlocal reported
-        answers = original(*args, **kwargs)
-        if answers.input_tokens:
-            reported = answers.input_tokens * Decimal('0.042') / MILLION
-        return answers
-
-    try:
-        with patch.object(jev, 'ask', ask):
-            score = sourcing.assess_source(title, text, key, notebook_name=notebook_name)
-        return {'checked': score.checked, 'is_teachable': score.is_teachable,
-                'is_transcript': score.is_transcript, 'worth_generating': score.worth_generating,
-                'has_study_content': score.has_study_content, 'reason': score.reason,
-                'model': sourcing.PREFLIGHT_MODEL}
-    finally:
-        budget.settle(identifier, reported)
-
-
-def screen(grouped, config, output, name, key, cache, manifest):
-    grouped, parsed = reference_sources(grouped, manifest, screened=True)
-    total_other = sum((Budget(output / other / 'screen_ledger.jsonl', config['budget_cap']).total
-                       for other in config['sets'] if other != name), Decimal(0))
-    remaining = Decimal(config['budget_cap']) - total_other
-    budget = Budget(output / name / 'screen_ledger.jsonl', max(remaining, Decimal(0)), phase='screen')
+def reference_sources(grouped, manifest):
     eligible = {}
-    for path in sample(grouped, config.get('screen_limit', 40), config['seed']):
-        sha = digest(path.read_bytes())
-        try:
-            source = parsed.get(path) or adapters.parse(path)
-            if isinstance(source, Exception):
-                raise source
-            preparation = prepared(path, sha, name, source=source)
-            cache_key = preparation[2]
-            if cache_key not in cache:
-                cache[cache_key] = assess(path, key, budget, sha, name, preparation)
-                write(output / 'screen_cache.json', cache)
-            score = cache[cache_key]
-        except Exception as error:
-            score = {'checked': False, 'is_teachable': None, 'is_transcript': None,
-                     'worth_generating': False, 'model': sourcing.PREFLIGHT_MODEL,
-                     'has_study_content': None, 'reason': 'unchecked', 'error': str(error)}
-            if not isinstance(error, BudgetStop):
-                manifest['parse_failures'].append({'source_path': str(path), 'error': str(error)})
-        group = normalized_stem(path)
-        manifest['screened'].append(dict(score, group=group, source_path=str(path), source_sha256=sha))
-        if score['checked'] and score['worth_generating']:
-            eligible[group] = grouped[group]
-    return eligible
-
-
-def reference_sources(grouped, manifest, screened=False):
-    eligible, parsed = {}, {}
     for group, paths in grouped.items():
         for path in paths:
             if path.suffix.lower() != '.csv':
@@ -110,23 +24,15 @@ def reference_sources(grouped, manifest, screened=False):
                 continue
             try:
                 source = adapters.parse(path)
-            except Exception as error:
-                parsed[path] = error
+            except Exception:
                 eligible.setdefault(group, []).append(path)
                 continue
-            parsed[path] = source
             if source.sections or not source.reference_items:
                 eligible.setdefault(group, []).append(path)
                 continue
             manifest['reference_items'].extend(
                 dict(item, source_path=str(path)) for item in source.reference_items)
-            if screened:
-                manifest['screened'].append({
-                    'checked': False, 'is_teachable': None, 'is_transcript': None,
-                    'worth_generating': False, 'model': None, 'has_study_content': None,
-                    'reason': 'reference_only', 'group': group, 'source_path': str(path),
-                    'source_sha256': digest(path.read_bytes())})
-    return eligible, parsed
+    return eligible
 
 
 def excluded(path, patterns):
@@ -200,27 +106,16 @@ def source_records(path, set_name, config, commit):
     return records, references
 
 
-def freeze(config, output=None, no_screen=False, api_key=None):
+def freeze(config, output=None):
     output = Path(output or ROOT / 'corpus')
-    if not no_screen:
-        if api_key is None:
-            from app.services.secrets import get_secret
-            api_key = get_secret('typesafe')
-        if not api_key:
-            raise ValueError('Freeze screening requires a TypeSafe key. Configure it or use --no-screen.')
-    cache_path = output / 'screen_cache.json'
-    cache = load(cache_path) if cache_path.exists() and not no_screen else {}
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     reports = {}
     for name, paths in config['sets'].items():
         files = candidates(paths, config.get('exclude', []))
         grouped = groups(files)
         manifest = {'passages': [], 'parse_failures': [], 'reference_items': [],
-                    'seed': config['seed'], 'set': name, 'screened': []}
-        if no_screen:
-            eligible, _ = reference_sources(grouped, manifest)
-        else:
-            eligible = screen(grouped, config, output, name, api_key, cache, manifest)
+                    'seed': config['seed'], 'set': name}
+        eligible = reference_sources(grouped, manifest)
         selected = sample(eligible, config['sources_per_set'], config['seed'])
         for path in selected:
             try:

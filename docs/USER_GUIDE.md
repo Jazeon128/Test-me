@@ -38,10 +38,6 @@ The default file limit is 10,485,760 bytes. Adding sources reads and stores thei
 | Ready | The source can be used | Tick it for chat or generation |
 | Failed | The app could not read it | Read the error, correct the problem and re-add it to retry |
 | Already in this notebook | The same material is already stored | Use the existing source |
-| May not be worth studying | The pre-flight check doubts that the material contains useful study content | Read the material before generating |
-| Could not check before generating | The optional pre-flight check was unavailable | You can still generate |
-
-The pre-flight note is advice, not a guarantee. It can mistake tooling documents for useful teaching material. A missing TypeSafe key leaves the optional check unavailable.
 
 ## Tick the material you want to use
 
@@ -79,7 +75,7 @@ Chat uses selected source text as evidence. Instructions written inside a source
 
 The number is the total for the deck. The app divides it across the selected sources. It does not request that number from every source.
 
-If a source may not be worth studying, Studio asks you to choose Generate anyway or Cancel generation. Cancel generation leaves the source available. If a source is still reading, wait before generating.
+If a source is still reading, wait before generating.
 
 ## Read the progress card
 
@@ -137,7 +133,7 @@ Choose Settings in the navigation.
 | Provider keys | Save and test a key for each provider you use |
 | OpenRouter catalog | Search available models and compare input and output prices |
 | OpenRouter credit | Check remaining credit when a limit exists. Without a limit, the app shows usage |
-| TypeSafe | Configure optional pre-flight, quality checks and written grading |
+| TypeSafe | Configure quality checks and written grading |
 
 Supported providers are Anthropic, OpenAI, Gemini and OpenRouter. Recommended: start with OpenRouter or Gemini. Check free allowances first. Catalog prices and remaining credit do not guarantee that a model request will succeed.
 

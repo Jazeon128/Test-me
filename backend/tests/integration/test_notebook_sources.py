@@ -8,9 +8,8 @@ from app.models.passage import DocumentPassage
 from app.models.deck import Deck
 from app.models.generation_status import GenerationStatus
 from app.models.notebook import Notebook
-from app.models.settings import Settings
 from app.services import ingest
-from app.services.ai.sourcing import SourceAssessment
+from app.services import jev
 from app.services.parsers import MarkdownParser, YouTubeParser
 
 
@@ -30,9 +29,6 @@ def upload(client, notebook):
 
 
 def test_markdown_ready_without_generation(client, db_session, notebook, monkeypatch):
-    def unexpected(*args, **kwargs):
-        pytest.fail("No preflight without a key")
-    monkeypatch.setattr(ingest.sourcing, "assess_source", unexpected)
     response = upload(client, notebook)
     assert response.status_code == 202
     source = response.json()["sources"][0]
@@ -41,30 +37,10 @@ def test_markdown_ready_without_generation(client, db_session, notebook, monkeyp
     document = db_session.get(Document, source["id"])
     assert document.status == "ready"
     assert document.parsed_at is not None
-    assert document.preflight is None
     assert document.content
     assert document.passages
     assert db_session.query(Deck).count() == 0
     assert db_session.query(GenerationStatus).count() == 0
-
-
-def test_preflight(client, db_session, notebook, monkeypatch):
-    db_session.add(Settings(key="typesafe_api_key", value="fake-key"))
-    db_session.commit()
-    calls = []
-    def assess(title, text, key, **context):
-        assert context == {"notebook_name": "Sources", "notebook_description": None}
-        calls.append((title, text, key))
-        return SourceAssessment(is_teachable=0.2, is_transcript=0.8)
-    monkeypatch.setattr(ingest.sourcing, "assess_source", assess)
-    response = upload(client, notebook)
-    document = db_session.get(Document, response.json()["sources"][0]["id"])
-    assert document.preflight == dict(checked=True, worth_generating=False,
-                                      is_teachable=0.2, is_transcript=0.8,
-                                      has_study_content=1.0, reason="low_teachability")
-    assert len(calls) == 1
-    assert calls[0][2] == "fake-key"
-    assert document.status == "ready"
 
 
 def test_duplicate(client, db_session, notebook, monkeypatch):
@@ -151,7 +127,7 @@ def test_listings_and_deletion(client, db_session, notebook):
         assert listing["passage_count"] == count
         assert listing["status"] == "ready"
         assert listing["error_message"] is None
-        assert listing["preflight"] is None
+        assert "preflight" not in listing
     assert client.delete(f"/api/documents/{document.id}").status_code == 200
     assert db_session.query(DocumentPassage).count() == 0
 
@@ -194,11 +170,11 @@ def test_legacy_parse_failure(db_session, notebook, monkeypatch):
 def test_empty_without_key(client, db_session, notebook, monkeypatch):
     def forbidden(*args, **kwargs):
         pytest.fail("Empty source must not call Jev")
-    monkeypatch.setattr(ingest.sourcing.jev, "ask", forbidden)
+    monkeypatch.setattr(jev, "ask", forbidden)
     response = client.post(f"/api/notebooks/{notebook.id}/sources", files={
         "files": ("empty.md", b" \n\t", "text/markdown"),
     })
     assert response.status_code == 202
     document = db_session.get(Document, response.json()["sources"][0]["id"])
-    assert document.status == "ready"
-    assert document.preflight == {"reason": "empty", "worth_generating": False}
+    assert document.status == "failed"
+    assert document.error_message == "No text could be read from this source."

@@ -28,7 +28,8 @@ Reviewed against commits through `f4b450e` on 2026-09-30. Done means implemented
 
 | Work | Verdict | Next action |
 | --- | --- | --- |
-| Pre-flight accepts tooling documents as teachable | Recommended | Use labelled teaching and tooling sources to measure false positives before changing prompts or thresholds |
+| Source pre-flight gate | Removed 2026-10-02 | The user decides what to study |
+| Pending request field | Resolved | Only the canvas uses it for routing_log_id |
 | Static Firebase Hosting demo | Recommended | Prepare a static demonstration. Define its scope without exposing local keys or a paid public backend |
 | Live public hosting | Deferred | Add authentication, tenancy, durable jobs and spend caps before deployment |
 | Evaluation pilot results | Recommended | Finish the manual pilot, blind human review and agreement analysis. Publish aggregate conclusions without private corpus or run artifacts |
@@ -45,7 +46,7 @@ Application programming interface (API) calls are usage billed. Evaluate free al
 | Existing local frontend, backend, database and credential store | $0 | Existing device and electricity |
 | Imported multiple-choice study | $0 | $0 model calls |
 | Provider inference | $0 app subscription | Account and model dependent |
-| Manual evaluation | $0 local service fees | Pilot generation/check cap $3.00, judge cap $2.50. Screening accounts separately |
+| Manual evaluation | $0 local service fees | Pilot generation/check cap $3.00, judge cap $2.50 |
 | Static Firebase Hosting demo | $0 provisioned by this work | No hosting plan selected. Evaluate the free tier before provisioning |
 | Live public hosting | $0 provisioned by this work | Deferred. No paid architecture selected |
 

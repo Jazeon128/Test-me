@@ -181,8 +181,6 @@ export const documentsAPI = {
   get: (id) => api.get(`/documents/${id}`),
   passages: (id) => api.get(`/documents/${id}/passages`),
   delete: (id) => api.delete(`/documents/${id}`),
-  confirmGeneration: (jobId) => api.post(`/documents/jobs/${jobId}/confirm`),
-  cancelGeneration: (jobId) => api.post(`/documents/jobs/${jobId}/cancel`),
 }
 
 // Decks API

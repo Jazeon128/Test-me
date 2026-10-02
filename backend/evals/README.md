@@ -1,6 +1,6 @@
 ﻿# Manual question evaluation
 
-This harness is manual only. It never runs in continuous integration (CI). Screened freeze, generation, Jev checks and judging can make paid application programming interface (API) calls. Report and agreement are offline.
+This harness is manual only. It never runs in continuous integration (CI). Generation, Jev checks and judging can make paid application programming interface (API) calls. Report and agreement are offline.
 
 Run from `backend/` with the existing virtual environment. Copy `evals/pilot.local.example.json` to `evals/pilot.local.json` and replace placeholders with private source folders. The local file is gitignored. Public `pilot.json` contains set names, model identifiers and evaluation settings. Loading the pilot fails clearly if its local file is missing.
 
@@ -8,16 +8,10 @@ Keys use the application's resolver: operating system (OS) credential store, env
 
 ## Commands
 
-Run the screened or unscreened freeze option, not both as consecutive steps for the same comparison.
+Freeze reads local files with 0 API calls.
 
 ```powershell
 .venv/Scripts/python -m evals.run freeze --config evals/pilot.json
-```
-
-For an unscreened sample with 0 API calls:
-
-```powershell
-.venv/Scripts/python -m evals.run freeze --config evals/pilot.json --no-screen
 ```
 
 Then inspect generation before making calls:
@@ -36,8 +30,7 @@ Fill the exported human review sheet before using agreement to assess human labe
 
 | Command | Network and output |
 | --- | --- |
-| `freeze` | Default screening uses TypeSafe. Reads files without copying them and saves deterministic manifests |
-| `freeze --no-screen` | No API calls. Uses unscreened sampling |
+| `freeze` | 0 API calls. Reads files without copying them and saves deterministic manifests |
 | `generate --dry-run` | 0 network calls. Estimates calls and cost from saved catalog prices |
 | `generate` | OpenRouter calls. Saves raw responses, passages, parser results, errors, usage and timing |
 | `check` | Deterministic rules plus paid Jev checks when available |
@@ -46,15 +39,9 @@ Fill the exported human review sheet before using agreement to assess human labe
 | `report` | Offline, self-contained HyperText Markup Language (HTML) report |
 | `agreement` | Offline human/judge agreement and Cohen's kappa |
 
-## Freeze and screening
+## Freeze
 
-Freeze samples with the configured seed and extension stratification. Default screening checks at most 40 representative source groups per set. It assesses the first 12,000 characters of parsed section text using the application's `assess_source`, pinned to `jev-1.13.0`. Only checked, worth-generating groups enter the final screened sample. Rejected and unchecked groups remain recorded in the manifest's `screened` list.
-
-Screen scores cache by Secure Hash Algorithm 256-bit (SHA-256) source hash in `evals/corpus/screen_cache.json`, including unchecked results. Repeated freezes reuse scores without paid calls. Screening entries use each set's `screen_ledger.jsonl`. The configured cap covers all screening ledgers together, separately from generation run ledgers.
-
-Screening reserves estimated input characters / 3.5 plus 1,024 tokens for assessment instructions. Reported Jev input tokens replace the estimate. Rejected groups still cost money. Budget refusals remain unchecked. Practice-test comma-separated values (CSV) rows remain reference items, not generated-question inputs.
-
-Practice CSVs with references and no sections are recorded as `reference_only` during screening without calls, costs or cache entries, and their references are retained once per file independently of sampling in both freeze modes.
+Freeze samples with the configured seed and extension stratification. Practice-test CSV rows remain reference items. Reference-only files retain their references once per file independently of sampling. Existing manifests remain readable.
 
 ## Pilot configuration and prices
 
@@ -81,7 +68,6 @@ Known zero-price catalog models are supported. Evaluate those and account free a
 | OpenRouter generation and checks | $0 app subscription | Catalog prices, shared $3.00 pilot run cap |
 | OpenRouter judges | $0 app subscription | Separate $2.50 pilot judge cap. Generic default is $2.00 if not configured |
 | Jev | $0 app subscription | Harness estimate $0.042 per 1,000,000 input tokens, output $0 |
-| Screening | $0 local service fees | Separate screening ledger accounting under configured $3.00 cap |
 
 OpenRouter generation and judging request `provider.sort=throughput`. Harness client timeout is 120 seconds. This is a client timeout, not the application's total-deadline wrapper. A trickling response can outlast a read timeout.
 

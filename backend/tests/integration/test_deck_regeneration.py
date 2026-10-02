@@ -26,7 +26,6 @@ def generated_question(text, answer="A"):
 @pytest.fixture
 def regeneration(db_session, sample_test, sample_user_progress, monkeypatch):
     monkeypatch.setattr(database, "SessionLocal", sessionmaker(bind=db_session.bind))
-    monkeypatch.setattr(documents, "_typesafe_key", lambda db: None)
     extra = Document(
         filename="extra.md", original_filename="extra.md", file_path="extra.md",
         file_type=DocumentType.MARKDOWN, file_size=10,

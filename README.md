@@ -42,7 +42,7 @@ npm run dev
 
 Open `http://localhost:5173`. The backend binds to `127.0.0.1:8000`. Interactive application programming interface (API) documentation is at `http://127.0.0.1:8000/docs`. No provider key is needed to start the app.
 
-Recommended: select OpenRouter or Gemini in Settings. Check account free allowances and catalog prices before choosing a paid model. Choose a model for question generation and a model for chat. Save the relevant provider key and test the connection. Anthropic and OpenAI are also supported. TypeSafe is optional for source assessment and quality features.
+Recommended: select OpenRouter or Gemini in Settings. Check account free allowances and catalog prices before choosing a paid model. Choose a model for question generation and a model for chat. Save the relevant provider key and test the connection. Anthropic and OpenAI are also supported. TypeSafe is optional for section ranking and quality features.
 
 Keys entered in Settings go to the OS credential store through `keyring`. Windows uses Windows Credential Manager. The API reports whether a key is configured and where it comes from. It never returns key characters.
 
@@ -147,7 +147,6 @@ Live public hosting is deferred until authentication, tenancy, durable jobs and 
 | Source is Reading | Wait for parsing. Generation cannot use a source that is still processing |
 | Source is Failed | Read the error. Check file format, size and readable text. Re-add the failed source to retry |
 | YouTube source fails | Check the URL and transcript availability |
-| Source may not be worth studying | Read the pre-flight note. Choose Generate anyway only if you want questions from that material |
 | Chat refuses | Tick relevant ready sources and ask about their content. A refusal can happen without a model call |
 | Answer has no citations | Treat it as unsupported. Ask again and inspect source excerpts |
 | Generation returns fewer questions | Read generated versus requested counts, failed sections and held-back counts. Check provider limits |

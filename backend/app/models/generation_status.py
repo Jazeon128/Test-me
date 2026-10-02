@@ -19,14 +19,13 @@ class GenerationStatus(Base):
     kind = Column(String(20), nullable=True)
     result_id = Column(Integer, nullable=True)
     deck_created = Column(Boolean, nullable=False, default=False, server_default="0")
-    # pending, awaiting_confirmation, needs_choice, processing, completed, failed, cancelled
+    # pending, needs_choice, processing, completed, failed, cancelled
     status = Column(String(30), default="pending")
     progress = Column(Integer, default=0)  # 0-100
     current_step = Column(String(200), default="")
     logs = Column(MutableList.as_mutable(JSON), default=list)  # List of log messages with timestamps
     error_message = Column(Text, nullable=True)
 
-    # For awaiting_confirmation: the stored upload request to generate.
     # For needs_choice: the routing_log_id holding this canvas job's choices.
     pending_request = Column(JSON, nullable=True)
 

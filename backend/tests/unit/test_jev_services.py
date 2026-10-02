@@ -234,35 +234,6 @@ class TestSectionSelection:
         assert sourcing.select_sections(SECTIONS, 5, "key") == SECTIONS
 
 
-class TestSourceAssessment:
-    def test_a_teachable_source_passes(self, monkeypatch):
-        monkeypatch.setattr(
-            jev,
-            "ask",
-            lambda *a, **k: answers({"is_teachable": {"noul": 0.9}, "is_transcript": {"noul": 0.1},
-                                    "has_study_content": {"noul": 0.9}}),
-        )
-
-        assert sourcing.assess_source("Notes", "text", "key").worth_generating is True
-
-    def test_an_empty_source_is_caught_before_generation(self, monkeypatch):
-        monkeypatch.setattr(
-            jev,
-            "ask",
-            lambda *a, **k: answers({"is_teachable": {"noul": 0.05}, "is_transcript": {"noul": 0.9}}),
-        )
-
-        assert sourcing.assess_source("Vlog", "um, so, anyway", "key").worth_generating is False
-
-    def test_an_unchecked_source_is_never_blocked(self, monkeypatch):
-        monkeypatch.setattr(jev, "ask", unavailable)
-
-        assessment = sourcing.assess_source("Notes", "text", "key")
-
-        assert assessment.checked is False
-        assert assessment.worth_generating is True
-
-
 # ---------------------------------------------------------------------------
 # 4. Duplicates
 # ---------------------------------------------------------------------------

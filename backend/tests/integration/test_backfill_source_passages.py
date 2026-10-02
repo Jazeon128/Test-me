@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from app.models.document import Document, DocumentType
-from app.services import ingest
+from app.services import ingest, jev
 from scripts.backfill_source_passages import run
 
 
@@ -37,7 +37,7 @@ def test_dry_run(db_session, source_path, capsys):
 def test_apply(db_session, source_path, monkeypatch, capsys):
     def unexpected(*args, **kwargs):
         raise AssertionError("Backfill must not assess sources")
-    monkeypatch.setattr(ingest.sourcing, "assess_source", unexpected)
+    monkeypatch.setattr(jev, "ask", unexpected)
     path = source_path
     path.write_text("# Topic\n\nUseful source text with enough facts to study.")
     document = Document(filename="source.md", original_filename="source.md",
@@ -49,7 +49,6 @@ def test_apply(db_session, source_path, monkeypatch, capsys):
     assert document.content
     assert document.status == "ready"
     assert document.parsed_at is not None
-    assert document.preflight is None
     assert "passages=" in capsys.readouterr().out
     run(db_session, apply=True)
     assert capsys.readouterr().out == ""

@@ -17,11 +17,10 @@ def main():
     parser.add_argument('--config', default='evals/pilot.json')
     parser.add_argument('--run')
     parser.add_argument('--dry-run', action='store_true')
-    parser.add_argument('--no-screen', action='store_true', help='Freeze without paid source screening')
     args = parser.parse_args()
     if args.command == 'freeze':
         try:
-            corpus.freeze(load(args.config), no_screen=args.no_screen)
+            corpus.freeze(load(args.config))
         except ValueError as error:
             parser.error(str(error))
         return

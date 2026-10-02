@@ -21,8 +21,7 @@ def sources(db_session):
     db_session.flush()
     docs = [Document(filename=f"{i}.md", original_filename=f"{i}.md", title=f"Name {i}",
                      file_type=DocumentType.MARKDOWN, file_path=f"/missing/{i}",
-                     file_size=1, status="ready", notebook_id=notebook.id,
-                     preflight={"worth_generating": False}) for i in range(3)]
+                     file_size=1, status="ready", notebook_id=notebook.id) for i in range(3)]
     db_session.add_all(docs)
     db_session.commit()
     return docs

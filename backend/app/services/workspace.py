@@ -82,7 +82,7 @@ def notebook_workspace(db, notebook):
     ).all()
     jobs = db.query(GenerationStatus).filter(
         GenerationStatus.notebook_id == notebook_id,
-        GenerationStatus.status.in_(["pending", "processing", "awaiting_confirmation", "needs_choice"]),
+        GenerationStatus.status.in_(["pending", "processing", "needs_choice"]),
     ).order_by(GenerationStatus.created_at.desc()).all()
     return {
         "notebook": dict(id=notebook.id, name=notebook.name,

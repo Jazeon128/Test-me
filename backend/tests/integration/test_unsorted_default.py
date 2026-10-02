@@ -31,7 +31,7 @@ def fake_generation(db_session, monkeypatch):
 
 
 def upload(client, **data):
-    return client.post("/api/documents/upload", data=dict(num_questions=1, skip_preflight=True, **data),
+    return client.post("/api/documents/upload", data=dict(num_questions=1, **data),
                        files={"files": ("topic.md", b"# Topic\n\nLearn these useful facts about the topic.", "text/markdown")})
 
 
@@ -136,9 +136,8 @@ def test_migration_creates_unsorted_and_keeps_assignment_on_downgrade(db_session
 
 
 @pytest.mark.parametrize("existing", [False, True])
-@pytest.mark.parametrize("confirmed", [False, True])
 def test_failed_legacy_upload_deletes_only_new_empty_deck(
-    client, db_session, fake_generation, monkeypatch, existing, confirmed,
+    client, db_session, fake_generation, monkeypatch, existing,
 ):
     from app.exceptions import AIServiceError
 
@@ -153,22 +152,9 @@ def test_failed_legacy_upload_deletes_only_new_empty_deck(
     data = {}
     if existing:
         data["deck_id"] = client.post("/api/decks/", json=dict(name="Existing")).json()["id"]
-    if confirmed:
-        monkeypatch.setattr(documents, "_typesafe_key", lambda db: "fake-key")
-        monkeypatch.setattr(documents, "assess_sources", lambda sources, key: [dict(
-            document_id=source["id"], filename=source["filename"], checked=True,
-            worth_generating=False, is_teachable=0.1, is_transcript=0.1,
-        ) for source in sources])
-        response = client.post("/api/documents/upload", data=dict(num_questions=1, **data), files={
-            "files": ("topic.md", b"# Topic\n\nLearn these useful facts about the topic.", "text/markdown"),
-        })
-    else:
-        response = upload(client, **data)
+    response = upload(client, **data)
     assert response.status_code == 200
     result = response.json()
-    if confirmed:
-        assert result["status"] == "needs_confirmation"
-        assert client.post(f"/api/documents/jobs/{result['job_id']}/confirm").status_code == 200
     db_session.expire_all()
     job = db_session.query(GenerationStatus).one()
     assert job.deck_created is (not existing)

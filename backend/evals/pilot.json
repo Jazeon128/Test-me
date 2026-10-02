@@ -7,7 +7,6 @@
     "aip_c01"
   ],
   "local_config": "pilot.local.json",
-  "screen_limit": 40,
   "models": [
     "google/gemini-3.8-flash",
     "deepseek/deepseek-v4.1-flash",

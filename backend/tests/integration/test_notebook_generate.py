@@ -100,7 +100,6 @@ def test_zero_share_skipped(client, db_session, selected):
 @pytest.mark.parametrize("state,code,key", [
     ("foreign", 400, None), ("missing", 400, None),
     ("processing", 409, "processing"), ("failed", 400, None),
-    ("unteachable", 409, "unteachable"),
 ])
 def test_source_validation(client, db_session, selected, state, code, key):
     notebook, sources, calls = selected
@@ -113,8 +112,6 @@ def test_source_validation(client, db_session, selected, state, code, key):
         source.notebook_id = other.id
     elif state == "missing":
         body["source_ids"] = [999999]
-    elif state == "unteachable":
-        source.preflight = dict(worth_generating=False, is_teachable=0.2)
     else:
         source.status = state
     db_session.commit()
@@ -122,23 +119,10 @@ def test_source_validation(client, db_session, selected, state, code, key):
     assert response.status_code == code
     if key == "processing":
         assert response.json()[key] == [source.id]
-    elif key == "unteachable":
-        assert response.json()[key] == [dict(id=source.id, display_name="source0", is_teachable=0.2,
-                                            has_study_content=None, reason=None)]
     else:
         assert str(body["source_ids"][0]) in response.json()["error"]["message"]
     assert db_session.query(Deck).count() == 0
     assert not calls
-
-
-def test_allow_unteachable(client, db_session, selected):
-    notebook, sources, calls = selected
-    sources[0].preflight = dict(worth_generating=False, is_teachable=0.2)
-    db_session.commit()
-    assert client.post(f"/api/notebooks/{notebook.id}/generate", json=request(
-        sources, allow_unteachable=True,
-    )).status_code == 202
-    assert len(calls) == 3
 
 
 @pytest.mark.parametrize("field,value", [
@@ -237,29 +221,3 @@ def test_failed_generation_keeps_deck_with_saved_material(client, db_session, se
         assert deck.questions[0].document_id == sources[2].id
     else:
         assert db_session.query(FlaggedQuestion).filter_by(deck_id=deck.id, status="pending").count() == 1
-
-
-@pytest.mark.parametrize("reason,allow,code", [
-    ("study_process", False, 409), ("study_process", True, 202),
-    ("low_teachability", False, 409), ("low_teachability", True, 202),
-    ("empty", False, 409), ("empty", True, 409),
-])
-def test_preflight_reasons_and_override(client, db_session, selected, reason, allow, code):
-    notebook, sources, calls = selected
-    source = sources[0]
-    source.preflight = dict(worth_generating=False, is_teachable=.99,
-                            has_study_content=.1, reason=reason)
-    db_session.commit()
-    response = client.post(f"/api/notebooks/{notebook.id}/generate", json=request(
-        [source], allow_unteachable=allow,
-    ))
-    assert response.status_code == code
-    if code == 409:
-        assert response.json()["unteachable"] == [dict(
-            id=source.id, display_name="source0", is_teachable=.99,
-            has_study_content=.1, reason=reason,
-        )]
-        assert not calls
-        assert db_session.query(Deck).count() == 0
-    else:
-        assert len(calls) == 1

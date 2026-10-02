@@ -67,8 +67,9 @@ def test_full_workspace(client, db_session):
     assert body["notebook"] == dict(id=notebook.id, name="Workspace", description="Study", icon="📚")
     assert [s["id"] for s in body["sources"]] == [sources[1].id, sources[0].id]
     for source in body["sources"]:
+        assert "preflight" not in source
         assert set(source) == {"id", "display_name", "file_type", "num_pages", "created_at", "status",
-                               "error_message", "preflight", "passage_count"}
+                               "error_message", "passage_count"}
         assert source["passage_count"] == 1
         assert source["status"] == "ready"
     artifacts = body["artifacts"]

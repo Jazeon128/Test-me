@@ -27,13 +27,13 @@ The database migration head is `f2a8c4e6b1d9`. Backups are gitignored but retain
 
 | Item | Verdict | Next action |
 | --- | --- | --- |
-| Pre-flight judges tooling documents as teachable | Recommended | Collect labelled counterexamples and measure false positives before changing the assessment |
+| Source pre-flight gate | Removed 2026-10-02 | The user decides what to study |
 | Static Firebase Hosting demo | Recommended | Define a static demo that exposes neither local secrets nor a shared paid backend. Content chosen 2026-10-02: the learning pyramid |
 | Live public hosting | Deferred | Require authentication, tenancy, durable jobs and spend caps |
 | Evaluation pilot results | Recommended | Complete generation, checks, blind judging, human review, agreement and aggregate report |
 | Gemini overload fallback | Deferred | Use pilot evidence to decide whether a fallback is needed and which model to select |
 | Duplicate and retrieval thresholds | Recommended | Validate on labelled data. Existing thresholds are not measured accuracy claims |
-| Pending request field | Deferred | Split the pre-flight and canvas-choice uses if another use appears |
+| Pending request field | Resolved | Only the canvas uses it for routing_log_id |
 | Shared inference service | Skip | Keep the current app local and use the user's provider account |
 
 ## Cost and validation limits
@@ -45,7 +45,7 @@ Application programming interface (API) inference is usage billed. Check free al
 | Local frontend, backend, SQLite and OS credential store | $0 | Existing device and electricity |
 | Imported multiple-choice practice | $0 | No model calls |
 | Generation, chat and optional TypeSafe | $0 app subscription | Account and model dependent |
-| Evaluation harness | $0 | Pilot generation/check cap $3.00 and judge cap $2.50. Screening has separate accounting |
+| Evaluation harness | $0 | Pilot generation/check cap $3.00 and judge cap $2.50 |
 | Static demo or live hosting | $0 provisioned by this work | No service selected or deployed |
 
 Earlier live samples on 2026-09-30 returned 6 of 12 and 1 of 4 requested questions during Gemini overload. Those samples are historical observations, not the pilot result. They do not validate model ranking or quality thresholds.

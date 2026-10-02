@@ -2,15 +2,6 @@ import { useRef, useState } from 'react'
 import { FileText, Youtube, Loader2, FileType, FileCode, Presentation, BookOpen, X } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
 
-export function PreflightMessage({ reason }) {
-  return ({
-    study_process: 'Looks like notes about your study process, not study material',
-    low_teachability: 'Little to study',
-    empty: 'No text could be read from this source',
-  }[reason] || 'May not be worth studying')
-}
-
-
 export default function SourcesPanel({ notebookId, sources, selected, setSelected, refresh, onOpenSource }) {
   const [adding, setAdding] = useState(false)
   const [files, setFiles] = useState([])
@@ -65,10 +56,6 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
           {source.status === 'processing' ? <p className="workspace-badge"><Loader2 size={14} className="workspace-reading" />Reading...</p>
             : source.status === 'failed' ? <div className="workspace-error"><span className="workspace-badge">Failed</span><p className="text-sm">{source.error_message || 'Failed'}</p></div>
               : <p className="workspace-badge">Ready</p>}
-          {source.status === 'ready' && source.preflight?.checked === false &&
-            <p>Could not check {source.display_name} before generating</p>}
-          {source.status === 'ready' && source.preflight?.worth_generating === false &&
-            <p className="workspace-badge workspace-warning"><PreflightMessage reason={source.preflight.reason} /></p>}
         </li>
       })}
     </ul>

@@ -11,7 +11,7 @@ This guide describes the implementation at `f4b450e` on 2026-09-30. The [README]
 | SQLAlchemy and SQLite | Local persistence | $0 |
 | Operating system (OS) credential store through `keyring` | Provider secrets | $0 |
 | Anthropic, OpenAI, Gemini, OpenRouter | External model inference | $0 app subscription, usage billed by provider |
-| Optional TypeSafe Jev | Source assessment, ranking and quality checks | $0 app subscription, usage billed by provider |
+| Optional TypeSafe Jev | Section ranking and quality checks | $0 app subscription, usage billed by provider |
 | Manual evaluation harness | Offline analysis and budget-capped external calls | $0 locally, separate usage caps |
 
 Check account free allowances and known zero-price catalog models before paid calls. No shared inference service is required. Public hosting remains deferred until authentication, tenancy, durable jobs and spend caps exist.
@@ -108,7 +108,7 @@ Use the generated API schema for complete field definitions. The deprecated `/ap
 
 Supported parsers handle Portable Document Format (PDF), HyperText Markup Language (HTML), Markdown, Word documents, PowerPoint presentations and YouTube transcripts. YouTube titles use oEmbed when available. `source_names.display_name` avoids exposing timestamped storage names as user labels.
 
-Successful parsing stores full text, metadata and passages, then sets `ready` and `parsed_at`. Optional pre-flight assessment stores checked, worth-generating, teachable and transcript values. Failed parsing sets `failed` and an error message.
+Successful parsing stores full text, metadata and passages, then sets `ready` and `parsed_at`. Failed parsing sets `failed` and an error message. Empty parsed text sets `failed` with `No text could be read from this source.`
 
 Passages are section-local chunks of at most 1,500 characters with a 200-character overlap before whitespace trimming. Splitting prefers whitespace near the boundary. Each passage has an ordinal, section index, page or heading, locator and character offsets. YouTube locators use Part numbers. Passages cascade with source deletion.
 
@@ -116,9 +116,9 @@ The workspace polls every 2,000 milliseconds while sources process or jobs run. 
 
 ## Generation jobs and provenance
 
-`GenerateRequest` accepts `source_ids`, `kind` (`quiz` or `flashcards`), `num_questions` from 1 to 100, difficulty (`easy`, `medium`, `hard`, `mixed`), optional custom prompt and deck name, and `allow_unteachable`.
+`GenerateRequest` accepts `source_ids`, `kind` (`quiz` or `flashcards`), `num_questions` from 1 to 100, difficulty (`easy`, `medium`, `hard`, `mixed`), optional custom prompt and deck name.
 
-Selected sources must belong to the notebook. Processing sources return 409. Failed or foreign sources return 400. A pre-flight rejection returns 409 with named sources until `allow_unteachable` is true. Unchecked sources do not block.
+Selected sources must belong to the notebook. Processing sources return 409. Failed or foreign sources return 400.
 
 `num_questions` is the total for the deck. `question_split` weights by passage count and uses largest remainder allocation with source identifier tie breaks. With 0 passages across all sources, allocation uses equal weights. Shares sum to the requested total. Sources allocated 0 questions do not spawn generation tasks.
 
@@ -195,7 +195,7 @@ JavaScript Object Notation (JSON) columns preserve source selection, provenance,
 | Table | Important fields and relationships |
 | --- | --- |
 | `notebooks` | Name, description, icon. Owns documents and decks |
-| `documents` | Notebook, original and stored file names, type, path, size, full content, content hash, title, pages, `status`, `error_message`, `preflight`, `parsed_at` |
+| `documents` | Notebook, original and stored file names, type, path, size, full content, content hash, title, pages, `status`, `error_message`, `parsed_at` |
 | `document_passages` | Document foreign key with deletion cascade, ordinal unique per document, section index, page, heading, locator, text, `char_start`, `char_end` |
 | `decks` | Notebook, name, description, `kind`, `source_ids` |
 | `deck_questions` | Deck-question association and order. Supports shared questions |
@@ -236,7 +236,7 @@ Startup `init_db` creates tables only for an empty database. It does not upgrade
 | `84d5a1b9211a` | Canvas and routing log |
 | `2c468b48ab41` | Notebooks |
 | `7b5dca85479c` | Study days and awards |
-| `9c1e4f2a7b30` | Pre-flight pending request |
+| `9c1e4f2a7b30` | Generation pending request |
 | `b7f3a1c9d2e4` | Held-back questions |
 | `d4e8b2f6a1c3` | Repair damaged notebook icons |
 | `e5a9c3d7f1b2` | Jev usage |
@@ -278,9 +278,9 @@ See [backend/evals/README.md](../backend/evals/README.md) for freeze, generate, 
 
 Freeze records a deterministic corpus manifest. Generate stores raw candidates and production parser results for each model, prompt and passage cell. Check runs deterministic rules and pinned Jev checks. Judge makes separate blind solve and rubric calls. Human review uses a blind sheet with a separate model key. Report produces a self-contained offline HTML report. Agreement compares human and judge labels.
 
-`pilot.local.json` holds private source paths. Corpus and run artifacts are gitignored. Do not publish them as documentation. Generation dry-run makes 0 network calls and needs saved catalog prices. Screened freeze, generation, checks and judging can spend money. Offline report and agreement do not.
+`pilot.local.json` holds private source paths. Corpus and run artifacts are gitignored. Do not publish them as documentation. Generation dry-run makes 0 network calls and needs saved catalog prices. Freeze makes 0 API calls. Generation, checks and judging can spend money. Offline report and agreement do not.
 
-Pilot caps are $3.00 for generation/check ledger work and $2.50 for judging. Screening has its own cap accounting. Reservations precede calls and uncertain billing is retained on recovery. Only the run's writer recovers reservations under a lock. A cap cannot undo upstream charges above the estimate.
+Pilot caps are $3.00 for generation/check ledger work and $2.50 for judging. Reservations precede calls and uncertain billing is retained on recovery. Only the run's writer recovers reservations under a lock. A cap cannot undo upstream charges above the estimate.
 
 Pilot results remain pending. No model recommendation follows from harness implementation alone.
 

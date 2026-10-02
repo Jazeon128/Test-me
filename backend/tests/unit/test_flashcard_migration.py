@@ -2,7 +2,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, inspect, text
+from sqlalchemy import Column, Integer, JSON, MetaData, String, Table, create_engine, inspect, text
 
 from app.config import settings
 from app.models import Base
@@ -27,6 +27,7 @@ def test_full_upgrade_and_downgrade(tmp_path, monkeypatch):
           Column("id", Integer, primary_key=True, index=True),
           Column("name", String, unique=True, index=True, nullable=False),
           Column("color", String))
+    previous.tables["documents"].append_column(Column("preflight", JSON, nullable=True))
     previous.create_all(engine)
     command.stamp(config, "b4d6e8f0a2c5")
     try:

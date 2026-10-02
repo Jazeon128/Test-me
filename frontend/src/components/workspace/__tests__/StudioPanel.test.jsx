@@ -82,7 +82,7 @@ it('submits the card count and mixed difficulty after a hard quiz selection', as
   fireEvent.click(screen.getByRole('button', { name: 'Generate flashcards' }))
   await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledWith('7', {
     source_ids: [9], kind: 'flashcards', num_questions: 27, difficulty: 'mixed',
-    custom_prompt: '', deck_name: 'Recall', allow_unteachable: false,
+    custom_prompt: '', deck_name: 'Recall',
   }))
 })
 

@@ -31,6 +31,7 @@ def test_upgrade_and_downgrade(tmp_path, monkeypatch, populated):
              sa.Column("id", sa.Integer, primary_key=True, index=True),
              sa.Column("name", sa.String, unique=True, index=True, nullable=False),
              sa.Column("color", sa.String))
+    previous.tables["documents"].append_column(sa.Column("preflight", sa.JSON, nullable=True))
     previous.create_all(engine)
     command.stamp(config, "c6d8e0f2a4b7")
     try:

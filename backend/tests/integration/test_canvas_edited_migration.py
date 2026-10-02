@@ -22,6 +22,7 @@ engine = create_engine(settings.DATABASE_URL)
 Base.metadata.create_all(engine)
 with engine.begin() as connection:
     connection.execute(text("ALTER TABLE canvases DROP COLUMN edited_json"))
+    connection.execute(text("ALTER TABLE documents ADD COLUMN preflight JSON"))
 engine.dispose()
 command.stamp(config, "d7e9f1a3b5c8")
 command.upgrade(config, "head")

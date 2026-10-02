@@ -9,7 +9,6 @@ from ..models.document import Document
 from ..models.deck import Deck, DeckQuestion
 from ..models.flagged_question import FlaggedQuestion
 from ..utils.cache import invalidate_stats_cache
-from .source_names import display_name
 
 
 class GenerateRequest(BaseModel):
@@ -19,7 +18,6 @@ class GenerateRequest(BaseModel):
     difficulty: Literal["easy", "medium", "hard", "mixed"]
     custom_prompt: Optional[str] = None
     deck_name: Optional[str] = None
-    allow_unteachable: bool = False
 
 
 def remove_failed_empty_deck(db, job):
@@ -74,15 +72,4 @@ def selected_sources(db, notebook_id, request):
     failed = [source.id for source in sources if source.status == "failed"]
     if failed:
         raise HTTPException(status_code=400, detail=f"Failed sources: {failed}")
-    unteachable = [dict(id=source.id, display_name=display_name(source),
-                        is_teachable=source.preflight.get("is_teachable"),
-                        has_study_content=source.preflight.get("has_study_content"),
-                        reason=source.preflight.get("reason"))
-                   for source in sources
-                   if source.preflight and source.preflight.get("worth_generating") is False]
-    if unteachable and (not request.allow_unteachable
-                        or any(item["reason"] == "empty" for item in unteachable)):
-        raise HTTPException(status_code=409, detail={
-            "detail": "Sources may not contain anything to study", "unteachable": unteachable,
-        })
     return sources

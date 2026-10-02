@@ -26,7 +26,7 @@ from ..services.parsers import (
     YouTubeParser,
     PowerPointParser,
 )
-from ..services.ai import QuestionGenerator, sourcing
+from ..services.ai import QuestionGenerator
 from ..config import settings
 from ..utils.logging import get_logger
 from ..utils.file_validation import validate_upload_file
@@ -34,7 +34,6 @@ from ..services.source_names import display_name
 from ..services.notebooks import resolve_notebook_id
 from ..services.generation import remove_failed_empty_deck
 from ..services.ingest import store_passages, passage_counts, source_fields
-from .questions import _typesafe_key
 from ..exceptions import (
     FileUploadError,
     ResourceNotFoundError,
@@ -58,7 +57,6 @@ async def upload_document(
     notebook_id: Optional[int] = Form(None),
     regenerate: bool = Form(False),
     custom_prompt: Optional[str] = Form(None),
-    skip_preflight: bool = Form(False),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
 ):
@@ -75,7 +73,6 @@ async def upload_document(
         notebook_id: The notebook these sources belong to
         regenerate: If True, regenerate all questions from all documents in deck
         custom_prompt: Custom instructions for question generation
-        skip_preflight: If True, generate without checking the sources first
     """
     type_mapping = {
         ".pdf": DocumentType.PDF,
@@ -225,18 +222,6 @@ async def upload_document(
         ],
     }
 
-    # Pre-flight: judge each source before any generation token is spent. It
-    # runs only with a TypeSafe key, and an unchecked source always passes, so
-    # without Jev the upload behaves exactly as it did before.
-    preflight = []
-    api_key = _typesafe_key(db)
-    if api_key and not skip_preflight:
-        preflight = await run_in_threadpool(assess_sources, uploaded_documents, api_key)
-
-    source_names = {d["id"]: d["display_name"] for d in uploaded_documents}
-    for item in preflight:
-        item["display_name"] = source_names.get(item["document_id"])
-
     base_response = {
         "job_id": job_id,
         "deck_id": deck.id,
@@ -244,28 +229,7 @@ async def upload_document(
         "documents": [{"id": d["id"], "filename": d["filename"],
                        "display_name": d["display_name"]} for d in uploaded_documents],
         "regenerate": regenerate,
-        "preflight": preflight,
     }
-
-    rejected = [item for item in preflight if not item["worth_generating"]]
-    if rejected:
-        pending_request["empty_sources"] = [item["document_id"] for item in rejected
-                                            if item.get("reason") == "empty"]
-        gen_status.status = "awaiting_confirmation"
-        gen_status.current_step = "Waiting for confirmation"
-        gen_status.pending_request = pending_request
-        for item in rejected:
-            gen_status.add_log(
-                f"Pre-flight: {item['filename']} looks unteachable "
-                f"(teachable {item['is_teachable']:.2f})",
-                level="warning",
-            )
-        db.commit()
-        return {
-            **base_response,
-            "status": "needs_confirmation",
-            "message": f"{len(rejected)} source(s) may not contain anything to study.",
-        }
 
     message = schedule_generation(background_tasks, pending_request, job_id)
     return {**base_response, "status": "processing", "message": message}
@@ -314,105 +278,6 @@ def _parser_for(file_type: DocumentType):
         DocumentType.PPTX: PowerPointParser,
         DocumentType.YOUTUBE: YouTubeParser,
     }[file_type]()
-
-
-def assess_sources(documents: List[dict], api_key: str) -> List[dict]:
-    """Parse each stored document and judge whether it is worth generating from.
-
-    Runs in a worker thread. A file that cannot be parsed here is reported as
-    unchecked rather than rejected: generation will surface the real error.
-    """
-    results = []
-    for doc in documents:
-        result = {
-            "document_id": doc["id"],
-            "filename": doc["filename"],
-            "checked": False,
-            "worth_generating": True,
-            "is_teachable": None,
-            "is_transcript": None,
-            "has_study_content": None,
-            "reason": "unchecked",
-        }
-        try:
-            parsed = _parser_for(doc["file_type"]).parse(doc["file_path"])
-        except Exception as error:  # noqa: BLE001 - any parse failure means unchecked
-            logger.warning("preflight_parse_failed", filename=doc["filename"], error=str(error))
-            results.append(result)
-            continue
-
-        assessment = sourcing.assess_source(parsed.title or doc["filename"], parsed.full_text, api_key)
-        result.update(
-            has_study_content=round(assessment.has_study_content, 3) if assessment.checked else None,
-            reason=assessment.reason,
-            checked=assessment.checked,
-            worth_generating=assessment.worth_generating,
-            is_teachable=round(assessment.is_teachable, 3) if assessment.checked else None,
-            is_transcript=round(assessment.is_transcript, 3) if assessment.checked else None,
-        )
-        results.append(result)
-    return results
-
-
-def _awaiting_job(job_id: str, db: Session) -> GenerationStatus:
-    job = db.query(GenerationStatus).filter(GenerationStatus.job_id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Generation job not found")
-    if job.status != "awaiting_confirmation" or not job.pending_request:
-        raise HTTPException(status_code=409, detail="This job is not waiting for confirmation.")
-    return job
-
-
-@router.post("/jobs/{job_id}/confirm")
-def confirm_generation(
-    job_id: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-):
-    """Generate from sources that failed pre-flight, reusing the stored files."""
-    job = _awaiting_job(job_id, db)
-    request = job.pending_request
-    if request.get("empty_sources"):
-        raise HTTPException(status_code=409, detail="No text could be read from this source")
-
-    job.status = "pending"
-    job.current_step = "Queued"
-    job.pending_request = None
-    job.add_log("Generation confirmed by the user despite the pre-flight warning")
-    db.commit()
-
-    message = schedule_generation(background_tasks, request, job_id)
-    return {"job_id": job_id, "deck_id": request["deck_id"], "status": "processing", "message": message}
-
-
-@router.post("/jobs/{job_id}/cancel")
-def cancel_generation(job_id: str, db: Session = Depends(get_db)):
-    """Drop an upload that failed pre-flight: its files, rows and any new empty deck."""
-    job = _awaiting_job(job_id, db)
-    request = job.pending_request
-
-    for doc in request["documents"]:
-        document = db.query(Document).filter(Document.id == doc["id"]).first()
-        if document:
-            if document.file_path and os.path.exists(document.file_path):
-                os.remove(document.file_path)
-            db.delete(document)
-
-    deck_removed = False
-    if request.get("deck_created"):
-        deck = db.query(Test).filter(Test.id == request["deck_id"]).first()
-        if deck and not deck.questions:
-            db.delete(deck)
-            deck_removed = True
-
-    job.status = "cancelled"
-    job.current_step = "Cancelled"
-    job.pending_request = None
-    job.add_log("Upload cancelled after the pre-flight warning")
-    db.commit()
-    invalidate_stats_cache()
-
-    return {"job_id": job_id, "status": "cancelled", "deck_removed": deck_removed}
 
 
 def _save_generated_question(db, q_data, document_id, deck) -> Question:

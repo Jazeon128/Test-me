@@ -8,10 +8,15 @@ Jev is not confident enough, or is not configured at all, the person picks.
 import uuid
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
+from .documents import _save_generated_question
+from ..models.deck import Deck
+from ..models.flagged_question import FlaggedQuestion
+from ..utils.cache import invalidate_stats_cache
 from ..db import SessionLocal, get_db
 from ..models.canvas import Canvas, CanvasRoutingLog, canvas_source_ids
 from ..models.document import Document
@@ -510,32 +515,90 @@ async def node_source(canvas_id: int, node_id: str, db: Session = Depends(get_db
     }
 
 
-@router.post("/{canvas_id}/nodes/{node_id}/questions")
-async def questions_for_node(
-    canvas_id: int, node_id: str, count: int = 3, db: Session = Depends(get_db)
-):
-    """Generate questions scoped to one node's source passage.
-
-    This is the seam back into the existing quiz engine: a node on the canvas
-    becomes practice on exactly the passage it came from.
-    """
-    canvas = db.query(Canvas).filter(Canvas.id == canvas_id).first()
-    if not canvas:
-        raise HTTPException(status_code=404, detail="Canvas not found")
-
+def _node_canvas(db, canvas_id, node_id):
+    canvas = db.get(Canvas, canvas_id)
+    if canvas is None:
+        raise HTTPException(404, "Canvas not found")
     node = _find_node(canvas.payload_json, node_id)
     if node is None:
-        raise HTTPException(status_code=404, detail="Node not found on this canvas")
+        raise HTTPException(404, "Node not found on this canvas")
+    return canvas, node
 
-    section = next(
-        (s for s in canvas.sources_json if s["id"] == node.get("source_section_id")), None
-    )
+
+def _matches_node(reference, canvas_id, node_id):
+    reference = reference or {}
+    return reference.get("canvas_id") == canvas_id and reference.get("node_id") == node_id
+
+
+def _question_json(question):
+    options = sorted(question.options, key=lambda option: option.order)
+    return {
+        "id": question.id, "question": question.question_text,
+        "options": [{"option": chr(65 + option.order), "text": option.option_text}
+                    for option in options],
+        "correct_answer": next((chr(65 + option.order) for option in options
+                                if option.is_correct), None),
+        "explanation": question.explanation,
+    }
+
+
+def _node_questions(db, canvas, node_id, generated=False):
+    deck = db.query(Deck).filter_by(canvas_id=canvas.id).first()
+    questions = []
+    held_back = 0
+    if deck is not None:
+        questions = [_question_json(q) for q in deck.questions
+                     if _matches_node(q.source_reference, canvas.id, node_id)]
+        held_back = sum(_matches_node(row.payload.get("reference"), canvas.id, node_id)
+                        for row in db.query(FlaggedQuestion).filter_by(
+                            deck_id=deck.id, status="pending").all())
+    return {
+        "node_id": node_id, "deck_id": deck.id if deck else None,
+        "notebook_id": canvas.document.notebook_id, "questions": questions,
+        "held_back": held_back, "generated": generated,
+    }
+
+
+@router.get("/{canvas_id}/nodes/{node_id}/questions")
+async def saved_questions_for_node(canvas_id: int, node_id: str, db: Session = Depends(get_db)):
+    canvas, _ = _node_canvas(db, canvas_id, node_id)
+    return _node_questions(db, canvas, node_id)
+
+
+def _canvas_deck(db, canvas_id, notebook_id, source_ids, name):
+    deck = db.query(Deck).filter_by(canvas_id=canvas_id).first()
+    if deck is not None:
+        return deck
+    deck = Deck(notebook_id=notebook_id, kind="quiz", canvas_id=canvas_id,
+                source_ids=source_ids, name=name)
+    db.add(deck)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        deck = db.query(Deck).filter_by(canvas_id=canvas_id).one()
+    return deck
+
+
+def _with_node_reference(data, canvas_id, node_id):
+    return {**data, "reference": {**(data.get("reference") or {}),
+                                  "canvas_id": canvas_id, "node_id": node_id}}
+
+
+@router.post("/{canvas_id}/nodes/{node_id}/questions")
+async def questions_for_node(
+    canvas_id: int, node_id: str, count: int = Query(3, ge=1, le=10),
+    more: bool = False, db: Session = Depends(get_db),
+):
+    """Generate and save practice questions scoped to a node's passage."""
+    canvas, node = _node_canvas(db, canvas_id, node_id)
+    saved = _node_questions(db, canvas, node_id)
+    if not more and saved["questions"]:
+        return saved
+    section = next((s for s in canvas.sources_json
+                    if s["id"] == node.get("source_section_id")), None)
     if section is None:
-        raise HTTPException(
-            status_code=409,
-            detail="This node has no source passage, so there is nothing to be tested on.",
-        )
-
+        raise HTTPException(409, "This node has no source passage, so there is nothing to be tested on.")
     from ..services.parsers.base_parser import ParsedDocument, ParsedSection
 
     scoped = ParsedDocument(
@@ -543,12 +606,34 @@ async def questions_for_node(
         sections=[ParsedSection(text=section["text"], page=section.get("page"))],
         title=node.get("label") or canvas.title,
     )
-
+    document_id = section.get("document_id", canvas.document_id)
+    notebook_id = saved["notebook_id"]
+    source_ids = canvas_source_ids(canvas)
+    name = f"Canvas: {canvas.title or canvas.request_text}"[:255]
+    db.rollback()
     generator = QuestionGenerator(db=db)
     questions = generator.generate_questions(
         parsed_doc=scoped, num_questions=count, difficulty="mixed"
     )
-    return {"node_id": node_id, "questions": questions}
+    db.rollback()
+    try:
+        deck = _canvas_deck(db, canvas_id, notebook_id, source_ids, name)
+        for data in questions:
+            _save_generated_question(db, _with_node_reference(data, canvas_id, node_id), document_id, deck)
+        for data in generator.flagged_questions:
+            payload = _with_node_reference(data, canvas_id, node_id)
+            db.add(FlaggedQuestion(
+                deck_id=deck.id, document_id=document_id,
+                job_id=f"canvas-node-{canvas_id}-{node_id}",
+                payload={key: value for key, value in payload.items() if key != "flags"},
+                reasons=data["flags"],
+            ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    invalidate_stats_cache()
+    return _node_questions(db, db.get(Canvas, canvas_id), node_id, generated=True)
 
 
 def _matrix_cell(payload: Dict, node_id: str) -> Optional[Dict]:

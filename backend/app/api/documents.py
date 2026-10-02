@@ -762,6 +762,18 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     canvases = [canvas for canvas in db.query(Canvas).all()
                 if document_id in canvas_source_ids(canvas)]
     canvas_ids = [canvas.id for canvas in canvases]
+    from ..models.deck import Deck, DeckQuestion
+
+    canvas_decks = db.query(Deck).filter(Deck.canvas_id.in_(canvas_ids)).all()
+    deck_ids = [deck.id for deck in canvas_decks]
+    for deck in canvas_decks:
+        deck.canvas_id = None
+    retained_ids = db.query(DeckQuestion.question_id).filter(DeckQuestion.deck_id.in_(deck_ids))
+    db.query(Question).filter(Question.id.in_(retained_ids), Question.document_id == document_id).update(
+        {Question.document_id: None}, synchronize_session="fetch")
+    db.query(FlaggedQuestion).filter(
+        FlaggedQuestion.deck_id.in_(deck_ids), FlaggedQuestion.document_id == document_id,
+    ).update({FlaggedQuestion.document_id: None}, synchronize_session="fetch")
     db.query(CanvasRoutingLog).filter(or_(
         CanvasRoutingLog.document_id == document_id,
         CanvasRoutingLog.canvas_id.in_(canvas_ids),

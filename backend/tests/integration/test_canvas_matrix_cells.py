@@ -55,14 +55,18 @@ def test_missing_matrix_cell(client, matrix):
 
 @pytest.mark.parametrize("index,label", [(0, "Concise syntax"), (1, "Java: Readability")])
 def test_matrix_cell_questions(client, matrix, monkeypatch, index, label):
-    questions = [{"question": "What syntax does this language use?", "options": []}]
-    generator = Mock()
+    questions = [{"question": "What syntax does this language use?", "options": [{"option": "A", "text": "Concise"}], "correct_answer": "A", "explanation": "Syntax."}]
+    generator = Mock(flagged_questions=[])
     generator.generate_questions.return_value = questions
     factory = Mock(return_value=generator)
     monkeypatch.setattr(canvas_api, "QuestionGenerator", factory)
     response = client.post(f"/api/canvas/{matrix.id}/nodes/cell-{index}/questions")
     assert response.status_code == 200
-    assert response.json() == {"node_id": f"cell-{index}", "questions": questions}
+    data = response.json()
+    assert data == {"node_id": f"cell-{index}", "questions": [{**questions[0], "id": data["questions"][0]["id"]}],
+                    "deck_id": data["deck_id"], "notebook_id": None, "held_back": 0, "generated": True}
+    assert data["deck_id"] is not None
+    assert data["questions"][0]["id"] is not None
     generator.generate_questions.assert_called_once()
     args = generator.generate_questions.call_args.kwargs
     assert args["parsed_doc"].title == label

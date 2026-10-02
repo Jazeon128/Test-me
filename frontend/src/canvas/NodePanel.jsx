@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { canvasAPI } from '../services/api'
@@ -12,24 +13,43 @@ import { serverMessage } from '../utils/serverMessage'
  * to exactly that passage.
  */
 export default function NodePanel({ canvasId, node, source, onClose }) {
-  const [questions, setQuestions] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState({ questions: [], held_back: 0 })
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [shownAnswers, setShownAnswers] = useState({})
+  const questions = result.questions
+
+  useEffect(() => {
+    let active = true
+    setResult({ questions: [], held_back: 0 })
+    setShownAnswers({})
+    setLoading(true)
+    setError(null)
+    canvasAPI.savedQuestionsForNode(canvasId, node.id).then(response => {
+      if (active) setResult(response.data)
+    }).catch(err => {
+      if (active) setError(serverMessage(err) || 'Could not load questions for this node.')
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [canvasId, node.id])
 
   const testMe = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await canvasAPI.questionsForNode(canvasId, node.id)
-      setQuestions(response.data.questions)
+      const response = questions.length
+        ? await canvasAPI.questionsForNode(canvasId, node.id, 3, true)
+        : await canvasAPI.questionsForNode(canvasId, node.id)
+      setResult(response.data)
     } catch (err) {
-      setError(
-        serverMessage(err) || 'Could not generate questions for this node.'
-      )
+      setError(serverMessage(err) || 'Could not generate questions for this node.')
     } finally {
       setLoading(false)
     }
   }
+  const deckUrl = `/notebooks/${result.notebook_id}?deck=${result.deck_id}`
 
   return (
     <aside
@@ -86,7 +106,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
           <div className="mt-5 space-y-4">
             {questions.map((question, index) => (
               <div
-                key={index}
+                key={question.id || index}
                 className="rounded-lg border p-3"
                 style={{ borderColor: 'var(--line)', background: 'var(--s2)' }}
               >
@@ -100,10 +120,24 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
                     </li>
                   ))}
                 </ul>
+                <button type="button" className="mt-2 text-sm" aria-expanded={!!shownAnswers[question.id]}
+                  onClick={() => setShownAnswers(current => ({ ...current, [question.id]: !current[question.id] }))}>
+                  {shownAnswers[question.id] ? 'Hide answer' : 'Show answer'}
+                </button>
+                {shownAnswers[question.id] && <p className="mt-2 text-sm">
+                  Answer: {question.correct_answer}. {question.explanation}
+                </p>}
               </div>
             ))}
           </div>
         )}
+        {result.deck_id && <div className="mt-4">
+          <Link className="btn-primary" to={`${deckUrl}&view=practice`}>Practise canvas deck</Link>
+        </div>}
+        {result.held_back > 0 && <p className="mt-4 text-sm">
+          {result.held_back} held back by the quality check.{' '}
+          <Link to={`${deckUrl}&view=edit`}>Review</Link>
+        </p>}
       </div>
 
       {source?.section && (
@@ -116,7 +150,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
             style={{ background: 'var(--accent)', color: 'var(--accent-ink)', minHeight: 44 }}
           >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-            {loading ? 'Writing questions' : 'Test me on this'}
+            {loading ? 'Generating...' : questions.length ? 'Make 3 more' : 'Test me on this'}
           </button>
         </div>
       )}

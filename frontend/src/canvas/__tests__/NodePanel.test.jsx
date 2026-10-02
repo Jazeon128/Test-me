@@ -5,7 +5,7 @@ import Canvas from '../../pages/Canvas'
 import { canvasAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
-  canvasAPI: { get: vi.fn(), nodeSource: vi.fn(), questionsForNode: vi.fn() },
+  canvasAPI: { get: vi.fn(), nodeSource: vi.fn(), questionsForNode: vi.fn(), savedQuestionsForNode: vi.fn() },
   statusAPI: { get: vi.fn() },
 }))
 vi.mock('../layout', () => ({
@@ -34,6 +34,7 @@ vi.mock('@xyflow/react', async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  canvasAPI.savedQuestionsForNode.mockResolvedValue({ data: { questions: [], held_back: 0 } })
   canvasAPI.get.mockResolvedValue({ data: {
     id: 7, document_id: 42, request_text: 'Compare nodes', template: 'flowchart', payload: {},
   } })
@@ -48,6 +49,7 @@ async function open() {
   </MemoryRouter>)
   fireEvent.click(await screen.findByRole('button', { name: 'Open Node A' }))
   await screen.findByText('Passage A')
+  await screen.findByRole('button', { name: 'Test me on this' })
 }
 
 it('removes node A questions when the Canvas parent selects node B', async () => {

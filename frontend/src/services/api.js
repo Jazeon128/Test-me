@@ -277,8 +277,9 @@ export const canvasAPI = {
   listForDocument: (documentId) => api.get(`/canvas/document/${documentId}`),
   update: (canvasId, body) => api.patch(`/canvas/${canvasId}`, body),
   nodeSource: (canvasId, nodeId) => api.get(`/canvas/${canvasId}/nodes/${nodeId}/source`),
-  questionsForNode: (canvasId, nodeId, count = 3) =>
-    api.post(`/canvas/${canvasId}/nodes/${nodeId}/questions?count=${count}`),
+  savedQuestionsForNode: (canvasId, nodeId) => api.get(`/canvas/${canvasId}/nodes/${nodeId}/questions`),
+  questionsForNode: (canvasId, nodeId, count = 3, more = false) =>
+    api.post(`/canvas/${canvasId}/nodes/${nodeId}/questions?count=${count}&more=${more}`),
 }
 
 // Tags API

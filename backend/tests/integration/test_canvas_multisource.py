@@ -117,7 +117,7 @@ def test_generation_provenance_and_prompt(client, db_session, sources, monkeypat
     assert serialized["sources"] == [{"id": id, "name": name} for id, name in zip(ids, names)]
     last = client.get(f"/api/canvas/{canvas.id}/nodes/n{count - 1}/source").json()["section"]
     assert last == sections[-1]
-    questions = Mock()
+    questions = Mock(flagged_questions=[])
     questions.generate_questions.return_value = []
     monkeypatch.setattr(api, "QuestionGenerator", lambda db: questions)
     assert client.post(f"/api/canvas/{canvas.id}/nodes/n{count - 1}/questions").status_code == 200

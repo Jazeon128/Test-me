@@ -28,7 +28,7 @@ The database migration head is `f2a8c4e6b1d9`. Backups are gitignored but retain
 | Item | Verdict | Next action |
 | --- | --- | --- |
 | Pre-flight judges tooling documents as teachable | Recommended | Collect labelled counterexamples and measure false positives before changing the assessment |
-| Static Firebase Hosting demo | Recommended | Define a static demo that exposes neither local secrets nor a shared paid backend |
+| Static Firebase Hosting demo | Recommended | Define a static demo that exposes neither local secrets nor a shared paid backend. Content chosen 2026-10-02: the learning pyramid |
 | Live public hosting | Deferred | Require authentication, tenancy, durable jobs and spend caps |
 | Evaluation pilot results | Recommended | Complete generation, checks, blind judging, human review, agreement and aggregate report |
 | Gemini overload fallback | Deferred | Use pilot evidence to decide whether a fallback is needed and which model to select |

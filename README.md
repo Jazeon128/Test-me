@@ -159,3 +159,7 @@ Live public hosting is deferred until authentication, tenancy, durable jobs and 
 ## Feedback
 
 Open a GitHub issue for bugs or documentation corrections without sharing credentials or private source files.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -1,12 +1,14 @@
+import { useParams } from 'react-router-dom'
 import Spinner from './Spinner'
 import FlashcardCard from './FlashcardCard'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { progressAPI, decksAPI } from '../services/api'
+import { notebooksAPI, progressAPI, decksAPI } from '../services/api'
 import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, Lightbulb } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, embedded = false }) {
+export default function PracticeSession({ deckId, questionIds, onExit, onFinished, onEmpty, embedded = false }) {
 
+  const { notebookId } = useParams()
   const [deckHasItems, setDeckHasItems] = useState(false)
   const [complete, setComplete] = useState(false)
   const [mode, setMode] = useState('choice')
@@ -57,8 +59,10 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     let cancelled = false
     const loadQuestions = async () => {
       try {
-        const response = await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
-        if (deckId && response.data.questions.length === 0) {
+        const response = questionIds
+          ? await notebooksAPI.practiceQuestions(notebookId, questionIds)
+          : await progressAPI.getReviewSession(50, true, true, deckId ? parseInt(deckId) : null)
+        if (!questionIds && deckId && response.data.questions.length === 0) {
           const deck = await decksAPI.get(deckId)
           if (!cancelled) setDeckHasItems(deck.data.num_questions > 0)
         }
@@ -74,7 +78,7 @@ export default function PracticeSession({ deckId, onExit, onFinished, onEmpty, e
     }
     loadQuestions()
     return () => { cancelled = true }
-  }, [deckId, onExit])
+  }, [deckId, questionIds, notebookId, onExit])
 
   useEffect(() => {
     if (showResult || questions.length === 0) return

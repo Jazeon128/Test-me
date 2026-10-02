@@ -7,12 +7,13 @@ import NotebookWorkspace from '../../../pages/NotebookWorkspace'
 import { notebooksAPI, tagsAPI } from '../../../services/api'
 
 vi.mock('../../../services/api', () => ({
-  notebooksAPI: { questions: vi.fn(), heldBack: vi.fn(), workspace: vi.fn() },
-  tagsAPI: { list: vi.fn() }, statusAPI: { get: vi.fn() },
+  notebooksAPI: { questions: vi.fn(), heldBack: vi.fn(), workspace: vi.fn(), bulkQuestions: vi.fn() },
+  tagsAPI: { list: vi.fn(), create: vi.fn() }, statusAPI: { get: vi.fn() },
 }))
 vi.mock('../../workspace/SourcesPanel', () => ({ default: () => <p>Sources</p> }))
 vi.mock('../../workspace/StudioPanel', () => ({ default: () => <p>Studio</p> }))
 vi.mock('../../workspace/ChatPanel', () => ({ default: () => <textarea aria-label="Chat input" /> }))
+vi.mock('../../PracticeSession', () => ({ default: ({ questionIds, onExit }) => <div><p>Practising ids {questionIds.join(',')}</p><button onClick={onExit}>Exit practice</button></div> }))
 vi.mock('../../DeckEditor', () => ({ default: ({ deckId }) => <p>Editor {deckId}</p> }))
 const workspace = {
   notebook: { name: 'Biology' }, sources: [{ id: 2, display_name: 'Source', status: 'ready' }],
@@ -83,7 +84,7 @@ describe('Notebook question bank', () => {
     expect(screen.getByText('A. Answer')).toBeInTheDocument()
     expect(screen.getByText('(Correct)')).toBeInTheDocument()
     expect(screen.getByText('Edited')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Practise' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Practise' })).toBeEnabled()
     fireEvent.click(expand)
     fireEvent.click(screen.getByRole('button', { name: /Front 2/ }))
     expect(screen.getByText('Back')).toBeInTheDocument()
@@ -226,4 +227,127 @@ it('names filters, expansion and page selection and uses the requested option wo
   const correct = screen.getByText('(Correct)').closest('li')
   expect(correct).toHaveClass('bank-option-correct')
   expect(correct.querySelector('svg.lucide-check')).toHaveAttribute('aria-hidden', 'true')
+})
+
+it('shows actions with selection and adds to a new deck with a live message', async () => {
+  mount({ full: true })
+  await screen.findByText('Front 1')
+  expect(screen.queryByRole('region', { name: 'Selection actions' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  expect(screen.getByRole('region', { name: 'Selection actions' })).toBeInTheDocument()
+  notebooksAPI.bulkQuestions.mockResolvedValue({ data: { affected: 1, skipped: 0, deck_id: 8 } })
+  click('Add to deck')
+  click('New deck...')
+  fireEvent.change(screen.getByLabelText('Deck name'), { target: { value: 'AWS practice' } })
+  click('Create and apply')
+  await screen.findByText('Added 1 to AWS practice.')
+  expect(notebooksAPI.bulkQuestions).toHaveBeenCalledWith('7', { question_ids: [1], action: 'add_to_deck', new_deck_name: 'AWS practice' })
+  expect(screen.getByText('Added 1 to AWS practice.')).toHaveAttribute('aria-live', 'polite')
+  await waitFor(() => expect(screen.getByLabelText('Select Front 1')).toBeChecked())
+  expect(notebooksAPI.workspace).toHaveBeenCalledTimes(2)
+})
+
+it('confirms delete counts across pages, cancels, and clears selection after delete', async () => {
+  mount()
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  click('Next')
+  await screen.findByText('Front 51')
+  fireEvent.click(screen.getByLabelText('Select Front 51'))
+  click('Delete')
+  await screen.findByText('Delete 2 items everywhere? This also deletes their progress and removes them from 1 decks.')
+  expect(notebooksAPI.bulkQuestions).not.toHaveBeenCalled()
+  click('Cancel')
+  expect(screen.queryByText(/Delete 2 items everywhere/)).not.toBeInTheDocument()
+  click('Delete')
+  await screen.findByText(/Delete 2 items everywhere/)
+  notebooksAPI.bulkQuestions.mockResolvedValue({ data: { affected: 2, skipped: 0 } })
+  const menu = screen.getByLabelText('delete')
+  fireEvent.click(within(menu).getByRole('button', { name: 'Delete' }))
+  await screen.findByText('Deleted 2 items.')
+  expect(screen.queryByRole('region', { name: 'Selection actions' })).not.toBeInTheDocument()
+  expect(screen.getByText('Deleted 2 items.')).toHaveAttribute('aria-live', 'polite')
+})
+
+it('practises selected ids and returns with selection and filters kept', async () => {
+  mount({ full: true, query: '?view=questions&difficulty=hard' })
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  fireEvent.click(screen.getByLabelText('Select Front 2'))
+  click('Practise')
+  await screen.findByText('Practising ids 1,2')
+  expect(screen.getByLabelText('URL')).toHaveTextContent('view=practice-selection')
+  expect(screen.getByLabelText('URL')).not.toHaveTextContent('question_ids')
+  click('Close')
+  await screen.findByText('Front 1')
+  expect(screen.getByLabelText('URL')).toHaveTextContent('view=questions')
+  expect(screen.getByLabelText('Select Front 1')).toBeChecked()
+  expect(screen.getByLabelText('Select Front 2')).toBeChecked()
+  expect(screen.getByRole('combobox', { name: 'Difficulty', exact: true })).toHaveValue('hard')
+})
+
+it('returns a refreshed practice-selection URL to the bank with a note', async () => {
+  mount({ full: true, query: '?view=practice-selection' })
+  await screen.findByText('Choose the items to practise again.')
+  await screen.findByText('Front 1')
+  expect(screen.getByLabelText('URL')).toHaveTextContent('view=questions')
+})
+
+it('practises a single preview item without changing selection', async () => {
+  mount({ full: true })
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  fireEvent.click(screen.getByRole('button', { name: 'Show details: Front 2' }))
+  fireEvent.click(within(screen.getByRole('button', { name: 'Show details: Front 2' }).closest('li')).getByRole('button', { name: 'Practise' }))
+  await screen.findByText('Practising ids 2')
+  click('Exit practice')
+  await screen.findByText('Front 1')
+  expect(screen.getByLabelText('Select Front 1')).toBeChecked()
+  expect(screen.getByLabelText('Select Front 2')).not.toBeChecked()
+})
+
+it('shows More on mobile and puts the other actions inside it', async () => {
+  window.matchMedia.mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  mount()
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  expect(screen.getByRole('button', { name: 'Practise' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Add to deck' })).not.toBeInTheDocument()
+  click('More')
+  expect(screen.getByRole('button', { name: 'More' })).toHaveAttribute('aria-expanded', 'true')
+  for (const name of ['Add to deck', 'Remove from deck', 'Tag', 'Untag', 'Delete']) {
+    expect(screen.getByRole('button', { name, exact: true })).toBeInTheDocument()
+  }
+})
+
+it('applies existing deck, tag, untag and remove actions and reports skipped items', async () => {
+  mount()
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  notebooksAPI.bulkQuestions.mockResolvedValue({ data: { affected: 0, skipped: 1 } })
+  click('Add to deck')
+  fireEvent.click(within(screen.getByLabelText('add_to_deck')).getByRole('button', { name: 'Deck' }))
+  await screen.findByText('Added 0 to Deck. 1 were already there.')
+  for (const [label, action, field, target] of [['Remove from deck', 'remove_from_deck', 'deck_id', 'Deck'], ['Tag', 'tag', 'tag_id', 'Tag'], ['Untag', 'untag', 'tag_id', 'Tag']]) {
+    click(label)
+    const menu = await screen.findByLabelText(action)
+    fireEvent.click(within(menu).getByRole('button', { name: target, exact: true }))
+    await waitFor(() => expect(notebooksAPI.bulkQuestions).toHaveBeenLastCalledWith('7', { question_ids: [1], action, [field]: field === 'deck_id' ? 3 : 4 }))
+    await waitFor(() => expect(screen.queryByLabelText(action)).not.toBeInTheDocument())
+  }
+})
+
+it('creates a notebook tag then applies it', async () => {
+  mount()
+  await screen.findByText('Front 1')
+  fireEvent.click(screen.getByLabelText('Select Front 1'))
+  tagsAPI.create.mockResolvedValue({ data: { id: 9, name: 'Revision', shared: false } })
+  notebooksAPI.bulkQuestions.mockResolvedValue({ data: { affected: 1, skipped: 0 } })
+  click('Tag')
+  click('New tag...')
+  fireEvent.change(screen.getByLabelText('Tag name'), { target: { value: 'Revision' } })
+  click('Create and apply')
+  await screen.findByText('Tagged 1 with Revision.')
+  expect(tagsAPI.create).toHaveBeenCalledWith({ name: 'Revision', notebook_id: 7 })
+  expect(notebooksAPI.bulkQuestions).toHaveBeenCalledWith('7', { question_ids: [1], action: 'tag', tag_id: 9 })
 })

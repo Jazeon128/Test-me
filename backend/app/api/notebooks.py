@@ -6,7 +6,7 @@ import uuid
 from fastapi import Query, APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from ..services.source_names import display_name
@@ -23,7 +23,8 @@ from ..services.ai.question_generator import explain_provider_error
 from ..models.generation_status import GenerationStatus
 from ..services.generation import GenerateRequest, selected_sources, question_split
 from ..services.workspace import notebook_workspace
-from ..services.question_bank import question_bank, held_back
+from ..services.question_bank import question_bank, held_back, bulk_questions, practice_questions
+from .questions import delete_question_data
 from .documents import process_document
 from ..services.ingest import save_source, parse_source_task, passage_counts, source_fields
 from ..services.parsers import YouTubeParser
@@ -419,3 +420,52 @@ def get_question_bank(
 def get_held_back(notebook_id: int, db: Session = Depends(get_db)):
     _chat_notebook(db, notebook_id)
     return held_back(db, notebook_id)
+
+
+class BankSelectionRequest(BaseModel):
+    question_ids: List[int] = Field(min_length=1, max_length=500)
+
+    @field_validator('question_ids')
+    @classmethod
+    def unique_ids(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError('Question ids must be unique')
+        return value
+
+
+class BankPracticeRequest(BankSelectionRequest):
+    question_ids: List[int] = Field(min_length=1, max_length=200)
+
+
+class BankBulkRequest(BankSelectionRequest):
+    action: Literal['add_to_deck', 'remove_from_deck', 'tag', 'untag', 'delete']
+    deck_id: Optional[int] = None
+    new_deck_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    tag_id: Optional[int] = None
+
+    @model_validator(mode='after')
+    def action_fields(self):
+        if self.action == 'add_to_deck':
+            if (self.deck_id is None) == (self.new_deck_name is None):
+                raise ValueError('Supply exactly one of deck_id or new_deck_name')
+        if self.new_deck_name is not None and not self.new_deck_name.strip():
+            raise ValueError('Deck name must contain text')
+        if self.action == 'remove_from_deck' and self.deck_id is None:
+            raise ValueError('Supply deck_id')
+        if self.action in ('tag', 'untag') and self.tag_id is None:
+            raise ValueError('Supply tag_id')
+        return self
+
+
+@router.post('/{notebook_id}/questions/bulk')
+def post_bank_bulk(notebook_id: int, request: BankBulkRequest, db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    result = bulk_questions(db, notebook_id, request, delete_question_data)
+    invalidate_stats_cache()
+    return result
+
+
+@router.post('/{notebook_id}/questions/practice')
+def post_bank_practice(notebook_id: int, request: BankPracticeRequest, db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    return practice_questions(db, notebook_id, request.question_ids)

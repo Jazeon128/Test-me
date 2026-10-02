@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { notebooksAPI, tagsAPI } from '../../services/api'
+import BankActions from './BankActions'
 import BankRow from './BankRow'
 import useMediaQuery from '../../hooks/useMediaQuery'
 
@@ -26,14 +27,18 @@ function Search({ value, change }) {
   </label>
 }
 
-export default function QuestionBank({ notebookId, workspace, open }) {
+export default function QuestionBank({ notebookId, workspace, open, selected: controlledSelected, setSelected: controlledSetSelected, practise, refreshWorkspace }) {
   const [params, setParams] = useSearchParams()
   const desktop = useMediaQuery('(min-width: 768px)')
   const [result, setResult] = useState(null)
   const [held, setHeld] = useState([])
   const [tags, setTags] = useState([])
   const [error, setError] = useState('')
-  const [selected, setSelected] = useState(new Set())
+  const [localSelected, localSetSelected] = useState(new Set())
+  const selected = controlledSelected ?? localSelected
+  const setSelected = controlledSetSelected ?? localSetSelected
+  const [revision, setRevision] = useState(0)
+  const [actionMessage, setActionMessage] = useState('')
   const query = params.toString()
   const heldTab = params.get('bank_tab') === 'held-back'
   const filtered = Boolean(params.get('q') || filterKeys.some(key => params.get(key)))
@@ -54,7 +59,7 @@ export default function QuestionBank({ notebookId, workspace, open }) {
       if (alive) { setResult(data); setError('') }
     }).catch(err => { if (alive) setError(err.message || 'Could not load question bank.') })
     return () => { alive = false }
-  }, [notebookId, query])
+  }, [notebookId, query, revision])
   const change = (key, value) => setParams(current => {
     const next = new URLSearchParams(current)
     if (value) next.set(key, value)
@@ -94,6 +99,7 @@ export default function QuestionBank({ notebookId, workspace, open }) {
       <button role="tab" aria-selected={heldTab} onClick={() => change('bank_tab', 'held-back')}>Held back ({held.length})</button>
     </div>
     {error && <p role="alert">{error}</p>}
+    <p role="status" aria-live="polite">{actionMessage}</p>
     {heldTab ? <section aria-label="Held back items">
       <p>Restore or discard held back items in the deck editor.</p>
       {held.length === 0 && <p>No held back items.</p>}
@@ -123,13 +129,17 @@ export default function QuestionBank({ notebookId, workspace, open }) {
       {!result && !error && <p role="status">Loading items...</p>}
       {result?.total === 0 && <p>{filtered ? 'No items match these filters.' : 'Nothing yet. Generate a quiz or flashcards from the Studio.'}</p>}
       <ul aria-label={`Questions in ${workspace.notebook.name}`} className="bank-list">
-        {result?.items.map(item => <BankRow key={item.id} item={item} selected={selected.has(item.id)} toggle={toggle} open={open} />)}
+        {result?.items.map(item => <BankRow key={item.id} item={item} selected={selected.has(item.id)} toggle={toggle} open={open} practise={practise} />)}
       </ul>
       {result && <div className="bank-pagination">
         <span>Showing {result.items.length ? result.offset + 1 : 0} to {result.offset + result.items.length} of {result.total}</span>
         <button disabled={result.offset === 0} onClick={() => change('offset', String(Math.max(0, result.offset - 50)))}>Previous</button>
         <button disabled={result.offset + result.limit >= result.total} onClick={() => change('offset', String(result.offset + result.limit))}>Next</button>
       </div>}
+      {selected.size > 0 && <BankActions notebookId={notebookId} selected={selected} setMessage={setActionMessage}
+        decks={workspace.artifacts.decks} tags={tags} desktop={desktop} practise={practise}
+        onDone={async deleted => { if (deleted) setSelected(new Set()); setRevision(value => value + 1); await refreshWorkspace?.() }}
+        onTag={tag => setTags(current => [...current, tag])} />}
     </>}
   </div>
 }

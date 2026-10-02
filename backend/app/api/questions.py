@@ -369,11 +369,16 @@ async def delete_question(question_id: int, db: Session = Depends(get_db)):
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    db.delete(question)
+    delete_question_data(db, question)
     db.commit()
     invalidate_stats_cache()
 
     return {"message": "Question deleted successfully"}
+
+
+def delete_question_data(db, question):
+    """Apply the ORM cleanup shared by single and bulk deletion, without committing."""
+    db.delete(question)
 
 
 def format_question(question: Question) -> dict:

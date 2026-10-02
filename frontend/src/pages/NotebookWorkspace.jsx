@@ -34,8 +34,18 @@ function Workspace({ notebookId }) {
   const deckId = Number(params.get('deck'))
   const view = params.get('view')
   const hasOpenDeck = Number.isInteger(deckId) && deckId > 0 && ['practice', 'edit'].includes(view)
-  const hasOpenBank = view === 'questions'
-  const hasOpenCentre = hasOpenDeck || hasOpenBank
+  const [bankSelected, setBankSelected] = useState(new Set())
+  const [practiceIds, setPracticeIds] = useState(null)
+  const [bankNote, setBankNote] = useState('')
+  const hasSelectionPractice = view === 'practice-selection' && Boolean(practiceIds)
+  const hasOpenBank = view === 'questions' || (view === 'practice-selection' && !practiceIds)
+  useEffect(() => {
+    if (view === 'practice-selection' && !practiceIds) {
+      setBankNote('Choose the items to practise again.')
+      setParams(current => { const next = new URLSearchParams(current); next.set('view', 'questions'); return next }, { replace: true })
+    }
+  }, [view, practiceIds, setParams])
+  const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice
   const [workspace, setWorkspace] = useState(null)
   const loaded = Boolean(workspace)
   const wasOpen = useRef(false)
@@ -119,13 +129,14 @@ function Workspace({ notebookId }) {
   const close = useCallback(() => {
     setParams(current => {
       const next = new URLSearchParams(current)
+      if (hasSelectionPractice) { next.set('view', 'questions'); return next }
       next.delete('deck'); next.delete('view')
       const bankKeys = ['q', 'deck_id', 'source_id', 'tag_id', 'card_type', 'difficulty', 'status', 'offset', 'bank_tab']
       bankKeys.forEach(key => next.delete(key))
       return next
     })
     refresh()
-  }, [setParams, refresh])
+  }, [setParams, refresh, hasSelectionPractice])
   const open = useCallback((id, view, trigger) => {
     if (trigger) opener.current = trigger
     setDrawer(null)
@@ -135,6 +146,11 @@ function Workspace({ notebookId }) {
       return next
     })
   }, [setParams])
+  const practise = ids => {
+    setPracticeIds(ids)
+    setBankNote('')
+    setParams(current => { const next = new URLSearchParams(current); next.delete('deck'); next.set('view', 'practice-selection'); return next })
+  }
   const onCanvas = ids => navigate(`/canvas?sources=${ids.join(",")}&notebook=${notebookId}`)
   const toggle = side => {
     const next = { ...collapsed, [side]: !collapsed[side] }
@@ -161,7 +177,7 @@ function Workspace({ notebookId }) {
       <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{jobs.filter(running).length}</span></button>
     </div>}
     {desktop && panel('sources')}
-    <section ref={centre} className="workspace-centre" aria-label={hasOpenBank ? 'Questions' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
+    <section ref={centre} className="workspace-centre" aria-label={hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>
       {error && <p role="alert" className="workspace-error">{error}</p>}
       <div className="workspace-chat" hidden={hasOpenCentre}>
         <p className="eyebrow">Notebook</p>
@@ -181,10 +197,12 @@ function Workspace({ notebookId }) {
       </div>
       {hasOpenCentre && <>
         <header ref={deckHeader} tabIndex={-1} className="workspace-deck-header">
-          <h1>{hasOpenBank ? 'Questions' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
+          <h1>{hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}`}</h1>
           <button onClick={close} className="icon-button" aria-label="Close"><X size={20} aria-hidden="true" /></button>
         </header>
-        {hasOpenBank ? <QuestionBank notebookId={notebookId} workspace={workspace} open={open} />
+        {hasOpenBank ? <>{bankNote && <p role="status">{bankNote}</p>}<QuestionBank notebookId={notebookId} workspace={workspace} open={open}
+          selected={bankSelected} setSelected={setBankSelected} practise={practise} refreshWorkspace={refresh} /></>
+          : hasSelectionPractice ? <PracticeSession embedded questionIds={practiceIds} onExit={close} onFinished={close} onEmpty={close} />
           : view === 'practice' ? <PracticeSession embedded key={`practice-${deckId}`} deckId={deckId}
           onExit={close} onFinished={close} onEmpty={close} />
           : <DeckEditor embedded key={`edit-${deckId}`} deckId={deckId} onBack={close} onDeleted={close}

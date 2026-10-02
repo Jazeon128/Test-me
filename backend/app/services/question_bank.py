@@ -1,6 +1,7 @@
 """Notebook-wide question bank queries and serialization."""
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import and_, case, or_
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -103,3 +104,101 @@ def held_back(db, notebook_id):
         reasons=item.reasons, deck=dict(id=deck.id, name=deck.name) if deck else None,
         source=dict(id=source.id, name=display_name(source)) if source else None,
     ) for item, deck, source in rows]
+
+
+def selected_questions(db, notebook_id, question_ids):
+    membership = question_notebook_membership(db)
+    ids = db.query(membership.c.question_id).filter(membership.c.notebook_id == notebook_id)
+    questions = db.query(Question).filter(Question.id.in_(question_ids), Question.id.in_(ids)).options(
+        selectinload(Question.options), selectinload(Question.tags),
+        selectinload(Question.deck_questions),
+    ).order_by(Question.created_at.desc(), Question.id.desc()).all()
+    outsiders = sorted(set(question_ids) - {question.id for question in questions})
+    if outsiders:
+        raise HTTPException(status_code=400, detail=f"Items outside this notebook: {outsiders}")
+    return questions
+
+
+def validate_bulk_target(db, notebook_id, request):
+    if request.action in ('tag', 'untag'):
+        tag = db.get(Tag, request.tag_id)
+        if tag is None or tag.notebook_id not in (None, notebook_id):
+            raise HTTPException(status_code=400, detail="Tag is not available in this notebook")
+        return tag
+    if request.deck_id is not None:
+        deck = db.get(Deck, request.deck_id)
+        if deck is None or deck.notebook_id != notebook_id:
+            raise HTTPException(status_code=400, detail="Deck is not in this notebook")
+        return deck
+    return None
+
+
+def _add_to_deck(db, notebook_id, request, questions, deck):
+    if deck is None:
+        kind = 'flashcards' if all(q.card_type == 'flashcard' for q in questions) else 'quiz'
+        deck = Deck(notebook_id=notebook_id, kind=kind, name=request.new_deck_name.strip())
+        db.add(deck)
+        db.flush()
+    links = db.query(DeckQuestion).filter_by(deck_id=deck.id).all()
+    existing = {link.question_id for link in links}
+    order = max((link.order for link in links), default=-1) + 1
+    added = [q for q in questions if q.id not in existing]
+    for index, question in enumerate(added):
+        db.add(DeckQuestion(deck_id=deck.id, question_id=question.id, order=order + index))
+    return len(added), deck.id
+
+
+def _tag_questions(questions, tag, add):
+    affected = 0
+    for question in questions:
+        present = tag in question.tags
+        if add and not present:
+            question.tags.append(tag)
+            affected += 1
+        elif not add and present:
+            question.tags.remove(tag)
+            affected += 1
+    return affected
+
+
+def bulk_questions(db, notebook_id, request, delete_question_data):
+    try:
+        questions = selected_questions(db, notebook_id, request.question_ids)
+        target = validate_bulk_target(db, notebook_id, request)
+        deck_id = request.deck_id
+        if request.action == 'add_to_deck':
+            affected, deck_id = _add_to_deck(db, notebook_id, request, questions, target)
+        elif request.action == 'remove_from_deck':
+            affected = db.query(DeckQuestion).filter(
+                DeckQuestion.deck_id == target.id,
+                DeckQuestion.question_id.in_(request.question_ids),
+            ).delete(synchronize_session='fetch')
+        elif request.action in ('tag', 'untag'):
+            affected = _tag_questions(questions, target, request.action == 'tag')
+        else:
+            for question in questions:
+                delete_question_data(db, question)
+            affected = len(questions)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    result = dict(action=request.action, affected=affected, skipped=len(questions) - affected)
+    if deck_id is not None:
+        result['deck_id'] = deck_id
+    return result
+
+
+def practice_questions(db, notebook_id, question_ids):
+    questions = {q.id: q for q in selected_questions(db, notebook_id, question_ids)}
+    items = []
+    for question_id in question_ids:
+        q = questions[question_id]
+        items.append(dict(
+            id=q.id, question_text=q.question_text, card_type=q.card_type,
+            source_reference=q.source_reference, difficulty=q.difficulty, explanation=q.explanation,
+            options=[dict(option=chr(65 + o.order), text=o.option_text)
+                     for o in sorted(q.options, key=lambda o: o.order)],
+            correct_option=next((chr(65 + o.order) for o in q.options if o.is_correct), None),
+        ))
+    return dict(num_questions=len(items), questions=items)

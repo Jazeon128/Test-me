@@ -250,6 +250,8 @@ export const activityAPI = {
 
 // Notebooks: the topic a set of sources belongs to
 export const notebooksAPI = {
+  bulkQuestions: (id, body) => api.post(`/notebooks/${id}/questions/bulk`, body),
+  practiceQuestions: (id, question_ids) => api.post(`/notebooks/${id}/questions/practice`, { question_ids }),
   list: () => api.get('/notebooks/'),
   create: (body) => api.post('/notebooks/', body),
   get: (id) => api.get(`/notebooks/${id}`),

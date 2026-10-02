@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, Layers, ListChecks } from 'lucide-react'
 
-export default function BankRow({ item, selected, toggle, open }) {
+export default function BankRow({ item, selected, toggle, open, practise }) {
   const [expanded, setExpanded] = useState(false)
   const Icon = item.card_type === 'flashcard' ? Layers : ListChecks
   return <li className="bank-row bank-card">
@@ -28,7 +28,7 @@ export default function BankRow({ item, selected, toggle, open }) {
       {item.edited && <span className="bank-tag">Edited</span>}
       <div className="bank-preview-actions">
         <button disabled={!item.decks.length} onClick={() => open(item.decks[0].id, 'edit')}>Open in deck</button>
-        <button disabled>Practise</button>
+        <button onClick={() => practise([item.id])}>Practise</button>
       </div>
     </div>}
   </li>

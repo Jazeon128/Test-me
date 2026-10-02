@@ -127,6 +127,9 @@ describe('Notebook workspace', () => {
     expect(id).toBe('7'); expect(body).toBeInstanceOf(FormData)
     expect(body.getAll('files')).toEqual(files)
     expect(body.get('youtube_url')).toBe('https://youtube.com/watch?v=abc')
+    expect(screen.queryByLabelText('YouTube URL')).not.toBeInTheDocument()
+    click('Add source')
+    fireEvent.change(screen.getByLabelText('YouTube URL'), { target: { value: 'https://youtube.com/watch?v=bad' } })
     click('Add sources'); expect(await screen.findByRole('alert')).toHaveTextContent('Bad YouTube URL')
   })
   it('opens embedded practice and editing, supports back, close and reload', async () => {

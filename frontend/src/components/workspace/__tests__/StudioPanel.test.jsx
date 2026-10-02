@@ -85,3 +85,21 @@ it('submits the card count and mixed difficulty after a hard quiz selection', as
     custom_prompt: '', deck_name: 'Recall', allow_unteachable: false,
   }))
 })
+
+it.each(['Quiz', 'Flashcards'])('describes 1, 3 and 0 selected sources for %s', tile => {
+  const sources = [
+    { id: 1, display_name: 'Cells.pdf', status: 'ready' },
+    { id: 2, display_name: 'Notes.md', status: 'ready' },
+    { id: 3, display_name: 'Lecture.pdf', status: 'ready' },
+    { id: 4, display_name: 'Reading.pdf', status: 'processing' },
+  ]
+  const props = { notebookId: '7', sources, jobs: [], artifacts: { decks: [], canvases: [] }, progress: {}, refresh: vi.fn(), onJob: vi.fn(), open: vi.fn() }
+  const rendered = render(<StudioPanel {...props} sources={sources.slice(0, 2)} sourceIds={[1]} />)
+  fireEvent.click(screen.getByRole('button', { name: tile }))
+  expect(screen.getByText('Uses 1 of 2 sources: Cells.pdf')).toBeInTheDocument()
+  rendered.rerender(<StudioPanel {...props} sourceIds={[1, 2, 3]} />)
+  expect(screen.getByText('Uses 3 of 4 sources: Cells.pdf, Notes.md and 1 more')).toBeInTheDocument()
+  rendered.rerender(<StudioPanel {...props} sourceIds={[]} />)
+  expect(screen.getByText('Tick a ready source in Sources first.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: tile === 'Quiz' ? 'Generate quiz' : 'Generate flashcards' })).toBeDisabled()
+})

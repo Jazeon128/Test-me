@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Settings, Sun, Moon, Search, Menu, X } from 'lucide-react'
+import { BookOpen, Settings, Sun, Moon, Search, Menu, X, RotateCcw } from 'lucide-react'
 import { useTheme } from '../context/useTheme'
 import SearchModal from './SearchModal'
+import { progressAPI } from '../services/api'
 
 const links = [
   { to: '/', label: 'Notebooks', icon: BookOpen },
+  { to: '/review', label: 'Review', icon: RotateCcw },
 ]
 
 export default function Layout({ children }) {
   const location = useLocation()
+  const [dueCount, setDueCount] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    progressAPI.getStats().then(({ data }) => {
+      if (!cancelled) setDueCount(data.questions_due || 0)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
   const { theme, setTheme } = useTheme()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -55,8 +65,10 @@ export default function Layout({ children }) {
           <div className="hidden lg:flex nav-links">
             {links.map(({ to, label, icon: Icon }) => (
               <Link key={to} to={to} className={`nav-link ${active(to) ? 'is-active' : ''}`}
-                aria-current={active(to) ? 'page' : undefined}>
+                aria-current={active(to) ? 'page' : undefined}
+                aria-label={to === '/review' && dueCount > 0 ? `Review, ${dueCount} due` : undefined}>
                 <Icon size={17} />{label}
+                {to === '/review' && dueCount > 0 && <span className="nav-due-badge" aria-hidden="true">{dueCount}</span>}
               </Link>
             ))}
           </div>
@@ -79,8 +91,10 @@ export default function Layout({ children }) {
             <div id="mobile-navigation" className="mobile-navigation lg:hidden">
               {[...links, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => (
                 <Link key={to} to={to} className={`nav-link ${active(to) ? 'is-active' : ''}`}
-                  aria-current={active(to) ? 'page' : undefined}>
+                  aria-current={active(to) ? 'page' : undefined}
+                  aria-label={to === '/review' && dueCount > 0 ? `Review, ${dueCount} due` : undefined}>
                   <Icon size={18} />{label}
+                  {to === '/review' && dueCount > 0 && <span className="nav-due-badge" aria-hidden="true">{dueCount}</span>}
                 </Link>
               ))}
             </div>

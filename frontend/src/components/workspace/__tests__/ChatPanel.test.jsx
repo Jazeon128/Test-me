@@ -196,14 +196,15 @@ describe('Chat panel', () => {
     click('New reply'); expect(history.scrollTop).toBe(1000)
     expect(screen.queryByRole('button', { name: 'New reply' })).not.toBeInTheDocument()
   })
-  it('scrolls to newest messages when already near the bottom', async () => {
+  it('scrolls to the latest question when already near the bottom', async () => {
     await mount()
     const history = screen.getByLabelText('Chat history')
     Object.defineProperties(history, { scrollHeight: { configurable: true, value: 1000 }, clientHeight: { configurable: true, value: 300 } })
     history.scrollTop = 550; fireEvent.scroll(history)
     fill('Explain cells'); click('Send')
+    Object.defineProperty(screen.getByRole('article', { name: 'You message' }), 'offsetTop', { value: 420 })
     await screen.findByRole('button', { name: 'Citation 1: Cells.pdf, Page 4' })
-    expect(history.scrollTop).toBe(1000)
+    expect(history.scrollTop).toBe(412)
   })
   it('keeps messages and draft after opening and closing practice and editing in the workspace', async () => {
     notebooksAPI.workspace.mockResolvedValue({ data: {
@@ -225,4 +226,35 @@ describe('Chat panel', () => {
     }
     expect(notebooksAPI.chatHistory).toHaveBeenCalledTimes(1)
   })
+})
+
+it('opens history at the latest user message with an 8 pixel gap', async () => {
+  const offset = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function () {
+    return this.classList.contains('chat-user') && this.textContent === 'Latest question' ? 420 : 120
+  })
+  try {
+    notebooksAPI.chatHistory.mockResolvedValue({ data: [
+      { id: 1, role: 'user', content: 'Older question' }, answer(),
+      { id: 3, role: 'user', content: 'Latest question' }, answer({ id: 4 }),
+    ] })
+    await mount()
+    expect(screen.getByLabelText('Chat history').scrollTop).toBe(412)
+  } finally { offset.mockRestore() }
+})
+it('positions a new reply at its question when the user has not scrolled up', async () => {
+  const offset = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(320)
+  try {
+    await mount()
+    fill('New question'); click('Send')
+    await screen.findByRole('button', { name: 'Citation 1: Cells.pdf, Page 4' })
+    expect(screen.getByLabelText('Chat history').scrollTop).toBe(312)
+  } finally { offset.mockRestore() }
+})
+it('uses the bottom when history contains no user message', async () => {
+  const height = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(600)
+  try {
+    notebooksAPI.chatHistory.mockResolvedValue({ data: [answer()] })
+    await mount()
+    expect(screen.getByLabelText('Chat history').scrollTop).toBe(600)
+  } finally { height.mockRestore() }
 })

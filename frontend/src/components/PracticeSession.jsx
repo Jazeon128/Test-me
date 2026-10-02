@@ -206,6 +206,10 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   }
 
   const currentQuestion = questions[currentIndex]
+  const notebooks = !deckId && !questionIds ? currentQuestion.notebooks || [] : []
+  const notebookLine = notebooks.length > 0 && <p className="review-notebook">
+    From {notebooks[0].name}{notebooks.length > 1 ? ` and ${notebooks.length - 1} more` : ''}
+  </p>
   const progress = ((currentIndex + 1) / questions.length) * 100
 
   return (
@@ -268,8 +272,11 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
       </div>
 
       {flashcard ? (
-        <FlashcardCard key={currentQuestion.id} question={currentQuestion}
-          submitting={submitting} error={submitError} onRate={handleGrading} />
+        <>
+          {notebookLine}
+          <FlashcardCard key={currentQuestion.id} question={currentQuestion}
+            submitting={submitting} error={submitError} onRate={handleGrading} />
+        </>
       ) : <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
@@ -290,6 +297,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
             </div>
           </div>
 
+          {notebookLine}
           {/* Question Text */}
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             {currentQuestion.question_text}

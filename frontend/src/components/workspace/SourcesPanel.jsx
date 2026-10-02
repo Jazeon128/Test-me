@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { FileText, Youtube, Loader2, FileType, FileCode, Presentation, BookOpen } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { FileText, Youtube, Loader2, FileType, FileCode, Presentation, BookOpen, X } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
 
 export function PreflightMessage({ reason }) {
@@ -18,6 +18,16 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [duplicates, setDuplicates] = useState([])
+  const addButton = useRef(null)
+  const formId = `add-sources-${notebookId}`
+  const closeForm = () => {
+    setAdding(false)
+    setFiles([])
+    setYoutube('')
+    setError('')
+    setDuplicates([])
+    addButton.current?.focus()
+  }
   const submit = async event => {
     event.preventDefault()
     setBusy(true)
@@ -28,8 +38,9 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
     if (youtube.trim()) body.append('youtube_url', youtube.trim())
     try {
       const { data } = await notebooksAPI.addSources(notebookId, body)
-      setDuplicates(data.sources.filter(source => source.duplicate).map(source => source.display_name))
       await refresh()
+      closeForm()
+      setDuplicates(data.sources.filter(source => source.duplicate).map(source => source.display_name))
     } catch (err) {
       setError(err.message || 'Could not add sources')
     } finally { setBusy(false) }
@@ -60,8 +71,13 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
         </li>
       })}
     </ul>
-    <button className="btn-secondary workspace-add-source" onClick={() => setAdding(value => !value)}>Add source</button>
-    {adding && <form onSubmit={submit} className="space-y-3 mt-3">
+    <button ref={addButton} className="btn-secondary workspace-add-source" aria-expanded={adding}
+      aria-controls={formId} onClick={() => adding ? closeForm() : setAdding(true)}>
+      {adding ? <><X size={16} aria-hidden="true" />Cancel</> : 'Add source'}
+    </button>
+    {adding && <form id={formId} onSubmit={submit} className="space-y-3 mt-3" onKeyDown={event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeForm() }
+    }}>
       <label className="block">Files<input type="file" multiple accept=".pdf,.html,.htm,.md,.docx,.pptx"
         onChange={event => setFiles(Array.from(event.target.files))} /></label>
       <label className="block">YouTube URL<input className="input-field" type="url" value={youtube}

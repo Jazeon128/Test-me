@@ -5,7 +5,7 @@ import { notebooksAPI } from '../../services/api'
 import GenerationProgress from '../GenerationProgress'
 import ArtifactList from './ArtifactList'
 
-export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, progress, refresh, onJob, open, onCanvas }) {
+export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs, artifacts, progress, refresh, onJob, open, onCanvas }) {
   const [dismissed, setDismissed] = useState([])
   const [kind, setKind] = useState(null)
   const [count, setCount] = useState(10)
@@ -41,6 +41,10 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
       } else setError(err.message || data?.error?.message || 'Generation failed')
     } finally { setBusy(false) }
   }
+  const sourceNames = sourceIds.map(id => sources.find(source => source.id === id)?.display_name).filter(Boolean)
+  const sourcesLine = sourceIds.length
+    ? `Uses ${sourceIds.length} of ${sources.length} sources: ${sourceNames.slice(0, 2).join(', ')}${sourceNames.length > 2 ? ` and ${sourceNames.length - 2} more` : ''}`
+    : 'Tick a ready source in Sources first.'
   return <>
     <div className="workspace-tiles">
       <button aria-label="Quiz" aria-pressed={kind === 'quiz'} onClick={() => chooseKind('quiz')}><ListChecks aria-hidden="true" /><strong>Quiz</strong><span>Multiple choice</span></button>
@@ -56,6 +60,7 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
         <button type="button" aria-label="Close form" className="workspace-generate-close" onClick={() => { setKind(null); setPending(null); setError('') }}><X aria-hidden="true" /></button>
       </div>
       <p className="workspace-generate-help">{kind === 'quiz' ? 'Questions with four options, checked against your sources.' : 'A term or prompt on the front, the answer on the back.'}</p>
+      <p className="workspace-generate-help">{sourcesLine}</p>
       <label className="block">{kind === 'quiz' ? 'Number of questions' : 'Number of cards'}<input className="input-field" type="number" min="1" max="100" required
         value={count} onChange={event => { setCount(event.target.value); setPending(null) }} /></label>
       {kind === 'quiz' && <label className="block">Difficulty<select className="input-field" value={difficulty}
@@ -65,7 +70,6 @@ export default function StudioPanel({ notebookId, sourceIds, jobs, artifacts, pr
       <label className="block">Deck name (optional)<input className="input-field" value={name}
         onChange={event => { setName(event.target.value); setPending(null) }} /></label>
       <button className="btn-primary" disabled={busy || !sourceIds.length}>{busy ? 'Generating...' : kind === 'quiz' ? 'Generate quiz' : 'Generate flashcards'}</button>
-      {!sourceIds.length && <p className="workspace-generate-help">Tick at least one source</p>}
     </form>}
     {pending && <div role="alert" className="workspace-warning mt-3">
       {unteachable.map(source => <p key={source.id}>{source.display_name}: {source.reason ? <PreflightMessage reason={source.reason} /> : `${Math.round((source.is_teachable || 0) * 100)}% teachable${source.is_transcript > 0.5 ? ", reads like a transcript" : ""}`}</p>)}

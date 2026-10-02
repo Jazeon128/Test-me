@@ -110,3 +110,10 @@ it.each([true, false])('focuses and scrolls completion once with reduced motion=
     HTMLElement.prototype.scrollIntoView = previous
   }
 })
+
+it('omits notebook context during deck practice', async () => {
+  progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [{ ...question, notebooks: [{ id: 1, name: 'Biology' }] }] } })
+  render(<MemoryRouter><PracticeSession deckId="7" onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
+  await screen.findByText(question.question_text)
+  expect(screen.queryByText(/^From /)).not.toBeInTheDocument()
+})

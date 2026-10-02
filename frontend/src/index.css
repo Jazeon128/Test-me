@@ -167,7 +167,7 @@ button:disabled { cursor: not-allowed; }
 .workspace-chat[hidden] { display: none; }
 .chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-.chat-history { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; overflow-wrap: anywhere; }
+.chat-history { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: 8px; overflow-wrap: anywhere; }
 .chat-message { padding: 12px; margin: 12px 0; border-radius: 12px; background: var(--field); }
 .chat-user { margin-left: 24px; }
 .chat-message p { white-space: pre-wrap; margin: 8px 0; }
@@ -386,3 +386,8 @@ button:disabled { cursor: not-allowed; }
 .tm-matrix-header.is-row { text-align: right; }
 .tm-matrix-header.is-selected { outline: 2px solid var(--canvas-editor-ink); outline-offset: 2px; }
 .workspace-running { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.nav-due-badge { border-radius: 999px; padding: 2px 6px; font-size: 11px; background: var(--accent); color: var(--shell); }
+.review-notebook { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.workspace-add-source { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.workspace-add-source[aria-expanded="true"] { border-color: var(--accent); background: var(--workspace-tile-active); }

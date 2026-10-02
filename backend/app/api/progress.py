@@ -6,6 +6,7 @@ from typing import Optional
 
 from ..db import get_db
 from ..services import activity
+from ..services.workspace import question_notebook_membership
 from ..models.user_progress import UserProgress
 from ..models.question import Question
 from ..models.notebook import Notebook
@@ -393,12 +394,23 @@ async def get_review_session(request: ReviewSessionRequest, db: Session = Depend
     questions_by_id = {question.id: question for question in questions}
     questions = [questions_by_id[question_id] for question_id in questions_to_review]
 
+    membership = question_notebook_membership(db)
+    notebook_rows = db.query(membership.c.question_id, Notebook.id, Notebook.name).join(
+        Notebook, Notebook.id == membership.c.notebook_id,
+    ).filter(membership.c.question_id.in_(questions_to_review)).order_by(
+        Notebook.name, Notebook.id,
+    ).all()
+    notebooks_by_question = {}
+    for question_id, notebook_id, name in notebook_rows:
+        notebooks_by_question.setdefault(question_id, []).append({"id": notebook_id, "name": name})
+
     response_data = {
         "num_questions": len(questions),
         "questions": [
             {
                 "id": q.id,
                 "question_text": q.question_text,
+                "notebooks": notebooks_by_question.get(q.id, []),
                 "card_type": q.card_type,
                 "source_reference": q.source_reference,
                 "options": [

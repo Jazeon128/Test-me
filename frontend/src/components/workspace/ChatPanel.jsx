@@ -49,7 +49,16 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
     if (!scrollNeeded.current) return
     scrollNeeded.current = false
     if (scrolledUp.current) setNewReply(true)
-    else scrollDown()
+    else {
+      const element = scroll.current
+      const userMessages = element?.querySelectorAll('.chat-user')
+      const latest = userMessages?.[userMessages.length - 1]
+      if (latest) {
+        element.scrollTop = Math.max(0, latest.offsetTop - 8)
+        scrolledUp.current = false
+        setNewReply(false)
+      } else scrollDown()
+    }
   }, [messages, busy])
   const earlier = async () => {
     setPaging(true)

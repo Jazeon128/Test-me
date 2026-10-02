@@ -163,7 +163,7 @@ function Workspace({ notebookId }) {
   const panels = {
     sources: <SourcesPanel notebookId={notebookId} sources={workspace.sources}
       selected={selected} setSelected={setSelected} refresh={refresh} />,
-    studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} jobs={jobs}
+    studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} jobs={jobs}
       artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas}
       onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
   }

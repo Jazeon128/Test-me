@@ -43,3 +43,18 @@ it('exits to home', async () => {
   fireEvent.click(screen.getByRole('button', { name: /Exit/ }))
   expect(await screen.findByText('Home')).toBeInTheDocument()
 })
+
+it.each([
+  [[{ id: 1, name: 'Biology' }], 'From Biology'],
+  [[{ id: 1, name: 'Biology' }, { id: 2, name: 'Chemistry' }], 'From Biology and 1 more'],
+])('shows notebook context in Review for %j', async (notebooks, line) => {
+  progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [{ ...question, notebooks }] } })
+  mount()
+  expect(await screen.findByText(line)).toBeInTheDocument()
+})
+it('omits notebook context for questions without membership', async () => {
+  progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [{ ...question, notebooks: [] }] } })
+  mount()
+  await screen.findByText(question.question_text)
+  expect(screen.queryByText(/^From /)).not.toBeInTheDocument()
+})

@@ -14,11 +14,16 @@ export default function CitationChip({ citation }) {
     const anchor = () => {
       const rect = chip.current.getBoundingClientRect()
       const width = popover.current.offsetWidth
-      const height = popover.current.offsetHeight
+      const height = Math.min(240, Math.max(popover.current.offsetHeight, popover.current.scrollHeight))
+      const below = window.innerHeight - rect.bottom - 6 - 8
+      const above = rect.top - 6 - 8
+      const opensBelow = height <= below
+      const availableHeight = Math.max(0, opensBelow ? below : above)
+      const visibleHeight = Math.min(height, availableHeight)
       setPosition({
         left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
-        top: Math.max(8, Math.min(rect.bottom + height + 8 > window.innerHeight
-          ? rect.top - height - 8 : rect.bottom + 8, window.innerHeight - height - 8)),
+        top: opensBelow ? rect.bottom + 6 : rect.top - visibleHeight - 6,
+        maxHeight: Math.min(240, availableHeight),
       })
     }
     anchor()

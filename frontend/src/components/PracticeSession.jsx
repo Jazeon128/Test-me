@@ -195,10 +195,15 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
     return (
       <div ref={completionCard} className="glass-panel card text-center">
         <h2 ref={completionHeading} tabIndex={-1} className="text-2xl font-bold mb-4">Session complete</h2>
-        <p>{allFlashcards ? 'Recalled' : mixed ? 'Correct or recalled' : 'Correct'}: {sessionStats.correct}</p>
-        <p>{allFlashcards ? 'To review' : mixed ? 'Missed' : 'Incorrect'}: {sessionStats.incorrect}</p>
-        {!allFlashcards && <p>Points: {sessionStats.totalPoints}</p>}
-        <button className="flashcard-button mt-4" onClick={onFinished}>Finish</button>
+        <div className={`mb-4 grid grid-cols-2 ${allFlashcards ? 'md:grid-cols-4' : 'md:grid-cols-5'} gap-4`}>
+          <StatBadge icon={<Target size={20} />} label="Progress" value={`${questions.length}/${questions.length}`} color="blue" />
+          <StatBadge icon={<Flame size={20} />} label="Streak" value={sessionStats.streak} color="orange" />
+          {!allFlashcards && <StatBadge icon={<Trophy size={20} />} label="Points" value={sessionStats.totalPoints} color="purple" />}
+          <StatBadge icon={<CheckCircle size={20} />} label={allFlashcards ? 'Recalled' : mixed ? 'Correct or recalled' : 'Correct'} value={sessionStats.correct} color="green" />
+          <StatBadge icon={<XCircle size={20} />} label={allFlashcards ? 'To review' : 'Incorrect'} value={sessionStats.incorrect} color="orange" />
+        </div>
+        <p>{sessionStats.incorrect === 0 ? 'Nice work.' : 'Missed items come back sooner in Review.'}</p>
+        <button className="btn-primary mt-4" onClick={onFinished}>Finish</button>
       </div>
     )
   }
@@ -277,9 +282,9 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
       </div>
 
       {/* Progress Bar */}
-      <div className="mb-6 bg-gray-200 rounded-full h-3 overflow-hidden">
+      <div className="practice-progress mb-6 rounded-full h-3 overflow-hidden">
         <motion.div
-          className="bg-primary-600 h-full"
+          className="practice-progress-fill h-full"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5 }}

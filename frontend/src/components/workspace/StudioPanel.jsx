@@ -17,7 +17,7 @@ export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs,
   const [unteachable, setUnteachable] = useState([])
   const chooseKind = nextKind => {
     setKind(kind === nextKind ? null : nextKind)
-    if (kind !== nextKind) setCount(nextKind === 'quiz' ? 10 : 20)
+    if (kind !== nextKind) setCount(10)
     setPending(null)
     setError('')
   }

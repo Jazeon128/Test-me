@@ -85,8 +85,8 @@ describe('Flashcard practice', () => {
     expect(screen.getByRole('button', { name: 'Show answer' })).toHaveFocus()
     fireEvent.keyDown(window, { key: ' ' })
     await act(async () => fireEvent.keyDown(window, { key: '2' }))
-    expect(screen.getByText('Recalled: 0')).toBeInTheDocument()
-    expect(screen.getByText('To review: 2')).toBeInTheDocument()
+    expect(statValue('Recalled')).toBe('0')
+    expect(statValue('To review')).toBe('2')
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     expect(props.onFinished).toHaveBeenCalledTimes(1)
   })
@@ -164,9 +164,9 @@ it('counts Good and Easy as recalled, resets the streak for Hard and Again, and 
   }
   fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Good, key 3' })))
-  expect(screen.getByText('Recalled: 3')).toBeInTheDocument()
-  expect(screen.getByText('To review: 2')).toBeInTheDocument()
-  expect(screen.queryByText(/^Points:/)).not.toBeInTheDocument()
+  expect(statValue('Recalled')).toBe('3')
+  expect(statValue('To review')).toBe('2')
+  expect(screen.queryByText('Points')).not.toBeInTheDocument()
   expect(progressAPI.submit.mock.calls.map(([payload]) => payload.manual_quality)).toEqual([4, 5, 3, 1, 4])
 })
 
@@ -187,9 +187,9 @@ it.each([false, true])('keeps quiz statistics and includes recall in mixed sessi
   fireEvent.click(screen.getByRole('button', { name: /A\. Answer/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
   await act(async () => fireEvent.click(screen.getByRole('button', { name: /Good/ })))
-  expect(screen.getByText(`${label}: ${mixed ? 2 : 1}`)).toBeInTheDocument()
-  expect(screen.getByText(`${mixed ? 'Missed' : 'Incorrect'}: 0`)).toBeInTheDocument()
-  expect(screen.getByText('Points: 10')).toBeInTheDocument()
+  expect(statValue(label)).toBe(String(mixed ? 2 : 1))
+  expect(statValue('Incorrect')).toBe('0')
+  expect(statValue('Points')).toBe('10')
 })
 
 it('keeps every rating accessible name and displays key hints', () => {

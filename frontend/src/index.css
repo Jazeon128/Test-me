@@ -88,6 +88,7 @@ body { background: var(--shell); color: var(--ink); }
 @supports (backdrop-filter: blur(1px)) {
   .glass-nav, .app-shell .glass-panel, .app-shell .card { background: var(--surface); backdrop-filter: blur(24px) saturate(125%); }
 }
+.app-header .glass-nav { background: var(--surface-solid); }
 .glass-nav { max-width: 1232px; margin: auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-radius: 22px; }
 .brand { display: flex; align-items: center; gap: 11px; font-size: 19px; font-weight: 700; letter-spacing: -.6px; color: var(--ink); }
 .brand-symbol { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; color: white; background: linear-gradient(145deg, #a49cf1, #6554d8); box-shadow: inset 0 1px 1px #ffffff80, 0 5px 16px #6254d92b; }
@@ -112,9 +113,11 @@ body { background: var(--shell); color: var(--ink); }
 .app-content :is(input[type="text"], input[type="password"], input[type="number"], input[type="url"], textarea, select) { background: var(--field); border-color: var(--line); color: var(--ink); border-radius: 12px; }
 .input-field::placeholder { color: var(--muted); opacity: .85; }
 select option { background: var(--surface-solid); color: var(--ink); }
-.btn-primary, .btn-secondary { align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 600; transition: transform .18s, box-shadow .18s, background .18s; }
+.btn-primary, .btn-secondary, .btn-danger { align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 600; transition: transform .18s, box-shadow .18s, background .18s; }
 .btn-primary { background: linear-gradient(135deg, #7969e6, #5b4cca); color: #fff; border: 1px solid #ffffff26; box-shadow: inset 0 1px 0 #ffffff26, 0 6px 16px #6254d92b; }
 .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px #6254d940; }
+.btn-danger { background: #b91c1c; color: #fff; border: 1px solid #b91c1c; }
+.btn-danger:hover:not(:disabled) { background: #991b1b; border-color: #991b1b; }
 .btn-secondary { background: var(--field); color: var(--ink); border: 1px solid var(--line); }
 .btn-secondary:hover:not(:disabled) { background: var(--surface-solid); }
 button:disabled { cursor: not-allowed; }
@@ -180,7 +183,7 @@ button:disabled { cursor: not-allowed; }
 .chat-composer textarea { width: 100%; min-height: 80px; max-height: 180px; resize: vertical; padding: 8px; border: 0; border-radius: 12px; background: var(--field); }
 .chat-panel button:disabled { opacity: 0.5; }
 .chat-citation { position: relative; display: inline-block; vertical-align: baseline; }
-.chat-chip { font-size: 12px; padding: 2px 7px; margin: 0 3px; border: 1px solid var(--line); border-radius: 12px; color: var(--accent); background: var(--field); }
+.chat-chip { display: inline-block; vertical-align: baseline; font-size: 12px; padding: 0 6px; margin: 0; line-height: 18px; border: 1px solid var(--line); border-radius: 12px; color: var(--accent); background: var(--field); }
 .chat-chip-removed { color: var(--muted); border-color: var(--line); background: var(--field); }
 .chat-popover { position: fixed; z-index: 20; width: min(280px, 65vw); max-height: 240px; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-solid); color: var(--ink); box-shadow: var(--surface-shadow); }
 .chat-confirm { padding: 8px; border: 1px solid var(--line); }
@@ -198,7 +201,7 @@ button:disabled { cursor: not-allowed; }
 .workspace-panel-header h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
 .workspace-panel-header .icon-button { margin-left: auto; }
 .workspace-count { color: var(--muted); font-size: 12px; }
-.notebook-workspace :is(button, a, select, input:not([type="checkbox"])):not(.tm-canvas-embedded .react-flow *) { min-height: 44px; min-width: 44px; }
+.notebook-workspace :is(button, a, select, input:not([type="checkbox"]):not([type="radio"])):not(.chat-chip):not(.tm-canvas-embedded .react-flow *) { min-height: 44px; min-width: 44px; }
 .notebook-workspace button { transition: opacity 180ms, transform 180ms; }
 .notebook-workspace button:disabled { opacity: .5; }
 .workspace-rail { padding: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -207,7 +210,7 @@ button:disabled { cursor: not-allowed; }
 .workspace-source-label { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .workspace-source-label input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--accent); }
 .workspace-source-label svg { flex-shrink: 0; color: var(--muted); }
-.workspace-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-source-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; }
 .workspace-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; margin-top: 4px; border-radius: 8px; background: var(--field); font-size: 12px; }
 .workspace-error { color: var(--workspace-danger); }
 .workspace-warning { color: var(--workspace-warning); }
@@ -243,7 +246,7 @@ button:disabled { cursor: not-allowed; }
 .workspace-artifact a { display: inline-flex; align-items: center; color: var(--accent); }
 .workspace-deck-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
 .app-content .workspace-deck-header h1, .workspace-deck-header h1 { font-size: 18px; letter-spacing: 0; }
-.workspace-deck-header:focus { outline: 2px solid var(--accent); outline-offset: 4px; }
+.workspace-deck-header:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .chat-input-field { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); box-shadow: var(--surface-shadow); }
 .chat-input-field textarea { min-width: 0; flex: 1; background: transparent; }
 .workspace-topbar { display: flex; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 10; padding: 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--surface-shadow); }
@@ -285,8 +288,8 @@ button:disabled { cursor: not-allowed; }
 @media (max-width: 479px) { .workspace-title-row { flex-wrap: wrap; } }
 .question-bank { color: var(--ink); }
 .bank-tabs, .bank-selection, .bank-pagination, .bank-preview-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
-.question-bank button, .bank-filters summary { padding: 10px 12px; min-height: 44px; min-width: 44px; border-radius: 8px; }
-.question-bank button { border: 1px solid var(--line); background: var(--field); }
+.question-bank button:not(.btn-primary):not(.btn-secondary):not(.btn-danger), .bank-filters summary { padding: 10px 12px; min-height: 44px; min-width: 44px; border-radius: 8px; }
+.question-bank button:not(.btn-primary):not(.btn-secondary):not(.btn-danger) { border: 1px solid var(--line); background: var(--field); }
 .bank-tabs [aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
 .bank-toolbar { display: flex; flex-wrap: wrap; gap: 12px; min-width: 0; }
 .bank-filter-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 12px; min-width: 0; }
@@ -332,7 +335,6 @@ button:disabled { cursor: not-allowed; }
 .bank-action-menu label { display: flex; gap: 8px; }
 @media (max-width: 767px) { .bank-more { width: 100%; } .bank-action-menu label { flex-direction: column; } }
 
-.question-bank .bank-action-bar .btn-primary { background: var(--accent); color: white; }
 .bank-action-menu input { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); }
 
 /* Canvas editing surfaces. */
@@ -431,3 +433,10 @@ button:disabled { cursor: not-allowed; }
   .tm-restore-anchor { width: 100%; }
   .tm-restore { width: 100%; }
 }
+
+.workspace-source-file::file-selector-button { min-height: 44px; margin-right: 8px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 600; background: var(--field); color: var(--ink); border: 1px solid var(--line); cursor: pointer; }
+.workspace-source-file::file-selector-button:hover { background: var(--surface-solid); }
+.practice-progress { background: var(--field); border: 1px solid var(--line); }
+.practice-progress-fill { background: linear-gradient(135deg, #7969e6, #5b4cca); }
+.deck-option-radio { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
+.deck-option-row .deck-option-radio { align-self: flex-end; margin-bottom: 12px; }

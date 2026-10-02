@@ -1,3 +1,4 @@
+import { plural } from '../utils/plural'
 import ProgressOverview from '../components/ProgressOverview'
 import { displayIcon } from '../utils/displayIcon'
 import { useEffect, useState } from 'react'
@@ -37,7 +38,7 @@ export default function Notebooks() {
   }
 
   // Progress is a separate request so a slow or failing stats query still
-  // leaves the notebook list usable. The cards simply omit their progress row.
+  // leaves the notebook list usable. The cards retain an empty progress strip.
   const loadProgress = async () => {
     try {
       const { data } = await progressAPI.getStatsByNotebook()
@@ -122,7 +123,7 @@ export default function Notebooks() {
             autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="AWS GenAI certification"
+            placeholder="e.g. Organic chemistry"
             className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
             style={{ minHeight: 44 }}
           />
@@ -199,20 +200,18 @@ export default function Notebooks() {
                 {displayIcon(notebook.icon)}
               </span>
               <span className="text-lg font-semibold text-gray-900 dark:text-white">{notebook.name}</span>
-              {notebook.description && (
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {notebook.description}
-                </span>
-              )}
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {notebook.description || 'No description yet'}
+              </span>
               <span className="mt-auto flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
-                  <FileText size={13} /> {notebook.sources} sources
+                  <FileText size={13} /> {plural(notebook.sources, 'source', 'sources')}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Network size={13} /> {notebook.canvases} canvases
+                  <Network size={13} /> {plural(notebook.canvases, 'canvas', 'canvases')}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Layers size={13} /> {notebook.decks} decks
+                  <Layers size={13} /> {plural(notebook.decks, 'deck', 'decks')}
                 </span>
               </span>
 
@@ -235,20 +234,17 @@ export default function Notebooks() {
  * across every notebook appear below the notebook grid.
  */
 function NotebookProgress({ stats }) {
-  // No stats row yet, or a notebook holding no questions: show nothing rather
-  // than a row of zeroes that reads like a failure.
-  if (!stats || stats.total_questions === 0) return null
-
-  const masteryPercent = Math.round(stats.mastery_rate * 100)
+  const empty = !stats || stats.total_questions === 0
+  const masteryPercent = empty ? 0 : Math.round(stats.mastery_rate * 100)
 
   return (
-    <span className="mt-3 block border-t border-gray-100 pt-3 dark:border-gray-700">
+    <span className="mt-3 block min-h-16 border-t border-gray-100 pt-3 dark:border-gray-700">
       <span className="flex items-center justify-between text-xs">
         <span className="text-gray-600 dark:text-gray-400">
-          {stats.questions_mastered} of {stats.total_questions} mastered
+          {empty ? 'No questions yet' : `${stats.questions_mastered} of ${stats.total_questions} mastered`}
         </span>
         <span className="font-semibold tabular-nums text-gray-900 dark:text-white">
-          {masteryPercent}%
+          {empty ? '' : `${masteryPercent}%`}
         </span>
       </span>
 
@@ -266,7 +262,7 @@ function NotebookProgress({ stats }) {
         />
       </span>
 
-      <span className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      {!empty && <span className="mt-2 flex flex-wrap items-center gap-3 text-xs">
         {stats.questions_due > 0 ? (
           <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
             <Flame size={13} /> {stats.questions_due} due
@@ -275,7 +271,7 @@ function NotebookProgress({ stats }) {
           <span className="text-gray-500 dark:text-gray-400">Nothing due</span>
         )}
         <span className="text-gray-500 dark:text-gray-400">{describeLastStudied(stats.last_studied)}</span>
-      </span>
+      </span>}
     </span>
   )
 }

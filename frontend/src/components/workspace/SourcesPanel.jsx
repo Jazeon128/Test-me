@@ -47,8 +47,8 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
   }
   return <>
     <div className="flex gap-3 my-3">
-      <button onClick={() => setSelected(Object.fromEntries(sources.filter(s => s.status === 'ready').map(s => [s.id, true])))}>Select all</button>
-      <button onClick={() => setSelected(Object.fromEntries(sources.map(s => [s.id, false])))}>Clear</button>
+      <button className="btn-secondary" onClick={() => setSelected(Object.fromEntries(sources.filter(s => s.status === 'ready').map(s => [s.id, true])))}>Select all</button>
+      <button className="btn-secondary" onClick={() => setSelected(Object.fromEntries(sources.map(s => [s.id, false])))}>Clear</button>
     </div>
     <ul className="space-y-4">
       {sources.map(source => {
@@ -79,7 +79,7 @@ export default function SourcesPanel({ notebookId, sources, selected, setSelecte
     {adding && <form id={formId} onSubmit={submit} className="space-y-3 mt-3" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeForm() }
     }}>
-      <label className="block">Files<input type="file" multiple accept=".pdf,.html,.htm,.md,.docx,.pptx"
+      <label className="block">Files<input className="workspace-source-file" type="file" multiple accept=".pdf,.html,.htm,.md,.docx,.pptx"
         onChange={event => setFiles(Array.from(event.target.files))} /></label>
       <label className="block">YouTube URL<input className="input-field" type="url" value={youtube}
         onChange={event => setYoutube(event.target.value)} /></label>

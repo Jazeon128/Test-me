@@ -257,7 +257,7 @@ it('confirms delete counts across pages, cancels, and clears selection after del
   await screen.findByText('Front 51')
   fireEvent.click(screen.getByLabelText('Select Front 51'))
   click('Delete')
-  await screen.findByText('Delete 2 items everywhere? This also deletes their progress and removes them from 1 decks.')
+  await screen.findByText('Delete 2 items everywhere? This also deletes their progress and removes them from 1 deck.')
   expect(notebooksAPI.bulkQuestions).not.toHaveBeenCalled()
   click('Cancel')
   expect(screen.queryByText(/Delete 2 items everywhere/)).not.toBeInTheDocument()

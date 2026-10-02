@@ -64,12 +64,12 @@ export default function DeckItemForm({ item, notebook_id, defaultType = 'mcq', o
         </label>
         {!flashcard && <fieldset>
             <legend className="text-gray-700 dark:text-gray-200">Options (Select correct answer)</legend>
-            {options.map((option, index) => <div key={index} className="flex gap-3 my-2">
-                <input className="h-4 w-4 border-gray-300 bg-white text-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:text-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800" type="radio" name={`correct-${item?.id || 'new'}`}
+            {options.map((option, index) => <div key={index} className="deck-option-row flex gap-3 my-2">
+                <input className="deck-option-radio focus-visible:ring-2 focus-visible:ring-primary-500" type="radio" name={`correct-${item?.id || 'new'}`}
                     aria-label={`Correct answer ${String.fromCharCode(65 + index)}`}
                     checked={option.is_correct} onChange={() => setOptions(current => current.map(
                         (value, position) => ({ ...value, is_correct: position === index })))} />
-                <label className="text-gray-700 dark:text-gray-200">Option {String.fromCharCode(65 + index)}
+                <label className="flex-1 min-w-0 text-gray-700 dark:text-gray-200">Option {String.fromCharCode(65 + index)}
                     <input className="input-field" value={option.text}
                         onChange={event => setOptions(current => current.map((value, position) =>
                             position === index ? { ...value, text: event.target.value } : value))} />

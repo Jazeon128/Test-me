@@ -207,16 +207,16 @@ export default function TaskModelCard({
         <button
           onClick={save}
           disabled={Boolean(busy)}
-          className="bg-primary-600 text-white px-6 py-2.5 rounded-lg"
+          className="btn-primary"
         >
           {busy === 'save' ? 'Saving...' : 'Save Configuration'}
         </button>
         {task === 'generation' && keyConfigured && (
           <>
-            <button onClick={test} disabled={Boolean(busy)}>
+            <button className="btn-secondary" onClick={test} disabled={Boolean(busy)}>
               {busy === 'test' ? 'Testing...' : 'Test Connection'}
             </button>
-            <button onClick={remove}>Delete</button>
+            <button className="btn-danger" style={{ marginLeft: 'auto' }} onClick={remove}>Delete</button>
           </>
         )}
       </div>

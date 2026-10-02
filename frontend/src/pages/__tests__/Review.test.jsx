@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import Review from '../Review'
@@ -31,8 +31,8 @@ it('finishes all-due practice at home', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
   fireEvent.click(screen.getByRole('button', { name: /Good/ }))
   expect(await screen.findByText('Session complete')).toBeInTheDocument()
-  expect(screen.getByText('Correct: 1')).toBeInTheDocument()
-  expect(screen.getByText('Incorrect: 0')).toBeInTheDocument()
+  expect(within(screen.getByText('Correct').closest('.glass-panel')).getByText('1')).toBeInTheDocument()
+  expect(within(screen.getByText('Incorrect').closest('.glass-panel')).getByText('0')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
   expect(await screen.findByText('Home')).toBeInTheDocument()
   await waitFor(() => expect(progressAPI.submit).toHaveBeenCalledTimes(1))

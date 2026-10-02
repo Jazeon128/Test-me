@@ -1,3 +1,4 @@
+import { plural } from '../../utils/plural'
 import { useState } from 'react'
 import { notebooksAPI, tagsAPI } from '../../services/api'
 
@@ -73,8 +74,8 @@ export default function BankActions({ notebookId, selected, decks, tags, desktop
     {error && <p role="alert">{error}</p>}
     {menu && <div className="bank-action-menu" aria-label={menu}>
       {menu === 'delete' ? <>
-        <p>Delete {ids.length} items everywhere? This also deletes their progress and removes them from {selectionDecks.length} decks.</p>
-        <button disabled={busy || ids.length > 500} onClick={() => apply('delete')}>Delete</button>
+        <p>Delete {ids.length} items everywhere? This also deletes their progress and removes them from {plural(selectionDecks.length, 'deck')}.</p>
+        <button className="btn-danger" disabled={busy || ids.length > 500} onClick={() => apply('delete')}>Delete</button>
       </> : <>
         {targets.map(target => <button key={target.id} disabled={busy || ids.length > 500} onClick={() => apply(menu,
           menu.endsWith('deck') ? { deck_id: target.id } : { tag_id: target.id }, target.name)}>{target.name}</button>)}

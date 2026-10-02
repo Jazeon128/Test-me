@@ -83,7 +83,7 @@ export default function OpenRouterModelPicker({
       ) : catalog.error ? (
         <div role="alert">
           <p>{catalog.error}</p>
-          <button onClick={() => onReload()}>Retry</button>
+          <button className="btn-secondary" onClick={() => onReload()}>Retry</button>
         </div>
       ) : (
         <>

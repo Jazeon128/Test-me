@@ -60,7 +60,7 @@ it('labels each kind, keeps the deck name and resets the count when switching', 
   expect(within(cardsForm).getByRole('heading', { level: 3, name: 'New flashcards' })).toBeInTheDocument()
   expect(within(cardsForm).getByText('A term or prompt on the front, the answer on the back.')).toBeInTheDocument()
   const cards = screen.getByLabelText('Number of cards')
-  expect(cards).toHaveValue(20)
+  expect(cards).toHaveValue(10)
   expect(cards).toHaveAttribute('min', '1')
   expect(cards).toHaveAttribute('max', '100')
   expect(screen.queryByLabelText('Number of questions')).not.toBeInTheDocument()

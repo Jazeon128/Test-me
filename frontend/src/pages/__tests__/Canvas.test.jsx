@@ -59,6 +59,28 @@ function renderCanvas(url, previous = '/') {
   </MemoryRouter>)
 }
 
+it.each([
+  'How does a request flow through this?',
+  'Compare the main options side by side',
+  'What are the key ideas and how do they connect?',
+])('fills and focuses the request without drawing from example: %s', async example => {
+  renderCanvas('/canvas?document=42&notebook=3')
+  await screen.findByRole('button', { name: 'Back to Biology' })
+  expect(screen.getByRole('heading', { name: 'What should this canvas show?' })).toBeInTheDocument()
+  expect(screen.getByText(/The canvas picks how to draw the answer/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Draw it' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: example }))
+  const input = screen.getByLabelText('What do you want to see?')
+  expect(input).toHaveValue(example)
+  expect(input).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Draw it' })).toBeEnabled()
+  expect(canvasAPI.generate).not.toHaveBeenCalled()
+  expect(statusAPI.get).not.toHaveBeenCalled()
+  fireEvent.change(input, { target: { value: 'My own request' } })
+  expect(input).toHaveValue('My own request')
+  expect(canvasAPI.generate).not.toHaveBeenCalled()
+})
+
 it.each(['/canvas?document=42&notebook=3', '/canvas?document=42'])(
   'shows a notebook back button and source on a new canvas at %s', async (url) => {
     const { container } = renderCanvas(url)
@@ -111,7 +133,7 @@ it('replaces the new canvas URL after drawing and reloads the saved canvas', asy
   fireEvent.click(screen.getByRole('button', { name: 'Draw it' }))
   await waitFor(() => expect(screen.getByLabelText('Current URL')).toHaveTextContent('/canvas/19'))
   expect(screen.getByRole('heading', { name: 'Generated answer' })).toBeInTheDocument()
-  expect(screen.queryByText('Ask something about this document')).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'What should this canvas show?' })).not.toBeInTheDocument()
   expect(canvasAPI.get).toHaveBeenCalledTimes(1)
   expect(canvasAPI.generate).toHaveBeenCalledTimes(1)
   fireEvent.click(screen.getByRole('button', { name: 'Previous page' }))

@@ -316,7 +316,10 @@ export default function Canvas() {
 
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
-          {phase === 'idle' && <EmptyState name={documentName} />}
+          {phase === 'idle' && <EmptyState name={documentName} onExample={example => {
+            setRequest(example)
+            document.getElementById('canvas-request')?.focus()
+          }} />}
 
           {phase === 'generating' && <Generating step={step} progress={progress} />}
 
@@ -407,21 +410,30 @@ function Generating({ step, progress }) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ onExample }) {
   return (
-    <div className="flex h-full items-center justify-center p-6">
+    <div className="canvas-empty-state">
       <div className="max-w-md text-center">
-        <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-          Ask something about this document
-        </p>
+        <h2 className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+          What should this canvas show?
+        </h2>
         <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text2)' }}>
           The canvas picks how to draw the answer: a flowchart, an architecture
           diagram, a fishbone, a timeline. You do not choose the form, and every
           node traces back to the passage it came from.
         </p>
+        <div className="canvas-examples">
+          {['How does a request flow through this?', 'Compare the main options side by side', 'What are the key ideas and how do they connect?'].map(example => (
+            <button key={example} type="button" onClick={() => onExample(example)}>{example}</button>
+          ))}
+        </div>
       </div>
     </div>
   )
+}
+
+EmptyState.propTypes = {
+  onExample: PropTypes.func.isRequired,
 }
 
 Generating.propTypes = {

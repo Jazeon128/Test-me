@@ -13,7 +13,7 @@ function mount() {
   render(<StudioPanel notebookId="7" sourceIds={[9]} jobs={[]} artifacts={{ decks: [], canvases: [] }}
     progress={{}} refresh={vi.fn()} onJob={onJob} open={vi.fn()} onCanvas={vi.fn()} />)
   fireEvent.click(screen.getByRole('button', { name: 'Quiz' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Generate', exact: true }))
+  fireEvent.click(screen.getByRole('button', { name: 'Generate quiz', exact: true }))
 }
 it('holds generation and explains the rejected source', async () => {
   notebooksAPI.generate.mockRejectedValue(rejected)

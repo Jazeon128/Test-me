@@ -2,13 +2,25 @@ import { Layers, ListChecks, Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function ArtifactList({ artifacts, progress, open }) {
+  const groups = [
+    { title: 'Quizzes', items: artifacts.decks.filter(deck => deck.kind !== 'flashcards') },
+    { title: 'Flashcards', items: artifacts.decks.filter(deck => deck.kind === 'flashcards') },
+  ]
   return <>
-    <h3 className="font-bold mt-6 mb-3">Artifacts</h3>
-    <ul className="space-y-4">
-      {artifacts.decks.map(deck => <li key={deck.id} className="workspace-artifact">
+    <section aria-labelledby="notebook-progress-heading" className="workspace-progress mt-6">
+      <h3 id="notebook-progress-heading" className="font-bold mb-3">Notebook progress</h3>
+      <dl>
+        <div><dt>Answered</dt><dd>{progress.answered_count || 0}</dd></div>
+        <div><dt>Correct</dt><dd>{progress.answered_count ? `${Math.round((progress.correct_rate || 0) * 100)}%` : '–'}</dd></div>
+        <div><dt>Due</dt><dd>{progress.due_count || 0}</dd></div>
+      </dl>
+    </section>
+    {groups.filter(group => group.items.length).map(group => <section key={group.title}>
+      <h3 className="font-bold mt-6 mb-3">{group.title} ({group.items.length})</h3>
+      <ul className="space-y-4">
+      {group.items.map(deck => <li key={deck.id} className="workspace-artifact">
         {deck.kind === 'flashcards' ? <Layers aria-hidden="true" size={20} /> : <ListChecks aria-hidden="true" size={20} />}
         <p className="font-medium">{deck.name}</p>
-        <span className="workspace-badge">{deck.kind === 'flashcards' ? 'Flashcards' : 'Quiz'}</span>
         <p className="workspace-artifact-meta">{deck.question_count} questions &middot; {deck.due_count || 0} due</p>
         {deck.held_back_count > 0 && <p className="text-sm">{deck.held_back_count} held back</p>}
         <div className="flex gap-3">
@@ -16,12 +28,14 @@ export default function ArtifactList({ artifacts, progress, open }) {
           <button className="btn-secondary workspace-small-button" onClick={event => open(deck.id, 'edit', event.currentTarget)}>Open</button>
         </div>
       </li>)}
-      {artifacts.canvases.map(canvas => <li key={canvas.id} className="workspace-artifact"><Network aria-hidden="true" size={20} /><Link to={`/canvas/${canvas.id}`}>{canvas.title}</Link></li>)}
-    </ul>
-    <div className="mt-6 text-sm" aria-label="Notebook progress">
-      <p>{progress.answered_count} answered</p>
-      <p>{progress.answered_count ? `${Math.round((progress.correct_rate || 0) * 100)}% correct` : 'No answers yet'}</p>
-      <p>{progress.due_count} due</p>
-    </div>
+      </ul>
+    </section>)}
+    {artifacts.canvases.length > 0 && <section>
+      <h3 className="font-bold mt-6 mb-3">Canvases ({artifacts.canvases.length})</h3>
+      <ul className="space-y-4">
+        {artifacts.canvases.map(canvas => <li key={canvas.id} className="workspace-artifact"><Network aria-hidden="true" size={20} /><Link to={`/canvas/${canvas.id}`}><span className="sr-only">Open </span>{canvas.title}</Link></li>)}
+      </ul>
+    </section>}
+    {!artifacts.decks.length && !artifacts.canvases.length && <p className="mt-6">Nothing made yet. Tick sources and choose Quiz, Flashcards or Canvas.</p>}
   </>
 }

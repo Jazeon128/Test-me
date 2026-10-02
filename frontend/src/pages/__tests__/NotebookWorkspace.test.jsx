@@ -73,26 +73,26 @@ describe('Notebook workspace', () => {
     expect(screen.getByText('Unreadable file')).toBeInTheDocument()
     expect(screen.getByText('May not be worth studying')).toBeInTheDocument()
     expect(screen.getByText('Cell quiz')).toBeInTheDocument()
-    expect(screen.getByText('Quiz', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Quizzes (1)' })).toBeInTheDocument()
     expect(screen.getByText('10 questions \u00b7 2 due')).toBeInTheDocument()
     expect(screen.getByText('1 held back')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Cell diagram' })).toHaveAttribute('href', '/canvas/5')
-    expect(screen.getByText('4 answered')).toBeInTheDocument()
-    expect(screen.getByText('75% correct')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Cell diagram' })).toHaveAttribute('href', '/canvas/5')
+    expect(within(screen.getByRole('region', { name: 'Notebook progress' })).getByText('4', { selector: 'dd' })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Notebook progress' })).getByText('75%', { selector: 'dd' })).toBeInTheDocument()
   })
   it('posts exactly ticked ready ids and form values, and disables generation after Clear', async () => {
     mount(); await loaded()
     fireEvent.click(screen.getByLabelText('Notes.md')); click('Quiz')
     fireEvent.change(screen.getByLabelText('Number of questions'), { target: { value: '15' } })
     fireEvent.change(screen.getByLabelText('Difficulty'), { target: { value: 'hard' } })
-    click('Generate')
+    click('Generate quiz')
     await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledWith('7', {
       source_ids: [1], kind: 'quiz', num_questions: 15, difficulty: 'hard', custom_prompt: '', deck_name: '', allow_unteachable: false,
     }))
     await screen.findByText('Reading sources')
     expect(screen.getByLabelText('Notes.md')).not.toBeChecked()
     click('Clear')
-    expect(screen.getByRole('button', { name: 'Tick at least one source' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Generate quiz' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Canvas' })).toBeDisabled()
     click('Select all'); expect(screen.getByLabelText('Notes.md')).toBeChecked()
   })
@@ -100,7 +100,7 @@ describe('Notebook workspace', () => {
     notebooksAPI.generate.mockRejectedValueOnce({ status: 409, message: 'Low teachability', originalError: { response: {
       status: 409, data: { detail: 'Low teachability', unteachable: [{ id: 2, display_name: 'Notes.md', is_teachable: 0.2 }] },
     } } })
-    mount(); await loaded(); click('Flashcards'); click('Generate')
+    mount(); await loaded(); click('Flashcards'); click('Generate flashcards')
     expect(await screen.findByText('Notes.md: 20% teachable')).toBeInTheDocument()
     click('Generate anyway')
     await waitFor(() => expect(notebooksAPI.generate).toHaveBeenCalledTimes(2))
@@ -110,9 +110,9 @@ describe('Notebook workspace', () => {
   it('shows processing conflicts and error envelope messages', async () => {
     notebooksAPI.generate.mockRejectedValueOnce({ status: 409, originalError: { response: { data: { processing: [1] } } } })
       .mockRejectedValueOnce({ status: 422, message: 'Question count invalid', originalError: { response: { data: { error: { message: 'Question count invalid' } } } } })
-    mount(); await loaded(); click('Quiz'); click('Generate')
+    mount(); await loaded(); click('Quiz'); click('Generate quiz')
     expect(await screen.findByRole('alert')).toHaveTextContent('Wait for these sources to finish reading')
-    click('Generate'); await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Question count invalid'))
+    click('Generate quiz'); await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Question count invalid'))
   })
   it('adds files and YouTube URL as FormData, shows duplicates and inline 400', async () => {
     notebooksAPI.addSources.mockResolvedValueOnce({ data: { sources: [{ id: 1, display_name: 'Cells.pdf', duplicate: true }] } })
@@ -239,7 +239,7 @@ describe('Notebook workspace', () => {
     data.jobs = [{ job_id: 'failed', status: 'failed', error_message: 'Generation exhausted' }]
     notebooksAPI.workspace.mockResolvedValue({ data }); mount(); await loaded()
     expect(screen.getByRole('alert')).toHaveTextContent('Generation exhausted')
-    expect(screen.getByText('No answers yet')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Notebook progress' })).getByText('–', { selector: 'dd' })).toBeInTheDocument()
   })
 })
 

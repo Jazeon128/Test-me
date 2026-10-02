@@ -42,6 +42,7 @@ code {
   --field: rgba(255, 255, 255, .64);
   --line: rgba(94, 105, 150, .17);
   --accent: #6254d9;
+  --workspace-tile-active: rgba(98, 84, 217, .12);
   --surface-shadow: 0 12px 40px -24px rgba(50, 41, 108, .3), inset 0 1px 0 rgba(255,255,255,.75);
 }
 
@@ -58,6 +59,7 @@ code {
   --field: rgba(13, 18, 36, .42);
   --line: rgba(193, 202, 255, .15);
   --accent: #b0a8ff;
+  --workspace-tile-active: rgba(176, 168, 255, .16);
   --surface-shadow: 0 16px 40px -24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
 }
 
@@ -211,11 +213,26 @@ button:disabled { cursor: not-allowed; }
 @keyframes workspace-reading { to { opacity: .3; } }
 .workspace-add-source { margin-top: 24px; width: 100%; }
 .workspace-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.workspace-tiles button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--field); }
+.workspace-tiles button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 4px; border: 2px solid var(--line); border-radius: 14px; background: var(--field); transition: opacity 180ms, transform 180ms; }
+.workspace-tiles button[aria-pressed="true"] { border-color: var(--accent); background: var(--workspace-tile-active); }
 .workspace-tiles svg { color: var(--accent); width: 22px; height: 22px; }
 .workspace-tiles strong { font-size: 12px; }
 .workspace-tiles span { font-size: 10px; color: var(--muted); white-space: nowrap; }
 .workspace-generate { margin-top: 16px; padding: 16px; }
+.workspace-generate-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.workspace-generate-close { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; }
+.workspace-generate-help { font-size: 12px; color: var(--muted); }
+.workspace-generate button, .workspace-artifact button { transition: opacity 180ms, transform 180ms; }
+.workspace-progress dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.workspace-progress dt { font-size: 12px; color: var(--muted); }
+.workspace-progress dd { font-variant-numeric: tabular-nums; font-weight: 600; }
+.canvas-empty-state { display: flex; justify-content: center; height: 100%; overflow-y: auto; padding: clamp(24px, 8vh, 80px) 24px 24px; }
+.canvas-examples { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.canvas-examples button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--field); color: var(--accent); font-size: 13px; transition: opacity 180ms, transform 180ms; }
+.tm-canvas #canvas-request:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .workspace-tiles button, .workspace-generate button, .workspace-artifact button, .canvas-examples button { transition: none; transform: none; }
+}
 .workspace-artifact { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .workspace-artifact > :not(svg) { grid-column: 2; }
 .workspace-artifact > svg { grid-column: 1; grid-row: 1 / span 4; color: var(--accent); }

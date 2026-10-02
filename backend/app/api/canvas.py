@@ -101,7 +101,7 @@ def _validate_edited(graph):
     node_ids = _graph_ids(graph.get("nodes"), 400)
     _graph_ids(graph.get("edges"), 800)
     allowed_types = {"StepNode", "ActorNode", "MessageNode", "ServiceNode", "MilestoneNode",
-                     "BoneNode", "MatrixCell", "GroupNode", "NoteNode"}
+                     "BoneNode", "MatrixCell", "MatrixHeader", "GroupNode", "NoteNode"}
     for node in graph["nodes"]:
         if not isinstance(node.get("type"), str) or node["type"] not in allowed_types:
             raise ValueError("Unknown node type")

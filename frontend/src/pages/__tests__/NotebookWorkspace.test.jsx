@@ -305,11 +305,11 @@ describe('Workspace accessibility', () => {
   it('closes a drawer with its Close button and falls back to chat after a mobile deck closes', async () => {
     window.matchMedia.mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
     mount(); await loaded()
-    const sources = screen.getByRole('button', { name: 'Sources 2' })
+    const sources = screen.getByRole('button', { name: 'Sources 3' })
     sources.focus(); fireEvent.click(sources)
     click('Close sources')
     await waitFor(() => expect(sources).toHaveFocus())
-    const studio = screen.getByRole('button', { name: 'Studio 0' })
+    const studio = screen.getByRole('button', { name: 'Studio 2' })
     studio.focus(); fireEvent.click(studio)
     expect(screen.queryByRole('dialog', { name: 'Sources' })).not.toBeInTheDocument()
     click('Practise')
@@ -324,7 +324,7 @@ describe('Workspace accessibility', () => {
     window.matchMedia.mockReturnValue(media)
     const rendered = mount(); await loaded()
     act(() => { media.matches = false; listener() })
-    const trigger = screen.getByRole('button', { name: 'Sources 2' })
+    const trigger = screen.getByRole('button', { name: 'Sources 3' })
     trigger.focus(); fireEvent.click(trigger)
     expect(screen.getByRole('dialog', { name: 'Sources' })).toBeInTheDocument()
     act(() => { media.matches = true; listener() })
@@ -342,5 +342,41 @@ describe('Workspace accessibility', () => {
     const css = readFileSync('src/index.css', 'utf8')
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.notebook-workspace/)
     expect(css).toContain('animation: none !important; transition: none !important;')
+  })
+})
+
+describe('Consistent panel counts', () => {
+  it.each([true, false])('counts all sources and artifacts with desktop=%s', async desktop => {
+    window.matchMedia.mockReturnValue({ matches: desktop, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    const data = fixture()
+    data.sources = [data.sources[0], data.sources[2]]
+    data.artifacts.decks = Array.from({ length: 4 }, (_, index) => ({ ...data.artifacts.decks[0], id: index + 9, name: `Deck ${index}` }))
+    notebooksAPI.workspace.mockResolvedValue({ data })
+    mount(); await loaded()
+    const assertPanel = (side, count) => {
+      const panel = screen.getByRole('complementary', { name: side })
+      expect(panel.querySelector('.workspace-count')).toHaveTextContent(String(count))
+      expect(within(panel).queryByText('1 running')).not.toBeInTheDocument()
+    }
+    if (desktop) { assertPanel('Sources', 2); assertPanel('Studio', 5) }
+    else {
+      expect(screen.getByRole('button', { name: 'Sources 2' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Studio 5' })).toBeInTheDocument()
+      expect(screen.queryByText('1 running')).not.toBeInTheDocument()
+      click('Sources 2'); assertPanel('Sources', 2); click('Close sources')
+      click('Studio 5'); assertPanel('Studio', 5)
+    }
+  })
+  it.each([true, false])('separates running jobs with desktop=%s', async desktop => {
+    window.matchMedia.mockReturnValue({ matches: desktop, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    const data = fixture()
+    data.jobs = [{ job_id: 'job-1', status: 'processing', current_step: 'Reading', total_questions: 10 }]
+    notebooksAPI.workspace.mockResolvedValue({ data })
+    mount(); await loaded()
+    const label = screen.getByText('1 running')
+    expect(label.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(label.querySelector('svg')).toHaveClass('animate-spin')
+    if (desktop) expect(screen.getByRole('complementary', { name: 'Studio' }).querySelector('.workspace-count')).toHaveTextContent('2')
+    else expect(screen.getByRole('button', { name: 'Studio 2 1 running' })).toBeInTheDocument()
   })
 })

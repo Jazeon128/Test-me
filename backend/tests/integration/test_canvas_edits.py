@@ -110,3 +110,14 @@ def test_added_node_without_source(client, canvas, monkeypatch, node_type):
     monkeypatch.setattr(api, "QuestionGenerator", factory)
     assert client.post(url + "/questions").status_code == 409
     factory.assert_not_called()
+
+
+@pytest.mark.parametrize("header", ["column", "row"])
+def test_matrix_header_accepted(client, canvas, header):
+    edited = graph()
+    edited["nodes"][0].update(type="MatrixHeader", draggable=False)
+    edited["nodes"][0]["data"] = {"label": "Athena", "header": header}
+    response = client.patch(f"/api/canvas/{canvas.id}", json={"edited": edited})
+    assert response.status_code == 200
+    assert response.json()["edited"] == edited
+    assert client.get(f"/api/canvas/{canvas.id}").json()["edited"] == edited

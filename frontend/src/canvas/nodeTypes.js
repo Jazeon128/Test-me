@@ -6,6 +6,7 @@ import {
   MilestoneNode,
   BoneNode,
   MatrixCell,
+  MatrixHeader,
   GroupNode,
   NoteNode,
 } from './nodes'
@@ -18,6 +19,7 @@ export const nodeTypes = {
   MilestoneNode,
   BoneNode,
   MatrixCell,
+  MatrixHeader,
   GroupNode,
   NoteNode,
 }

@@ -12,8 +12,8 @@ vi.mock('../../services/api', () => ({
   notebooksAPI: {},
   statusAPI: {},
 }))
-vi.mock('../layout', () => ({ toGraph: vi.fn(), layout: vi.fn() }))
-vi.mock('../NodePanel', () => ({ default: () => null }))
+vi.mock('../layout', async importOriginal => ({ ...(await importOriginal()), toGraph: vi.fn(), layout: vi.fn() }))
+vi.mock('../NodePanel', () => ({ default: () => <div data-testid="source-panel" /> }))
 vi.mock('@xyflow/react', async () => {
   const { useState } = await import('react')
   const useGraphState = () => {
@@ -252,4 +252,23 @@ it('saves only layout when dragging a generated canvas', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
   await screen.findByText('Left')
   expect(canvasAPI.update.mock.calls).toEqual([[7, { layout: { n: { x: 99, y: 101 } } }]])
+})
+
+it('loads old matrix headers without saving and supports header editing and deletion without sources or recolour', async () => {
+  canvasAPI.get.mockResolvedValueOnce({ data: { ...record, template: 'comparison_matrix', payload: { options: ['Athena'], criteria: ['Purpose'] } } })
+  await setup()
+  expect(canvasAPI.update).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByText('Athena'))
+  expect(canvasAPI.nodeSource).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('source-panel')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Colour' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Athena edited' } })
+  fireEvent.keyDown(screen.getByLabelText('Label'), { key: 'Enter' })
+  expect(screen.getByText('Athena edited')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  expect(screen.queryByText('Athena edited')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+  await screen.findByText('Left')
+  expect(canvasAPI.update.mock.calls[0][1].edited.nodes.some(node => node.id === 'row-0')).toBe(true)
 })

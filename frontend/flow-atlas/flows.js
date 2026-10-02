@@ -151,7 +151,7 @@ export const flows = [
     step('restore', 'Restore original confirmation', 'Close shortcuts, move a node and click Restore original', async page => {
       await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).getByRole('button', { name: 'Close', exact: true }).click()
       if (!(await button(page, 'Restore original').isVisible())) {
-        const node = page.locator('.react-flow__node').first()
+        const node = page.locator('.react-flow__node:not(.react-flow__node-MatrixHeader)').first()
         const box = await node.boundingBox()
         if (!box) throw new Error('Canvas node has no visible bounds')
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)

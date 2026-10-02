@@ -147,7 +147,6 @@ export function MatrixCell({ data, selected }) {
       selected={selected}
       shape="rect"
       detail={false}
-      caption={data.criterion}
     />
   )
 }
@@ -233,3 +232,12 @@ export function NoteNode({ data, selected }) {
   )
 }
 NoteNode.propTypes = nodeShape
+
+export function MatrixHeader({ data, selected }) {
+  return (
+    <div className={`tm-matrix-header is-${data.header}${selected ? ' is-selected' : ''}`}>
+      {data.editing ? <NodeEditor data={data} /> : <div>{data.label}</div>}
+    </div>
+  )
+}
+MatrixHeader.propTypes = nodeShape

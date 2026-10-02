@@ -20,6 +20,6 @@ dead outbound proxy. Forms for generation and chat are never submitted.
 Process trees stop and `work/` is deleted in `finally`, including failed runs.
 
 Sources have no preview control. The ready-source step captures its selected
-row. Restore original requires an edit, so the script moves a node on the copy
+row. Restore original requires an edit, so the script moves the first non-header node on the copy
 when needed, opens confirmation and cancels. The deck creation API has no kind
 field. The sample deck contains four `flashcard` items through the questions API.

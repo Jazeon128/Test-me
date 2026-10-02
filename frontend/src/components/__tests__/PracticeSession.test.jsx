@@ -87,3 +87,26 @@ describe('Written practice', () => {
     expect(progressAPI.submit.mock.calls[0][0].selected_option).toBe('')
   })
 })
+
+it.each([true, false])('focuses and scrolls completion once with reduced motion=%s', async reduced => {
+  const scroll = vi.fn()
+  const previous = HTMLElement.prototype.scrollIntoView
+  HTMLElement.prototype.scrollIntoView = scroll
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: reduced })
+  try {
+    progressAPI.submit.mockResolvedValue({ data: { correct: true, explanation: question.explanation, written_grade: { quality: 4 }, gamification: { points_earned: 10, streak_bonus: 0 } } })
+    await openWrittenMode()
+    fireEvent.click(screen.getByText('Submit written answer'))
+    await screen.findByText('Next question')
+    fireEvent.click(screen.getByText('Next question'))
+    const heading = await screen.findByRole('heading', { name: 'Session complete' })
+    expect(heading).toHaveFocus()
+    expect(heading).toHaveAttribute('tabindex', '-1')
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.instances[0]).toBe(heading.parentElement)
+    expect(scroll).toHaveBeenCalledWith({ block: 'center', ...(reduced ? {} : { behavior: 'smooth' }) })
+  } finally {
+    media.mockRestore()
+    HTMLElement.prototype.scrollIntoView = previous
+  }
+})

@@ -379,3 +379,10 @@ button:disabled { cursor: not-allowed; }
 .tm-shortcuts { padding: 12px; border: 1px solid var(--canvas-editor-line); border-radius: 6px; background: var(--canvas-editor-bg); color: var(--canvas-editor-ink); }
 .tm-shortcuts dl { display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 12px; margin: 8px 0; }
 .tm-edit-toolbar .tm-shortcuts button { width: auto; padding: 0 12px; }
+
+/* Matrix text uses canvas tokens shared by light and dark themes. */
+.tm-matrix-header { width: 180px; padding: 7px 10px; color: var(--canvas-editor-ink); font-size: 14px; line-height: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.tm-matrix-header.is-column { text-align: center; }
+.tm-matrix-header.is-row { text-align: right; }
+.tm-matrix-header.is-selected { outline: 2px solid var(--canvas-editor-ink); outline-offset: 2px; }
+.workspace-running { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }

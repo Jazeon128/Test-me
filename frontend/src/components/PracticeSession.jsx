@@ -11,6 +11,14 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   const { notebookId } = useParams()
   const [deckHasItems, setDeckHasItems] = useState(false)
   const [complete, setComplete] = useState(false)
+  const completionHeading = useRef(null)
+  const completionCard = useRef(null)
+  useEffect(() => {
+    if (!complete) return
+    completionHeading.current?.focus({ preventScroll: true })
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    completionCard.current?.scrollIntoView({ block: 'center', ...(reducedMotion ? {} : { behavior: 'smooth' }) })
+  }, [complete])
   const [mode, setMode] = useState('choice')
   const [writtenAnswer, setWrittenAnswer] = useState('')
   // Feedback from a failed first attempt: a hint (written) or flagged
@@ -175,8 +183,8 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
 
   if (complete) {
     return (
-      <div className="glass-panel card text-center">
-        <h2 className="text-2xl font-bold mb-4">Session complete</h2>
+      <div ref={completionCard} className="glass-panel card text-center">
+        <h2 ref={completionHeading} tabIndex={-1} className="text-2xl font-bold mb-4">Session complete</h2>
         <p>Correct: {sessionStats.correct}</p>
         <p>Incorrect: {sessionStats.incorrect}</p>
         <p>Points: {sessionStats.totalPoints}</p>

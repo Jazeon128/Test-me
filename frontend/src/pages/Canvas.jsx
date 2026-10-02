@@ -12,7 +12,7 @@ import '@xyflow/react/dist/style.css'
 import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText } from 'lucide-react'
 import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../services/api'
 import { nodeTypes } from '../canvas/nodeTypes'
-import { layout, toGraph } from '../canvas/layout'
+import { layout, toGraph, withMatrixHeaders } from '../canvas/layout'
 import TemplatePicker from '../canvas/TemplatePicker'
 import NodePanel from '../canvas/NodePanel'
 import useCanvasSave from '../canvas/useCanvasSave'
@@ -110,7 +110,7 @@ export default function Canvas() {
       setSelected(node)
       setSelectedEdge(null)
       setSource(null)
-      if (node.data.added) return
+      if (node.data.added || node.type === 'MatrixHeader') return
       try {
         const response = await canvasAPI.nodeSource(targetCanvasId, node.id)
         setSource(response.data)
@@ -123,7 +123,9 @@ export default function Canvas() {
 
   const draw = useCallback(
     async (record) => {
-      const laidOut = record.edited || await layout(record.template, toGraph(record.template, record.payload), {
+      const edited = record.edited && record.template === 'comparison_matrix'
+        ? withMatrixHeaders(record.edited, record.payload) : record.edited
+      const laidOut = edited || await layout(record.template, toGraph(record.template, record.payload), {
         algorithm: LAYOUTS[record.template] || 'layered',
         orientation: record.payload?.orientation || 'horizontal',
       })
@@ -434,7 +436,7 @@ export default function Canvas() {
             </div>
           )}
         </div>
-        {phase === 'ready' && selected && !selected.data.added && (
+        {phase === 'ready' && selected && !selected.data.added && selected.type !== 'MatrixHeader' && (
           <NodePanel
             key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}

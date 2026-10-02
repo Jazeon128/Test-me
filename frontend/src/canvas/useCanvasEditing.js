@@ -27,7 +27,7 @@ export function editedGraph(nodes, edges) {
   )
 }
 
-export const meaningColours = ['MatrixCell', 'MessageNode', 'NoteNode']
+export const meaningColours = ['MatrixCell', 'MatrixHeader', 'MessageNode', 'NoteNode']
 export const COLORS = ['blue', 'teal', 'amber', 'violet', 'rose', 'slate']
 
 export function freePosition(centre, nodes) {

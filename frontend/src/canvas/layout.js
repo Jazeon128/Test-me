@@ -141,8 +141,28 @@ function fishboneGraph(payload) {
   return { nodes, edges, groups: [] }
 }
 
-function matrixGraph(payload) {
-  const nodes = []
+function matrixHeaders(payload) {
+  return [
+    ...(payload.options || []).map((label, index) => ({
+      id: `col-${index}`, type: 'MatrixHeader',
+      position: { x: index * 220, y: -70 },
+      data: { label, header: 'column' }, draggable: false,
+    })),
+    ...(payload.criteria || []).map((label, index) => ({
+      id: `row-${index}`, type: 'MatrixHeader',
+      position: { x: -220, y: index * 90 },
+      data: { label, header: 'row' }, draggable: false,
+    })),
+  ]
+}
+
+export function withMatrixHeaders(graph, payload) {
+  if (graph.nodes.some(node => node.type === 'MatrixHeader')) return graph
+  return { ...graph, nodes: [...matrixHeaders(payload), ...graph.nodes] }
+}
+
+export function matrixGraph(payload) {
+  const nodes = matrixHeaders(payload)
   const options = payload.options || []
   const criteria = payload.criteria || []
 

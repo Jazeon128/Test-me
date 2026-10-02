@@ -10,7 +10,7 @@ import ChatPanel from '../components/workspace/ChatPanel'
 import WorkspacePanel from '../components/workspace/WorkspacePanel'
 import WorkspaceDrawer from '../components/workspace/WorkspaceDrawer'
 import useMediaQuery from '../hooks/useMediaQuery'
-import { FileText, Sparkles, X, Library } from 'lucide-react'
+import { FileText, Sparkles, X, Library, Loader2 } from 'lucide-react'
 
 const storageKey = 'testme.workspace.collapsed'
 const jobId = job => job.job_id || job.id
@@ -167,14 +167,15 @@ function Workspace({ notebookId }) {
       artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas}
       onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
   }
-  const counts = { sources: workspace.sources.filter(source => source.status === 'ready').length,
+  const counts = { sources: workspace.sources.length,
     studio: workspace.artifacts.decks.length + workspace.artifacts.canvases.length }
-  const panel = side => <WorkspacePanel side={side} count={counts[side]} collapsed={desktop && collapsed[side]}
+  const runningCount = jobs.filter(running).length
+  const panel = side => <WorkspacePanel side={side} count={counts[side]} runningCount={side === 'studio' ? runningCount : 0} collapsed={desktop && collapsed[side]}
     toggle={desktop ? () => toggle(side) : null}>{panels[side]}</WorkspacePanel>
   return <div className="notebook-workspace" style={{ '--sources-width': collapsed.sources ? '44px' : '280px', '--studio-width': collapsed.studio ? '44px' : '320px' }}>
     {!desktop && <div className="workspace-topbar" inert={drawer ? '' : undefined}>
-      <button className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{sourceIds.length}</span></button>
-      <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{jobs.filter(running).length}</span></button>
+      <button className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{counts.sources}</span></button>
+      <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{counts.studio}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</button>
     </div>}
     {desktop && panel('sources')}
     <section ref={centre} className="workspace-centre" aria-label={hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={drawer ? '' : undefined}>

@@ -94,6 +94,7 @@ describe('Notebook question bank', () => {
   it('stores every filter in URL, clears filters, and restores on history navigation', async () => {
     mount()
     await screen.findByText('Front 1')
+    fireEvent.click(screen.getByText('Filters'))
     await screen.findByRole('option', { name: 'Tag (shared)' })
     const filters = [['Deck', '3', 'deck_id'], ['Source', '2', 'source_id'], ['Tag', '4', 'tag_id'],
       ['Type', 'flashcard', 'card_type'], ['Difficulty', 'hard', 'difficulty'], ['Status', 'due', 'status']]
@@ -205,6 +206,7 @@ it('keeps the notebook page heading outside the slim deck header', async () => {
 it('names filters, expansion and page selection and uses the requested option wording', async () => {
   mount()
   await screen.findByText('Front 1')
+  fireEvent.click(screen.getByText('Filters'))
   const filters = [
     ['Deck', 'All decks'], ['Source', 'All sources'], ['Tag', 'All tags'],
     ['Type', 'All types'], ['Difficulty', 'Any difficulty'], ['Status', 'Any status'],
@@ -350,4 +352,21 @@ it('creates a notebook tag then applies it', async () => {
   await screen.findByText('Tagged 1 with Revision.')
   expect(tagsAPI.create).toHaveBeenCalledWith({ name: 'Revision', notebook_id: 7 })
   expect(notebooksAPI.bulkQuestions).toHaveBeenCalledWith('7', { question_ids: [1], action: 'tag', tag_id: 9 })
+})
+
+it('folds filters on desktop while keeping search visible', async () => {
+  mount()
+  await screen.findByText('Front 1')
+  const summary = screen.getByText('Filters')
+  expect(summary.closest('details')).not.toHaveAttribute('open')
+  expect(screen.getByLabelText('Search')).toBeVisible()
+  expect(screen.getByLabelText('Search').closest('details')).toBeNull()
+  fireEvent.click(summary)
+  expect(summary.closest('details')).toHaveAttribute('open')
+})
+
+it.each(['deck_id=3&status=due', 'q=front&difficulty=hard'])('opens active filters and counts them: %s', async query => {
+  mount({ query: `?view=questions&${query}` })
+  await screen.findByText('Front 1')
+  expect(screen.getByText('Filters (2)').closest('details')).toHaveAttribute('open')
 })

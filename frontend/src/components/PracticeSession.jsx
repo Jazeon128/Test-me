@@ -20,6 +20,14 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
     completionCard.current?.scrollIntoView({ block: 'center', ...(reducedMotion ? {} : { behavior: 'smooth' }) })
   }, [complete])
   const [mode, setMode] = useState('choice')
+  const [timerEnabled, setTimerEnabled] = useState(() => {
+    try { return localStorage.getItem('testme.practice.timer') === 'true' }
+    catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('testme.practice.timer', String(timerEnabled)) }
+    catch { /* Practice remains available when storage is unavailable. */ }
+  }, [timerEnabled])
   const [writtenAnswer, setWrittenAnswer] = useState('')
   // Feedback from a failed first attempt: a hint (written) or flagged
   // sentences (explain). While set, the next submission is the final one.
@@ -45,6 +53,8 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
 
   const timerRef = useRef(null)
   const flashcard = questions[currentIndex]?.card_type === 'flashcard'
+  const allFlashcards = questions.length > 0 && questions.every(question => question.card_type === 'flashcard')
+  const mixed = !allFlashcards && questions.some(question => question.card_type === 'flashcard')
   const typed = !flashcard && (mode === 'written' || mode === 'explain')
 
   const handleSubmit = useCallback((option) => {
@@ -92,7 +102,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
     if (showResult || questions.length === 0) return
     startTime.current = Date.now()
     answerDuration.current = null
-    if (typed || flashcard) return
+    if (typed || flashcard || !timerEnabled) return
     setTimeLeft(30)
     const deadline = Date.now() + 30000
     timerRef.current = setInterval(() => {
@@ -101,7 +111,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
       if (remaining === 0) handleSubmit(null)
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [currentIndex, showResult, questions, typed, flashcard, handleSubmit])
+  }, [currentIndex, showResult, questions, typed, flashcard, timerEnabled, handleSubmit])
 
   useEffect(() => {
     if (!loading && questions.length === 0 && !embedded && !deckHasItems) onEmpty()
@@ -135,12 +145,12 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
         return
       }
 
-      // Update session stats with actual server response
+      const successful = flashcard ? quality === 4 || quality === 5 : response.data.correct
       setSessionStats((prev) => ({
-        correct: prev.correct + (response.data.correct ? 1 : 0),
-        incorrect: prev.incorrect + (response.data.correct ? 0 : 1),
+        correct: prev.correct + (successful ? 1 : 0),
+        incorrect: prev.incorrect + (successful ? 0 : 1),
         totalPoints: prev.totalPoints + response.data.gamification.points_earned + response.data.gamification.streak_bonus,
-        streak: response.data.correct ? prev.streak + 1 : 0,
+        streak: successful ? prev.streak + 1 : 0,
       }))
 
       if (typed) {
@@ -185,9 +195,9 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
     return (
       <div ref={completionCard} className="glass-panel card text-center">
         <h2 ref={completionHeading} tabIndex={-1} className="text-2xl font-bold mb-4">Session complete</h2>
-        <p>Correct: {sessionStats.correct}</p>
-        <p>Incorrect: {sessionStats.incorrect}</p>
-        <p>Points: {sessionStats.totalPoints}</p>
+        <p>{allFlashcards ? 'Recalled' : mixed ? 'Correct or recalled' : 'Correct'}: {sessionStats.correct}</p>
+        <p>{allFlashcards ? 'To review' : mixed ? 'Missed' : 'Incorrect'}: {sessionStats.incorrect}</p>
+        {!allFlashcards && <p>Points: {sessionStats.totalPoints}</p>}
         <button className="flashcard-button mt-4" onClick={onFinished}>Finish</button>
       </div>
     )
@@ -230,11 +240,16 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
           <option value="written">Written answer</option>
           <option value="explain">Explain it</option>
         </select>
+        {mode === 'choice' && <label className="practice-timer-switch">
+          <input type="checkbox" checked={timerEnabled} disabled={showResult || submitting}
+            onChange={event => setTimerEnabled(event.target.checked)} />
+          <span>30 s timer</span>
+        </label>}
         {mode === 'written' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Untimed. A wrong first answer gets a hint and one more try. Grading requires a TypeSafe key.</p>}
         {mode === 'explain' && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Explain the idea in plain words. The first check points at unclear or wrong sentences without correcting them. Requires a TypeSafe key.</p>}
       </div>}
       {/* Header Stats */}
-      <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`mb-6 grid grid-cols-2 ${allFlashcards ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4`}>
         <StatBadge
           icon={<Target size={20} />}
           label="Progress"
@@ -247,15 +262,15 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
           value={sessionStats.streak}
           color="orange"
         />
-        <StatBadge
+        {!allFlashcards && <StatBadge
           icon={<Trophy size={20} />}
           label="Points"
           value={sessionStats.totalPoints}
           color="purple"
-        />
+        />}
         <StatBadge
           icon={<CheckCircle size={20} />}
-          label="Correct"
+          label={allFlashcards ? 'Recalled' : mixed ? 'Correct or recalled' : 'Correct'}
           value={sessionStats.correct}
           color="green"
         />
@@ -290,10 +305,10 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Question {currentIndex + 1} of {questions.length}
             </span>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${!typed && timerEnabled && timeLeft <= 5 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 animate-pulse' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}>
               <Clock size={18} />
-              <span className="font-bold">{typed ? 'Untimed' : `${timeLeft}s`}</span>
+              <span className="font-bold">{typed || !timerEnabled ? 'Untimed' : `${timeLeft}s`}</span>
             </div>
           </div>
 

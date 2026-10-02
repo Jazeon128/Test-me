@@ -49,7 +49,7 @@ export default function FlashcardCard({ question, onRate, submitting, error }) {
         {ratings.map(({ label, quality }, index) => <button key={quality}
           ref={quality === 4 ? goodButton : undefined} className="flashcard-button"
           disabled={submitting} onClick={() => onRate(quality)} aria-label={`${label}, key ${index + 1}`}>
-          {label}<kbd>{index + 1}</kbd>
+          {label} <kbd>· {index + 1}</kbd>
         </button>)}
       </div> : <button ref={revealButton} className="flashcard-button flashcard-reveal" onClick={() => setRevealed(true)}>Show answer</button>}
     </section>

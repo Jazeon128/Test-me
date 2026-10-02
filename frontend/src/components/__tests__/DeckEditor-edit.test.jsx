@@ -71,7 +71,7 @@ it('edits all question fields and chooses a correct answer', async () => {
 
 it('defaults to Flashcard in a flashcards deck and supports the type switch', async () => {
     show(card, 'flashcards')
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Card' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add card' }))
     expect(screen.getByLabelText('Type')).toHaveValue('flashcard')
     expect(screen.queryByLabelText('Option A')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'mcq' } })
@@ -87,7 +87,7 @@ it('defaults to Flashcard in a flashcards deck and supports the type switch', as
 
 it('defaults to Question in a quiz deck and displays inline validation and server failures', async () => {
     show()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Card' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add question' }))
     expect(screen.getByLabelText('Type')).toHaveValue('mcq')
     fireEvent.click(screen.getByRole('button', { name: 'Save Card' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Question is required')

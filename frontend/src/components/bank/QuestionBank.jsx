@@ -41,7 +41,8 @@ export default function QuestionBank({ notebookId, workspace, open, selected: co
   const [actionMessage, setActionMessage] = useState('')
   const query = params.toString()
   const heldTab = params.get('bank_tab') === 'held-back'
-  const filtered = Boolean(params.get('q') || filterKeys.some(key => params.get(key)))
+  const filterCount = ['q', ...filterKeys].filter(key => params.get(key)).length
+  const filtered = filterCount > 0
   useEffect(() => {
     let alive = true
     Promise.all([notebooksAPI.heldBack(notebookId), tagsAPI.list(notebookId)]).then(([heldResult, tagResult]) => {
@@ -111,7 +112,7 @@ export default function QuestionBank({ notebookId, workspace, open, selected: co
     </section> : <>
       <div className="bank-toolbar">
         <Search value={params.get('q') || ''} change={value => change('q', value)} />
-        <details className="bank-filters" open={desktop || undefined}><summary>Filters</summary><div className="bank-filter-fields">
+        <details className="bank-filters" open={filtered || undefined}><summary>{filtered ? `Filters (${filterCount})` : 'Filters'}</summary><div className="bank-filter-fields">
           {selects.map(([key, label, options]) => <label key={key}>{label}
             <select aria-label={label} value={params.get(key) || ''} onChange={event => change(key, event.target.value)}>
               <option value="">{emptyOptions[key]}</option>

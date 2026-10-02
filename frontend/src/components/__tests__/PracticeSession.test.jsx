@@ -17,6 +17,7 @@ const question = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [question] } })
 })
 afterEach(() => vi.useRealTimers())
@@ -76,6 +77,7 @@ describe('Written practice', () => {
     render(<MemoryRouter><PracticeSession deckId={null} onExit={vi.fn()} onFinished={vi.fn()} onEmpty={vi.fn()} /></MemoryRouter>)
     await screen.findByText(question.question_text)
     vi.useFakeTimers()
+    fireEvent.click(screen.getByLabelText('30 s timer'))
     // Restart the timer after installing the fake clock.
     fireEvent.change(screen.getByLabelText('Answer mode'), { target: { value: 'written' } })
     fireEvent.change(screen.getByLabelText('Answer mode'), { target: { value: 'choice' } })

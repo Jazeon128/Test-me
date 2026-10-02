@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import PracticeSession from '../PracticeSession'
@@ -19,6 +19,7 @@ const callbacks = () => ({ onExit: vi.fn(), onFinished: vi.fn(), onEmpty: vi.fn(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [card] } })
   progressAPI.submit.mockImplementation(async ({ manual_quality }) => ({ data: {
     correct: manual_quality >= 3, gamification: { points_earned: 0, streak_bonus: 0 },
@@ -84,8 +85,8 @@ describe('Flashcard practice', () => {
     expect(screen.getByRole('button', { name: 'Show answer' })).toHaveFocus()
     fireEvent.keyDown(window, { key: ' ' })
     await act(async () => fireEvent.keyDown(window, { key: '2' }))
-    expect(screen.getByText('Correct: 1')).toBeInTheDocument()
-    expect(screen.getByText('Incorrect: 1')).toBeInTheDocument()
+    expect(screen.getByText('Recalled: 0')).toBeInTheDocument()
+    expect(screen.getByText('To review: 2')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     expect(props.onFinished).toHaveBeenCalledTimes(1)
   })
@@ -94,6 +95,8 @@ describe('Flashcard practice', () => {
     vi.useFakeTimers()
     progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [question, card, { ...question, id: 10 }] } })
     await act(async () => render(<PracticeSession {...callbacks()} />))
+    fireEvent.click(screen.getByLabelText('30 s timer'))
+    expect(screen.getByText('Correct or recalled')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(10000))
     expect(screen.getByText('20s')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Answer'))
@@ -141,4 +144,58 @@ describe('Flashcard practice', () => {
     expect(screen.getByText(title)).toBeInTheDocument()
     expect(screen.getByText(count)).toBeInTheDocument()
   })
+})
+
+const statValue = label => within(screen.getByText(label).parentElement.parentElement).getByText(/^\d+$/).textContent
+
+it('counts Good and Easy as recalled, resets the streak for Hard and Again, and omits points', async () => {
+  progressAPI.getReviewSession.mockResolvedValue({ data: { questions: Array.from({ length: 5 }, (_, id) => ({ ...card, id })) } })
+  progressAPI.submit.mockResolvedValue({ data: { correct: false, gamification: { points_earned: 0, streak_bonus: 0 } } })
+  render(<PracticeSession {...callbacks()} />)
+  await screen.findByRole('button', { name: 'Show answer' })
+  expect(statValue('Recalled')).toBe('0')
+  expect(screen.queryByText('Points')).not.toBeInTheDocument()
+  const ratings = [['Good, key 3', 1, 1], ['Easy, key 4', 2, 2], ['Hard, key 2', 2, 0], ['Again, key 1', 2, 0]]
+  for (const [name, recalled, streak] of ratings) {
+    fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name })))
+    expect(statValue('Recalled')).toBe(String(recalled))
+    expect(statValue('Streak')).toBe(String(streak))
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Good, key 3' })))
+  expect(screen.getByText('Recalled: 3')).toBeInTheDocument()
+  expect(screen.getByText('To review: 2')).toBeInTheDocument()
+  expect(screen.queryByText(/^Points:/)).not.toBeInTheDocument()
+  expect(progressAPI.submit.mock.calls.map(([payload]) => payload.manual_quality)).toEqual([4, 5, 3, 1, 4])
+})
+
+it.each([false, true])('keeps quiz statistics and includes recall in mixed sessions: %s', async mixed => {
+  progressAPI.getReviewSession.mockResolvedValue({ data: { questions: mixed ? [card, question] : [question] } })
+  progressAPI.submit.mockImplementation(async ({ question_id }) => ({ data: { correct: question_id === question.id, gamification: { points_earned: question_id === question.id ? 10 : 0, streak_bonus: 0 } } }))
+  render(<PracticeSession {...callbacks()} />)
+  await screen.findByText(mixed ? card.question_text : question.question_text)
+  const label = mixed ? 'Correct or recalled' : 'Correct'
+  expect(statValue(label)).toBe('0')
+  expect(statValue('Points')).toBe('0')
+  if (mixed) {
+    fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Easy, key 4' })))
+    await screen.findByText(question.question_text)
+    expect(statValue(label)).toBe('1')
+  }
+  fireEvent.click(screen.getByRole('button', { name: /A\. Answer/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: /Good/ })))
+  expect(screen.getByText(`${label}: ${mixed ? 2 : 1}`)).toBeInTheDocument()
+  expect(screen.getByText(`${mixed ? 'Missed' : 'Incorrect'}: 0`)).toBeInTheDocument()
+  expect(screen.getByText('Points: 10')).toBeInTheDocument()
+})
+
+it('keeps every rating accessible name and displays key hints', () => {
+  render(<FlashcardCard question={card} onRate={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Show answer' }))
+  for (const [index, label] of ['Again', 'Hard', 'Good', 'Easy'].entries()) {
+    expect(screen.getByRole('button', { name: `${label}, key ${index + 1}` })).toHaveTextContent(`${label} · ${index + 1}`)
+  }
 })

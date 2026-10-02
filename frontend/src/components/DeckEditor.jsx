@@ -143,29 +143,29 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
 
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{deck.name}</h1>
+                        {!embedded && <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{deck.name}</h1>}
                         <p className="mt-2 text-gray-600 dark:text-gray-300">{deck.description}</p>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{deck.num_questions} questions</p>
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
                         <button
                             onClick={() => onPractice(deckId)}
-                            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
+                            className="btn-primary flex items-center gap-2"
                         >
                             <Play size={20} />
-                            Practice Now
+                            Practise
                         </button>
                         <button
                             onClick={() => setShowAddModal(true)}
                             className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition flex items-center gap-2"
                         >
                             <Plus size={20} />
-                            Add Card
+                            {deck.kind === 'flashcards' ? 'Add card' : 'Add question'}
                         </button>
                     </div>
                 </div>
 
-                {deck.documents?.length > 0 && (
+                {!embedded && deck.documents?.length > 0 && (
                     <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                             Explain a source on a canvas

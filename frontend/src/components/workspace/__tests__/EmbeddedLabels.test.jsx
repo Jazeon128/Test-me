@@ -45,3 +45,23 @@ describe('Embedded labels', () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 })
+
+it.each([['quiz', 'Add question'], ['flashcards', 'Add card']])('clarifies embedded %s editor actions', async (kind, addLabel) => {
+  decksAPI.get.mockResolvedValue({ data: { name: 'Study deck', kind, num_questions: 2, questions: [], tags: [], documents: [{ id: 1, filename: 'Source' }] } })
+  render(<DeckEditor embedded deckId={9} onPractice={vi.fn()} onOpenCanvas={vi.fn()} />)
+  const practise = await screen.findByRole('button', { name: 'Practise' })
+  expect(practise).toHaveClass('btn-primary')
+  expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  expect(screen.getByText('2 questions')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: addLabel })).toBeInTheDocument()
+  expect(screen.queryByText('Explain a source on a canvas')).not.toBeInTheDocument()
+})
+
+it('keeps the standalone title and canvas action with the new primary wording', async () => {
+  decksAPI.get.mockResolvedValue({ data: { name: 'Study deck', kind: 'quiz', questions: [], tags: [], documents: [{ id: 1, filename: 'Source' }] } })
+  render(<DeckEditor deckId={9} />)
+  expect(await screen.findByRole('heading', { level: 1, name: 'Study deck' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Practise' })).toHaveClass('btn-primary')
+  expect(screen.getByRole('button', { name: 'Add question' })).toBeInTheDocument()
+  expect(screen.getByText('Explain a source on a canvas')).toBeInTheDocument()
+})

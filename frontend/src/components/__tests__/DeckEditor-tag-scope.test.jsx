@@ -25,7 +25,7 @@ it('passes the deck notebook to the filter, per-card editor, and add form', asyn
     await waitFor(() => expect(tagsAPI.list).toHaveBeenCalledWith(12))
     expect(await screen.findByLabelText('Add a tag')).toBeInTheDocument()
     tagsAPI.list.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Add Card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }))
     await screen.findByLabelText('Front')
     await waitFor(() => expect(tagsAPI.list).toHaveBeenCalledWith(12))
 })

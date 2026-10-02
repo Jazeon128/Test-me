@@ -25,6 +25,7 @@ const question = {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
+  localStorage.clear()
   progressAPI.getReviewSession.mockResolvedValue({ data: { questions: [question, { ...question, id: 2 }] } })
   progressAPI.submit.mockResolvedValue({ data: {
     correct: true, gamification: { points_earned: 0, streak_bonus: 0 },
@@ -60,10 +61,59 @@ it('records the answer after 5 seconds and excludes 40 seconds reading the expla
 
 it('records 30 seconds on timeout and excludes reading time before grading', async () => {
   await open()
-  act(() => vi.advanceTimersByTime(30000))
+  fireEvent.click(screen.getByLabelText('30 s timer'))
+  act(() => vi.advanceTimersByTime(1000))
+  expect(screen.getByText('29s')).toBeInTheDocument()
+  act(() => vi.advanceTimersByTime(29000))
   expect(screen.getByText(question.explanation)).toBeInTheDocument()
   act(() => vi.advanceTimersByTime(40000))
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Again/ })) })
   expect(progressAPI.submit.mock.calls[0][0]).toMatchObject({ selected_option: '' })
   expect(progressAPI.submit.mock.calls[0][0].time_taken_seconds).toBeCloseTo(30)
+})
+
+it('is untimed by default and never reveals or submits after 30 seconds', async () => {
+  await open()
+  expect(screen.getByText('Untimed')).toBeInTheDocument()
+  expect(screen.getByLabelText('30 s timer')).not.toBeChecked()
+  act(() => vi.advanceTimersByTime(60000))
+  expect(screen.getByText('Untimed')).toBeInTheDocument()
+  expect(screen.queryByText(question.explanation)).not.toBeInTheDocument()
+  expect(progressAPI.submit).not.toHaveBeenCalled()
+})
+
+it('remembers both timer choices across sessions', async () => {
+  await open()
+  fireEvent.click(screen.getByLabelText('30 s timer'))
+  expect(localStorage.getItem('testme.practice.timer')).toBe('true')
+  cleanup()
+  await open()
+  expect(screen.getByLabelText('30 s timer')).toBeChecked()
+  expect(screen.getByText('30s')).toBeInTheDocument()
+  fireEvent.click(screen.getByLabelText('30 s timer'))
+  expect(localStorage.getItem('testme.practice.timer')).toBe('false')
+  cleanup()
+  await open()
+  expect(screen.getByText('Untimed')).toBeInTheDocument()
+})
+
+it('works when reading and writing localStorage throw', async () => {
+  const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked') })
+  const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked') })
+  try {
+    await open()
+    expect(screen.getByText('Untimed')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('30 s timer'))
+    expect(screen.getByText('30s')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(30000))
+    expect(screen.getByText(question.explanation)).toBeInTheDocument()
+  } finally { get.mockRestore(); set.mockRestore() }
+})
+
+it('shows the timer switch only in multiple choice', async () => {
+  await open()
+  for (const mode of ['written', 'explain']) {
+    fireEvent.change(screen.getByLabelText('Answer mode'), { target: { value: mode } })
+    expect(screen.queryByLabelText('30 s timer')).not.toBeInTheDocument()
+  }
 })

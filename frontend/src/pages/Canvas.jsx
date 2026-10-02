@@ -9,10 +9,10 @@ import {
   useEdgesState,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Loader2, Sparkles, AlertCircle, ChevronRight, Wand2, Hand } from 'lucide-react'
+import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText, Wand2, Hand } from 'lucide-react'
 import PropTypes from 'prop-types'
 
-import { canvasAPI, statusAPI } from '../services/api'
+import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../services/api'
 import { nodeTypes } from '../canvas/nodeTypes'
 import { layout, toGraph } from '../canvas/layout'
 import TemplatePicker from '../canvas/TemplatePicker'
@@ -44,6 +44,9 @@ export default function Canvas() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const sourceDocumentId = searchParams.get('document')
+  const sourceNotebookId = searchParams.get('notebook')
+  const [documentContext, setDocumentContext] = useState(null)
+  const [notebookContext, setNotebookContext] = useState(null)
 
   const [request, setRequest] = useState('')
   const [phase, setPhase] = useState(canvasId ? 'loading' : 'idle')
@@ -61,6 +64,27 @@ export default function Canvas() {
 
   const pollRef = useRef(null)
   const jobRef = useRef(null)
+  const drawnIdRef = useRef(null)
+
+  useEffect(() => {
+    if (canvasId || !sourceDocumentId) return
+    let cancelled = false
+    setDocumentContext(null)
+    documentsAPI.get(sourceDocumentId).then(({ data }) => {
+      if (!cancelled) setDocumentContext(data)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [canvasId, sourceDocumentId])
+
+  useEffect(() => {
+    if (canvasId || !sourceNotebookId) return
+    let cancelled = false
+    setNotebookContext(null)
+    notebooksAPI.get(sourceNotebookId).then(({ data }) => {
+      if (!cancelled) setNotebookContext(data)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [canvasId, sourceNotebookId])
 
   // Stop polling when the component goes away, so a long generation does not
   // keep firing requests after the user navigates off.
@@ -101,6 +125,7 @@ export default function Canvas() {
       )
       setEdges(laidOut.edges)
       setCanvas(record)
+      drawnIdRef.current = String(record.id)
       setPhase('ready')
     },
     [openSource, setEdges, setNodes]
@@ -108,7 +133,7 @@ export default function Canvas() {
 
   // Load an existing canvas by id.
   useEffect(() => {
-    if (!canvasId) return
+    if (!canvasId || drawnIdRef.current === canvasId) return
     let cancelled = false
     canvasAPI
       .get(canvasId)
@@ -136,6 +161,7 @@ export default function Canvas() {
         if (data.status === 'completed') {
           const response = await canvasAPI.get(data.result_id ?? data.deck_id)
           await draw(response.data)
+          navigate(`/canvas/${response.data.id}`, { replace: true })
           return
         }
         if (data.status === 'needs_choice') {
@@ -155,7 +181,7 @@ export default function Canvas() {
         setPhase('error')
       }
     },
-    [draw]
+    [draw, navigate]
   )
 
   const start = useCallback(
@@ -194,6 +220,12 @@ export default function Canvas() {
   }, [canvas, nodes])
 
   const documentName = useMemo(() => canvas?.title || request, [canvas, request])
+  const notebookId = canvas ? canvas.notebook_id : sourceNotebookId || documentContext?.notebook_id
+  const notebookName = canvas ? canvas.notebook_name : notebookContext?.name || (
+    String(documentContext?.notebook_id) === String(notebookId) ? documentContext?.notebook_name : null
+  )
+  const backLabel = notebookId && notebookName ? `Back to ${notebookName}` : 'Back to notebooks'
+  const sourceName = canvas?.source_name || canvas?.document_name || documentContext?.display_name
 
   return (
     <div className="tm-canvas flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-xl border"
@@ -203,21 +235,29 @@ export default function Canvas() {
         className="flex flex-col gap-3 border-b px-4 py-3"
         style={{ borderColor: 'var(--line)', background: 'var(--chrome)' }}
       >
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(notebookId && notebookName ? `/notebooks/${notebookId}` : '/')}
+            className="btn-secondary flex items-center gap-1.5 text-xs"
+            style={{ minHeight: 44, minWidth: 44 }}
+          >
+            <ArrowLeft size={15} aria-hidden="true" />
+            {backLabel}
+          </button>
+          {sourceName && (
+            <span
+              className="flex min-w-0 max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:max-w-xs"
+              style={{ borderColor: 'var(--line)', color: 'var(--text2)' }}
+            >
+              <FileText size={14} className="shrink-0" aria-hidden="true" />
+              <span className="sr-only">Drawn from</span>
+              <span className="truncate" title={sourceName}>{sourceName}</span>
+            </span>
+          )}
+        </div>
         {canvas && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            {canvas.notebook_id && (
-              <button
-                type="button"
-                onClick={() => navigate(`/notebooks/${canvas.notebook_id}`)}
-                className="flex items-center gap-1.5 text-xs"
-                style={{ color: 'var(--text3)' }}
-              >
-                <span aria-hidden="true">{canvas.notebook_icon || '\u{1F4D8}'}</span>
-                {canvas.notebook_name}
-                <ChevronRight size={12} />
-              </button>
-            )}
-
             <h1
               className="min-w-0 flex-1 truncate text-sm font-semibold"
               style={{ color: 'var(--text)' }}

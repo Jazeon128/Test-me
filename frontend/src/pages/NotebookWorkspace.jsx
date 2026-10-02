@@ -126,7 +126,7 @@ function Workspace({ notebookId }) {
       return next
     })
   }, [setParams])
-  const onCanvas = id => navigate(`/canvas?document=${id}`)
+  const onCanvas = id => navigate(`/canvas?document=${id}&notebook=${notebookId}`)
   const toggle = side => {
     const next = { ...collapsed, [side]: !collapsed[side] }
     setCollapsed(next)

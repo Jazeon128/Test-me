@@ -1,9 +1,11 @@
 from sqlalchemy.orm import sessionmaker
+import pytest
 
 from app.api import canvas as canvas_api
 from app.models.canvas import Canvas
 from app.models.generation_status import GenerationStatus
 from app.models.notebook import Notebook
+from app.models.document import DocumentType
 
 
 def test_finished_canvas_provenance(client, db_session, sample_document, monkeypatch):
@@ -30,3 +32,43 @@ def test_finished_canvas_provenance(client, db_session, sample_document, monkeyp
     assert job.deck_id is None
     assert job.notebook_id == notebook.id
     assert job.source_ids == [sample_document.id]
+
+
+@pytest.mark.parametrize("file_type,title,expected", [
+    (DocumentType.PDF, "Cells.pdf", "Cells"),
+    (DocumentType.YOUTUBE, "How cells work.pdf", "How cells work.pdf"),
+    (DocumentType.PDF, None, "test_document"),
+])
+def test_canvas_and_document_source_context(client, db_session, sample_document, file_type, title, expected):
+    notebook = Notebook(name="Biology")
+    db_session.add(notebook)
+    db_session.flush()
+    sample_document.notebook_id = notebook.id
+    sample_document.title = title
+    sample_document.file_type = file_type
+    canvas = Canvas(document=sample_document, request_text="Draw cells", template="flowchart",
+                    payload_json={"nodes": [], "edges": []}, sources_json=[])
+    db_session.add(canvas)
+    db_session.commit()
+
+    serialized = canvas_api._serialize(canvas)
+    assert serialized["source_name"] == expected
+    assert serialized["document_name"] == (title or sample_document.original_filename)
+    response = client.get(f"/api/canvas/{canvas.id}")
+    assert response.status_code == 200
+    assert response.json()["source_name"] == expected
+    assert response.json()["notebook_id"] == notebook.id
+    assert response.json()["notebook_name"] == "Biology"
+
+    response = client.get(f"/api/documents/{sample_document.id}")
+    assert response.status_code == 200
+    assert response.json()["display_name"] == expected
+    assert response.json()["notebook_id"] == notebook.id
+    assert response.json()["notebook_name"] == "Biology"
+
+
+def test_document_without_notebook(client, sample_document):
+    response = client.get(f"/api/documents/{sample_document.id}")
+    assert response.status_code == 200
+    assert response.json()["notebook_id"] is None
+    assert response.json()["notebook_name"] is None

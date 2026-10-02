@@ -719,6 +719,8 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
         "file_size": document.file_size,
         "title": document.title,
         "display_name": display_name(document),
+        "notebook_id": document.notebook_id,
+        "notebook_name": document.notebook.name if document.notebook else None,
         "num_pages": document.num_pages,
         "num_questions": len(document.questions),
         "created_at": document.created_at,

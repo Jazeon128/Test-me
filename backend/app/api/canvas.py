@@ -20,6 +20,7 @@ from ..services.ai.question_generator import QuestionGenerator
 from ..services import activity
 from ..services.parsers import get_parser_for_type
 from ..services.typesafe_key import typesafe_key as _typesafe_key
+from ..services.source_names import display_name
 from ..services.viz import generator as viz_generator
 from ..services.viz import router as viz_router
 from ..services.viz import templates as viz_templates
@@ -342,6 +343,7 @@ def _serialize(canvas: Canvas) -> Dict:
         "id": canvas.id,
         "document_id": canvas.document_id,
         "document_name": (document.title or document.original_filename) if document else None,
+        "source_name": display_name(document) if document else None,
         "notebook_id": notebook.id if notebook else None,
         "notebook_name": notebook.name if notebook else None,
         "notebook_icon": notebook.icon if notebook else None,

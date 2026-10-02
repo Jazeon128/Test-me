@@ -52,6 +52,13 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('Notebook workspace', () => {
+  it('opens a canvas with the first selected source and notebook context', async () => {
+    mount()
+    await loaded()
+    click('Canvas')
+    expect(screen.getByText('Canvas page')).toBeInTheDocument()
+    expect(screen.getByLabelText('Location')).toHaveTextContent('/canvas?document=1&notebook=7')
+  })
   it('renders sources, artifacts, progress and chat centre', async () => {
     mount(); await loaded()
     expect(notebooksAPI.workspace).toHaveBeenCalledWith('7')

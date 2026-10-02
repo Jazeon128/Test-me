@@ -1,6 +1,6 @@
 """Notebooks: the topic a set of sources and everything made from them belongs to."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Literal
 import uuid
 
 from fastapi import Query, APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
@@ -23,6 +23,7 @@ from ..services.ai.question_generator import explain_provider_error
 from ..models.generation_status import GenerationStatus
 from ..services.generation import GenerateRequest, selected_sources, question_split
 from ..services.workspace import notebook_workspace
+from ..services.question_bank import question_bank, held_back
 from .documents import process_document
 from ..services.ingest import save_source, parse_source_task, passage_counts, source_fields
 from ..services.parsers import YouTubeParser
@@ -392,3 +393,29 @@ def clear_chat(notebook_id: int, db: Session = Depends(get_db)):
     db.query(ChatMessage).filter(ChatMessage.notebook_id == notebook_id).delete()
     db.commit()
     return {"success": True}
+
+
+@router.get("/{notebook_id}/questions")
+def get_question_bank(
+    notebook_id: int,
+    search: Optional[str] = None,
+    deck_id: Optional[int] = Query(None, ge=1),
+    source_id: Optional[int] = Query(None, ge=1),
+    tag_id: Optional[int] = Query(None, ge=1),
+    difficulty: Optional[Literal["easy", "medium", "hard"]] = None,
+    card_type: Optional[Literal["mcq", "flashcard"]] = None,
+    status: Optional[Literal["due", "new", "learning", "mastered"]] = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    _chat_notebook(db, notebook_id)
+    return question_bank(db, notebook_id, offset=offset, limit=limit, search=search,
+                         deck_id=deck_id, source_id=source_id, tag_id=tag_id,
+                         difficulty=difficulty, card_type=card_type, status=status)
+
+
+@router.get("/{notebook_id}/held-back")
+def get_held_back(notebook_id: int, db: Session = Depends(get_db)):
+    _chat_notebook(db, notebook_id)
+    return held_back(db, notebook_id)

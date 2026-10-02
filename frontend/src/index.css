@@ -33,6 +33,7 @@ code {
   color-scheme: light;
   --workspace-danger: #b42332;
   --workspace-warning: #945400;
+  --bank-success: #167047;
   --shell: #eef0f8;
   --surface: rgba(255, 255, 255, .72);
   --surface-solid: #f8f9fd;
@@ -50,6 +51,7 @@ code {
   color-scheme: dark;
   --workspace-danger: #ffabb3;
   --workspace-warning: #ffd18a;
+  --bank-success: #8ae0b5;
   --shell: #101322;
   --surface: rgba(32, 37, 60, .58);
   --surface-solid: #20253c;
@@ -275,3 +277,50 @@ button:disabled { cursor: not-allowed; }
 .flashcard-reveal { width: 100%; margin-top: 24px; }
 @keyframes flashcard-flip { from { transform: rotateX(-12deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .flashcard-face { animation: none; transform: none; } }
+
+/* Notebook question bank */
+.workspace-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.workspace-title-row h1 { min-width: 0; overflow-wrap: anywhere; }
+.workspace-questions-button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 479px) { .workspace-title-row { flex-wrap: wrap; } }
+.question-bank { color: var(--ink); }
+.bank-tabs, .bank-selection, .bank-pagination, .bank-preview-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.question-bank button, .bank-filters summary { padding: 10px 12px; min-height: 44px; min-width: 44px; border-radius: 8px; }
+.question-bank button { border: 1px solid var(--line); background: var(--field); }
+.bank-tabs [aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+.bank-toolbar { display: flex; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.bank-filter-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 12px; min-width: 0; }
+.bank-toolbar label { display: flex; flex-direction: column; gap: 4px; }
+.bank-filter-fields label { min-width: 0; }
+.bank-search { flex: 1; min-width: 0; }
+.bank-search input, .bank-filter-fields select { padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+.bank-search input, .bank-filter-fields select { min-width: 0; width: 100%; max-width: 100%; text-overflow: ellipsis; }
+.bank-filters { width: 100%; min-width: 0; }
+.bank-filters summary { display: none; cursor: pointer; }
+.bank-filters:not([open]) > .bank-filter-fields { display: grid; }
+.bank-selection label, .bank-checkbox { display: flex; align-items: center; min-height: 44px; min-width: 44px; gap: 8px; cursor: pointer; }
+.question-bank input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+.bank-list { list-style: none; padding: 0; }
+.bank-row, .bank-held { border-bottom: 1px solid var(--line); padding: 12px 0; }
+.bank-row-summary { display: flex; align-items: flex-start; }
+.bank-expand { display: flex; flex: 1; gap: 12px; text-align: left; min-width: 0; }
+.question-bank .bank-expand { border: 0; background: var(--surface-solid); }
+.bank-expand > svg { flex-shrink: 0; color: var(--accent); }
+.bank-row-content { min-width: 0; flex: 1; }
+.bank-stem { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.bank-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.bank-status, .bank-tag { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+.bank-preview { padding: 12px 12px 12px 56px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bank-preview p { margin: 12px 0; }
+.bank-option-correct { color: var(--bank-success); font-weight: 600; }
+.bank-option-correct svg { display: inline-block; vertical-align: middle; margin-right: 8px; }
+.bank-pagination { justify-content: flex-end; }
+.bank-pagination > span { margin-right: auto; }
+@media (max-width: 767px) {
+  .bank-filters summary { display: block; }
+  .bank-filters:not([open]) > .bank-filter-fields { display: none; }
+  .bank-filter-fields { grid-template-columns: minmax(0, 1fr); }
+  .bank-card { border: 1px solid var(--line); border-radius: 12px; margin: 12px 0; background: var(--surface-solid); }
+  .bank-meta { flex-direction: column; align-items: flex-start; }
+  .bank-preview { padding: 12px; }
+}

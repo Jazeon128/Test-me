@@ -73,6 +73,7 @@ function sequenceGraph(payload) {
 
 /** Flatten a template payload into a flat node/edge list. */
 export function toGraph(template, payload) {
+  if (template === 'pyramid') return pyramidGraph(payload)
   if (template === 'fishbone') return fishboneGraph(payload)
   if (template === 'comparison_matrix') return matrixGraph(payload)
   if (template === 'sequence') return sequenceGraph(payload)
@@ -106,6 +107,21 @@ export function toGraph(template, payload) {
   }))
 
   return { nodes: [...groups, ...nodes], edges, groups: payload.groups || [] }
+}
+
+export function pyramidGraph(payload) {
+  const level = node => Number.isFinite(node.level) ? node.level : Infinity
+  const nodes = [...(payload.nodes || [])].sort((a, b) => level(a) - level(b)).map((node, index) => {
+    const topWidth = 240 + index * 120
+    const bottomWidth = topWidth + 120
+    return {
+      id: node.id, type: 'PyramidBand',
+      position: { x: -bottomWidth / 2, y: index * 72 },
+      width: bottomWidth, height: 72,
+      data: { ...node, topWidth, bottomWidth },
+    }
+  })
+  return { nodes, edges: [], groups: [], preLaidOut: true }
 }
 
 function fishboneGraph(payload) {

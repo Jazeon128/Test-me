@@ -126,7 +126,7 @@ it.each([0.4, 1, 2])('fits loaded elements once and caps a resulting zoom of %s'
   expect(api.scrollToContent).not.toHaveBeenCalled()
   act(() => state.props.onChange(elements, { selectedElementIds: {} }))
   expect(api.scrollToContent).toHaveBeenCalledOnce()
-  expect(api.scrollToContent).toHaveBeenCalledWith(elements, { fitToContent: true, animate: false })
+  expect(api.scrollToContent).toHaveBeenCalledWith(elements, { fitToContent: true, viewportZoomFactor: 0.8, animate: false })
   await waitFor(() => expect(api.getAppState).toHaveBeenCalledOnce())
   const zoomChanges = api.updateScene.mock.calls.filter(([payload]) => payload.appState.zoom)
   expect(zoomChanges).toEqual(zoom > 1 ? [[{ appState: { zoom: { value: 1 } } }]] : [])

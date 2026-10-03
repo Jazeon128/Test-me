@@ -24,7 +24,61 @@ function connectionPoint(shape, towards) {
   return { x: x + dx * scale, y: y + dy * scale }
 }
 
+function measurePyramidText(text, fontSize) {
+  const [element] = convertToExcalidrawElements([
+    { id: 'pyramid-measure', type: 'text', text, fontSize, x: 0, y: 0 },
+  ], { regenerateIds: false })
+  return { width: element.width ?? text.length * fontSize,
+    height: element.height ?? text.split('\n').length * fontSize * 1.25 }
+}
+
+function pyramidText(data, fontSize) {
+  const maxWidth = data.topWidth * 0.85
+  const lines = []
+  let line = ''
+  for (const word of (data.label || '').split(/\s+/)) {
+    if (line && measurePyramidText(`${line} ${word}`, fontSize).width > maxWidth) {
+      lines.push(line)
+      line = ''
+    }
+    if (line) line += ' '
+    for (const character of word) {
+      if (line && measurePyramidText(line + character, fontSize).width > maxWidth) {
+        lines.push(line)
+        line = ''
+      }
+      line += character
+    }
+  }
+  if (line) lines.push(line)
+  if (data.value) lines.unshift(data.value)
+  return lines.join('\n')
+}
+
+function pyramidSkeletons(node) {
+  const data = node.data
+  const { topWidth, bottomWidth } = data
+  const inset = (bottomWidth - topWidth) / 2
+  const [strokeColor, backgroundColor] = SCENE_COLOURS[data.color] || SCENE_COLOURS.slate
+  const groupIds = [`pyramid-${node.id}`]
+  const text20 = pyramidText(data, 20)
+  const fontSize = measurePyramidText(text20, 20).height > 56 ? 16 : 20
+  const text = fontSize === 20 ? text20 : pyramidText(data, 16)
+  return [{
+    id: node.id, type: 'line', x: node.position.x + inset, y: node.position.y,
+    width: bottomWidth, height: 72,
+    points: [[0, 0], [topWidth, 0], [topWidth + inset, 72], [-inset, 72], [0, 0]],
+    strokeColor, backgroundColor, fillStyle: 'solid', roughness: 1, groupIds,
+    customData: { nodeId: node.id, sourceSectionId: data.source_section_id, label: data.label, detail: data.detail, value: data.value },
+  }, {
+    id: `${node.id}-text`, type: 'text', text, fontSize, textAlign: 'center',
+    x: node.position.x + bottomWidth / 2, y: node.position.y + 36,
+    strokeColor: '#1e1e1e', groupIds, customData: { nodeId: node.id },
+  }]
+}
+
 export function graphSkeletons(template, graph) {
+  if (template === 'pyramid') return graph.nodes.flatMap(pyramidSkeletons)
   const nodes = [...graph.nodes].sort((a, b) => Number(b.type === 'GroupNode') - Number(a.type === 'GroupNode'))
   const shapes = nodes.map(node => {
     const data = node.data || {}
@@ -69,10 +123,21 @@ export function graphSkeletons(template, graph) {
 }
 
 export function graphToScene(template, graph) {
-  return convertToExcalidrawElements(graphSkeletons(template, graph), { regenerateIds: false })
+  const elements = convertToExcalidrawElements(graphSkeletons(template, graph), { regenerateIds: false })
+  if (template === 'pyramid') {
+    const nodes = new Map(graph.nodes.map(node => [node.id, node]))
+    return elements.map(element => {
+      if (element.type !== 'text') return element
+      const node = nodes.get(element.customData.nodeId)
+      return { ...element, x: node.position.x + (node.data.bottomWidth - element.width) / 2,
+        y: node.position.y + (72 - element.height) / 2 }
+    })
+  }
+  return elements
 }
 
 export function sceneNodeId(element, elements) {
+  if (element?.customData?.nodeId) return element.customData.header ? null : element.customData.nodeId
   const shape = element?.type === 'text' && element.containerId
     ? elements.find(item => item.id === element.containerId && !item.isDeleted) : element
   return shape?.customData?.header ? null : shape?.customData?.nodeId || null
@@ -81,6 +146,16 @@ export function sceneNodeId(element, elements) {
 export function sceneForSave(elements) {
   return elements.filter(element => !element.isDeleted).map(element => {
     if (!element.customData?.nodeId || element.customData.header) return element
+    if (element.type === 'line') {
+      const text = elements.find(item => !item.isDeleted && item.type === 'text'
+        && item.customData?.nodeId === element.customData.nodeId
+        && item.groupIds?.some(id => element.groupIds?.includes(id)))
+      if (text) {
+        const lines = text.text.split('\n')
+        if (lines[0] === element.customData.value) lines.shift()
+        return { ...element, customData: { ...element.customData, label: lines.join(' ') } }
+      }
+    }
     const text = elements.find(item => !item.isDeleted && item.type === 'text' && item.containerId === element.id)
     return text ? { ...element, customData: { ...element.customData, label: text.text } } : element
   })

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { canvasAPI } from '../services/api'
-import { formatPassage } from '../utils/passage'
+import PassageText from '../components/PassageText'
 import { serverMessage } from '../utils/serverMessage'
 
 /**
@@ -84,12 +84,12 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
 
       <div className="min-w-0 flex-1 overflow-y-auto p-4">
         {source?.section ? (
-          <p
+          <div
             className="whitespace-pre-wrap text-sm leading-relaxed"
             style={{ color: 'var(--text2)', overflowWrap: 'anywhere' }}
           >
-            {formatPassage(source.section.text)}
-          </p>
+            <PassageText text={source.section.text} />
+          </div>
         ) : (
           <p className="text-sm" style={{ color: 'var(--rose-i)' }}>
             This node has no source passage. It was drawn without a citation that

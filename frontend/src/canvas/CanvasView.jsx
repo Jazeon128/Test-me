@@ -16,6 +16,7 @@ const ExcalidrawSurface = lazy(() => import('./ExcalidrawSurface'))
 const POLL_MS = 900
 
 const LAYOUTS = {
+  pyramid: 'box',
   flowchart: 'layered',
   architecture: 'layered',
   fishbone: 'fishbone',

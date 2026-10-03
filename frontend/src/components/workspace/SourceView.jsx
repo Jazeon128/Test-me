@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { documentsAPI } from '../../services/api'
-import { formatPassage } from '../../utils/passage'
+import PassageText from '../PassageText'
 
 export default function SourceView({ sourceId, source }) {
   const [result, setResult] = useState(null)
@@ -34,7 +34,7 @@ export default function SourceView({ sourceId, source }) {
               {group.heading && <h2>{group.heading}</h2>}
               {group.passages.map(passage => <article key={passage.ordinal}>
                 {passage.page != null && <p className="workspace-source-page">Page {passage.page}</p>}
-                <p>{formatPassage(passage.text)}</p>
+                <PassageText text={passage.text} />
               </article>)}
             </section>)}
   </div>

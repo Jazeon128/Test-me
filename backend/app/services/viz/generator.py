@@ -83,6 +83,7 @@ def _prompt(
     )
     schema = json.dumps(template.schema_for_prompt(), indent=2)
     valid_ids = ", ".join(s["id"] for s in sections)
+    template_rules = "".join(f"- {rule}\n" for rule in template.rules)
 
     grouping_line = (
         "Group related nodes into labelled containers."
@@ -111,7 +112,7 @@ RULES
   Source: "In 2009 the institute replied. It said it had developed the chart in the 1960s."
   Wrong label: "Institute develops chart". Right label: "Institute says it developed chart".
 - On a timeline, place an attributed claim at the date the claim was made, and mention the date it refers to in the detail.
-- If the source does not support part of the request, leave it out rather than filling it in.
+{template_rules}- If the source does not support part of the request, leave it out rather than filling it in.
 - Lay the diagram out {orientation}ly.
 - {grouping_line}
 
@@ -154,14 +155,34 @@ def _walk_nodes(payload: Dict):
             yield from _walk_nodes(item)
 
 
-def validate(payload: Dict, valid_section_ids: set) -> Tuple[Dict, List[str]]:
+def _deduplicate_pyramid_levels(payload: Dict) -> List[str]:
+    nodes = payload.get("nodes")
+    if not isinstance(nodes, list):
+        return []
+    seen = set()
+    kept = []
+    for node in nodes:
+        level = node.get("level")
+        if isinstance(level, (int, float)) and not isinstance(level, bool):
+            if level in seen:
+                continue
+            seen.add(level)
+        kept.append(node)
+    payload["nodes"] = kept
+    dropped = len(nodes) - len(kept)
+    return [f"dropped {dropped} pyramid nodes with repeated levels"] if dropped else []
+
+
+def validate(
+    payload: Dict, valid_section_ids: set, template_id: Optional[str] = None,
+) -> Tuple[Dict, List[str]]:
     """Drop nodes whose citation does not resolve, and report what was dropped.
 
     Returns the payload and the list of problems, so the caller can decide
     whether to retry. An empty problem list means every node cites a real
     section.
     """
-    problems = []
+    problems = _deduplicate_pyramid_levels(payload) if template_id == "pyramid" else []
     for node in list(_walk_nodes(payload)):
         section_id = node.get("source_section_id")
         if section_id not in valid_section_ids:
@@ -234,7 +255,7 @@ def generate(
             logger.warning("canvas_fill_unparseable", attempt=attempt, error=last_error)
             continue
 
-        payload, problems = validate(payload, valid_ids)
+        payload, problems = validate(payload, valid_ids, template_id=template.id)
         if problems:
             logger.warning("canvas_fill_problems", attempt=attempt, problems=problems[:5])
 

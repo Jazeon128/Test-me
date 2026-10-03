@@ -35,6 +35,7 @@ class Template:
     layout: str
     node_kinds: List[str]
     payload_schema: Dict = field(default_factory=dict)
+    rules: List[str] = field(default_factory=list)
 
     def schema_for_prompt(self) -> Dict:
         """The shape the fill model is asked to return."""
@@ -345,6 +346,27 @@ TEMPLATES: Dict[str, Template] = {
                 "label": "string or null, at most 3 words",
             },
         ),
+    ),
+    "pyramid": Template(
+        id="pyramid",
+        title="Pyramid",
+        description=(
+            "Ranked layers stacked from a narrow top to a wide base, where a "
+            "layer's position in the stack is the point. Use for pyramids, tiers, "
+            "layered models such as Maslow's hierarchy or the testing pyramid, "
+            "and any chart the material describes as a pyramid or cone."
+        ),
+        layout="box",
+        node_kinds=["PyramidBand"],
+        rules=[
+            "On a pyramid, every node is one band of the single stack the material describes, numbered 1 at the top with no repeated level. Do not add nodes about the chart itself, its origin or its critics. Put that context in the detail of the band it concerns, or leave it out.",
+            'When the stack itself is attributed to someone, say so in each band\'s detail, for example "NTL claims lecture gives 5% retention".',
+        ],
+        payload_schema=_graph_schema(node_extra={
+            **_COLOR,
+            "level": "integer, 1 is the top band, counting down",
+            "value": "string or null, a figure the material attaches to this layer, such as a percentage, at most 12 characters",
+        }),
     ),
 }
 

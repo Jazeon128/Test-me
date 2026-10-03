@@ -6131,6 +6131,123 @@
       }
     ],
     "GET /notebooks/1/held-back": [],
+    "GET /notebooks/1/mastery": {
+      "summary": {
+        "levels": {
+          "attempted": 0,
+          "familiar": 0,
+          "mastered": 0,
+          "not_started": 7,
+          "proficient": 0
+        },
+        "proficient_or_above": 0,
+        "topic_count": 7
+      },
+      "topics": [
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:Retrieval practice",
+          "level": "not_started",
+          "question_count": 4,
+          "question_ids": [
+            1,
+            2,
+            11,
+            13
+          ],
+          "section": "Retrieval practice"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:Where the numbers are said to come from",
+          "level": "not_started",
+          "question_count": 2,
+          "question_ids": [
+            3,
+            14
+          ],
+          "section": "Where the numbers are said to come from"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:Active learning in science courses",
+          "level": "not_started",
+          "question_count": 2,
+          "question_ids": [
+            5,
+            15
+          ],
+          "section": "Active learning in science courses"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:A related myth: learning styles",
+          "level": "not_started",
+          "question_count": 2,
+          "question_ids": [
+            6,
+            16
+          ],
+          "section": "A related myth: learning styles"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:Learning by teaching",
+          "level": "not_started",
+          "question_count": 4,
+          "question_ids": [
+            7,
+            8,
+            17,
+            19
+          ],
+          "section": "Learning by teaching"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:How the numbers got attached to the cone",
+          "level": "not_started",
+          "question_count": 2,
+          "question_ids": [
+            9,
+            18
+          ],
+          "section": "How the numbers got attached to the cone"
+        },
+        {
+          "attempted_count": 0,
+          "correct_count": 0,
+          "document_id": 1,
+          "document_name": "The learning pyramid: a famous chart and what the evidence says",
+          "key": "1:Edgar Dale and the Cone of Experience",
+          "level": "not_started",
+          "question_count": 2,
+          "question_ids": [
+            10,
+            20
+          ],
+          "section": "Edgar Dale and the Cone of Experience"
+        }
+      ]
+    },
     "GET /notebooks/1/questions": {
       "items": [
         {

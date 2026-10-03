@@ -265,6 +265,7 @@ export const activityAPI = {
 
 // Notebooks: the topic a set of sources belongs to
 export const notebooksAPI = {
+  mastery: (id) => api.get(`/notebooks/${id}/mastery`),
   bulkQuestions: (id, body) => api.post(`/notebooks/${id}/questions/bulk`, body),
   practiceQuestions: (id, question_ids) => api.post(`/notebooks/${id}/questions/practice`, { question_ids }),
   list: () => api.get('/notebooks/'),

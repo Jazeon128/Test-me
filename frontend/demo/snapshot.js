@@ -54,6 +54,7 @@ export async function snapshot({ api, notebook, fetcher = fetch }) {
   const prefix = `/notebooks/${chosen.id}`
   await get(prefix)
   const workspace = await get(`${prefix}/workspace`)
+  await get(`${prefix}/mastery`)
   const items = []
   let offset = 0
   for (;;) {

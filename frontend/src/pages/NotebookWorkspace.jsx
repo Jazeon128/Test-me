@@ -9,6 +9,7 @@ import SourceView from '../components/workspace/SourceView'
 import SourcesPanel from '../components/workspace/SourcesPanel'
 import StudioPanel from '../components/workspace/StudioPanel'
 import ChatPanel from '../components/workspace/ChatPanel'
+import MasteryBar from '../components/workspace/MasteryBar'
 import WorkspacePanel from '../components/workspace/WorkspacePanel'
 import WorkspaceDrawer from '../components/workspace/WorkspaceDrawer'
 import useMediaQuery from '../hooks/useMediaQuery'
@@ -257,6 +258,7 @@ function Workspace({ notebookId }) {
             })
           }}><Library size={18} aria-hidden="true" /> Questions ({workspace.progress.question_count || 0})</button>
         </div>
+        <MasteryBar notebookId={notebookId} refreshSignal={workspace} practise={practise} />
         <p className="page-intro mt-3">{workspace.notebook.description}</p>
         <ChatPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} />
       </div>

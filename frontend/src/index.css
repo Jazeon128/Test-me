@@ -30,6 +30,11 @@ code {
 /* Shared glass surfaces. Opaque fallbacks keep the UI usable without blur. */
 :root {
   color-scheme: light;
+  --mastery-mastered: #164f80;
+  --mastery-proficient: #327db5;
+  --mastery-familiar: #626b78;
+  --mastery-attempted: #7a8089;
+  --mastery-none: #90949b;
   --workspace-danger: #b42332;
   --workspace-warning: #945400;
   --bank-success: #167047;
@@ -53,6 +58,11 @@ code {
 
 .dark {
   color-scheme: dark;
+  --mastery-mastered: #5499cf;
+  --mastery-proficient: #7cc4f0;
+  --mastery-familiar: #b1b7c0;
+  --mastery-attempted: #929aa6;
+  --mastery-none: #727c8b;
   --workspace-danger: #ffabb3;
   --workspace-warning: #ffd18a;
   --bank-success: #8ae0b5;
@@ -561,3 +571,12 @@ button:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { .app-header { transition: none; } }
 
 .focus-mode .workspace-centre { grid-column: 1 / -1; }
+.mastery { margin-top: 16px; font-size: 13px; }
+.mastery-bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; margin-top: 8px; }
+.mastery-disclosure { margin-top: 10px; }
+.mastery-topics { margin-top: 12px; }
+.mastery-topics li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mastery-topic-name { display: flex; flex-direction: column; flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.mastery-muted, .mastery-explainer { color: var(--muted); }
+.mastery-chip { border-left: 4px solid; padding: 4px 8px; background: var(--surface-solid); border-radius: 4px; }
+.mastery-explainer { font-size: 12px; margin-top: 12px; }

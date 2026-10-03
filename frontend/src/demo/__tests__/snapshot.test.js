@@ -28,6 +28,8 @@ it('uses GET only, follows pages, and excludes other notebook lists', async () =
     const url = new URL(address)
     const route = `GET ${url.pathname.replace('/api', '')}`
     let data = fixture.routes[route]
+    if (route === 'GET /notebooks/1/mastery') data = { topics: [], summary: { topic_count: 0,
+      proficient_or_above: 0, levels: { not_started: 0, attempted: 0, familiar: 0, proficient: 0, mastered: 0 } } }
     if (route === 'GET /notebooks/') data = [...data, { id: 99, name: 'Private notebook' }]
     if (route === 'GET /progress/stats/by-notebook') data = [...data, { notebook_id: 99, name: 'Private notebook' }]
     if (route === 'GET /notebooks/1/questions') {
@@ -39,6 +41,7 @@ it('uses GET only, follows pages, and excludes other notebook lists', async () =
   })
   const result = await snapshot({ api: 'http://127.0.0.1:8002', notebook: 'The learning pyramid', fetcher })
   expect(result.routes['GET /notebooks/']).toHaveLength(1)
+  expect(result.routes['GET /notebooks/1/mastery'].summary.topic_count).toBe(0)
   expect(result.routes['GET /notebooks/1/questions'].items).toHaveLength(4)
   expect(result.routes['GET /progress/stats/by-notebook']).toHaveLength(1)
   expect(sortedJSON(result)).not.toContain('Private notebook')

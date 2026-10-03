@@ -28,6 +28,7 @@ from ..services.ai.question_generator import explain_provider_error
 from ..models.generation_status import GenerationStatus
 from ..services.generation import GenerateRequest, selected_sources, question_split
 from ..services.workspace import notebook_workspace
+from ..services.mastery import notebook_mastery
 from ..services.question_bank import question_bank, held_back, bulk_questions, practice_questions
 from .questions import delete_question_data
 from .documents import process_document
@@ -36,6 +37,13 @@ from ..services.parsers import YouTubeParser
 from ..utils.file_validation import validate_upload_file
 
 router = APIRouter()
+
+
+@router.get("/{notebook_id}/mastery")
+async def get_mastery(notebook_id: int, db: Session = Depends(get_db)):
+    if db.get(Notebook, notebook_id) is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    return notebook_mastery(db, notebook_id)
 
 
 @router.post("/{notebook_id}/generate", status_code=202)

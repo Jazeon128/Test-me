@@ -39,11 +39,15 @@ export default function ChatMessage({ message }) {
   const renderText = text => message.role === 'assistant' ? inline(text, citations) : text
   return <article aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} message`}
     className={`chat-message chat-${message.role} ${message.refused ? 'chat-refused' : ''}`}>
+    {message.mode === 'voice' && <header className="chat-voice-label">Voice</header>}
     {message.role === 'user' ? <p>{message.content}</p> : contentBlocks(message.content).map((block, index) => {
       if (block.type === 'p') return <p key={index}>{renderText(block.lines.join('\n'))}</p>
       const List = block.type
       return <List key={index}>{block.lines.map((line, offset) => <li key={offset}>{renderText(line)}</li>)}</List>
     })}
+    {message.mode === 'voice' && message.role === 'assistant' && citations.length > 0 &&
+      <div className="chat-voice-sources"><p>Sources</p><ul aria-label="Sources">{citations.map(citation =>
+        <li key={citation.n}><CitationChip citation={citation} /></li>)}</ul></div>}
     {message.uncited && <p className="chat-note">No citations. Check this answer against your sources.</p>}
   </article>
 }

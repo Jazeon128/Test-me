@@ -495,6 +495,14 @@ button:disabled { cursor: not-allowed; }
 }
 
 /* Static demo shell. */
+.chat-voice-live { padding: 8px 16px; color: var(--ink); }
+.chat-voice-transcript { border: 1px solid var(--line); border-radius: 8px; background: var(--field); padding: 12px; max-height: 180px; overflow-y: auto; overflow-wrap: anywhere; }
+.chat-voice-transcript p { white-space: pre-wrap; }
+.chat-voice-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.chat-voice-sources { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.chat-voice-sources ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.chat-input-field > .btn-secondary { flex-shrink: 0; }
+
 .demo-banner, .demo-notice {
   color: #1e3a5f;
   background: #eaf3ff;

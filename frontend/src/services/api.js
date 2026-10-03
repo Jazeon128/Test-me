@@ -29,10 +29,18 @@ if (import.meta.env.VITE_DEMO === 'true') {
  */
 let baseURLReady = null
 
-const ensureBaseURL = () => {
+export const ensureBaseURL = () => {
   if (!window.electronAPI) return Promise.resolve(api.defaults.baseURL)
   if (!baseURLReady) baseURLReady = updateBaseURL()
   return baseURLReady
+}
+
+export const voiceURL = async (notebookId, sourceIds) => {
+  const baseURL = await ensureBaseURL()
+  const url = new URL(`${baseURL.replace(/\/$/, '')}/notebooks/${notebookId}/voice`, window.location.href)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.search = `source_ids=${sourceIds.join(',')}`
+  return url.href
 }
 
 api.interceptors.request.use(async (config) => {

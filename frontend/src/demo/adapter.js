@@ -51,10 +51,7 @@ export function createDemoAdapter(snapshot, { delay = () => 150 + Math.random() 
       status = 403; data = { detail: DEMO_NOTICE }
     } else if (method === 'GET') {
       if (notebookBank) data = bank(path, params)
-      else if (/^\/notebooks\/\d+\/mastery$/.test(path)) data = Object.hasOwn(routes, recordedKey) ? copy(routes[recordedKey]) : {
-        topics: [], summary: { topic_count: 0, proficient_or_above: 0,
-          levels: { not_started: 0, attempted: 0, familiar: 0, proficient: 0, mastered: 0 } },
-      }
+      else if (/^\/notebooks\/\d+\/mastery$/.test(path)) data = progress.mastery(routes[recordedKey])
       else if (path === '/progress/stats') data = progress.stats()
       else if (path === '/progress/stats/by-notebook') data = progress.byNotebook()
       else if (/^\/progress\/question\/\d+$/.test(path)) data = questions.some(item => item.id === Number(path.split('/').pop())) ? progress.question(Number(path.split('/').pop())) : null

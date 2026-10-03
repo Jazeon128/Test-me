@@ -29,12 +29,13 @@ Reviewed against commits through `f4b450e` on 2026-09-30. Done means implemented
 | Work | Verdict | Next action |
 | --- | --- | --- |
 | Chat role clarity | Done in this change | Label questions and AI answers. Use distinct bubbles in both themes |
-| Sketch concept-map arrow labels piling up at hubs | Recommended | Reduce label overlap at hubs |
-| Mastery levels per topic: Attempted under 70%, Familiar 70 to 99%, Proficient 100%, Mastered after a mixed test. Progress display only, never a gate | Recommended | Add topic mastery levels to the progress display |
-| Notebook mastery bar: "N of M topics Proficient or above" | Recommended | Show the count of topics Proficient or above |
-| Hints on practice questions from the cited passage, without revealing the answer | Recommended | Use the cited passage for hints |
-| Chat "Tutor me" mode with guiding questions over the same sources. "Answer" stays default | Recommended | Add guiding questions over the same sources |
-| Mixed mastery test | Deferred until mastery levels exist | Define a mixed test after mastery levels ship |
+| Sketch concept-map arrow labels piling up at hubs | Done a45aa09 | Reduce label overlap at hubs |
+| Mastery levels per topic: Attempted under 70%, Familiar 70 to 99%, Proficient 100%, Mastered when the last 2 answers are right on different days. Progress display only, never a gate | Done 20108cc | Add topic mastery levels to the progress display |
+| Notebook mastery bar: "N of M topics Proficient or above" | Done 20108cc | Show the count of topics Proficient or above |
+| Hints on practice questions from the cited passage, without revealing the answer | Done 6bcf013 | Use the cited passage for hints |
+| Chat "Tutor me" mode with guiding questions over the same sources. "Answer" stays default | Done 49d2d23 | Add guiding questions over the same sources |
+| Guided demo tour | Done f3a5046 | Guided tour shipped |
+| Mixed mastery test | Deferred | Define a mixed test after mastery levels ship |
 | Dynamic Canvas (2.5D) | Deferred. Shelved behind `VITE_DYNAMIC_CANVAS=true` | Keep the feature shelved behind the flag |
 | Source pre-flight gate | Removed 2026-10-02 | The user decides what to study |
 | Pending request field | Resolved | Only the canvas uses it for routing_log_id |

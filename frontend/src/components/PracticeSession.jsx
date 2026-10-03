@@ -45,6 +45,10 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState(null)
   const [hintStep, setHintStep] = useState(0)
+  const hintPassageBlock = useRef(null)
+  useEffect(() => {
+    if (hintStep === 2) hintPassageBlock.current?.focus()
+  }, [hintStep])
   const [showResult, setShowResult] = useState(false)
   const [result, setResult] = useState(null)
   const [timeLeft, setTimeLeft] = useState(30)
@@ -391,10 +395,10 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
             </button>}
             <div aria-live="polite" className="mt-3 text-sm text-gray-600 dark:text-gray-300">
               {hintStep >= 1 && <p>Hint 1 of 2: Look at {source.section ? <>the section &ldquo;{source.section}&rdquo;</> : 'the source passage'}{documentName ? ` in ${documentName}` : ''}</p>}
-              {hintStep >= 2 && <>
+              {hintStep >= 2 && <div ref={hintPassageBlock} tabIndex={-1}>
                 <p className="mt-3">Hint 2 of 2:</p>
                 <blockquote className="mt-2 border-l-2 border-gray-300 dark:border-gray-600 pl-4"><PassageText text={hintPassage} /></blockquote>
-              </>}
+              </div>}
             </div>
           </div>}
 

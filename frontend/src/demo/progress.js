@@ -1,6 +1,9 @@
+import { sessionMastery } from './mastery'
+
 // Session-only progress. SM-2 follows backend/app/services/spaced_repetition.
 export function createProgress(routes, questions) {
   const tracked = new Map()
+  const answers = new Map()
   let currentStreak = routes['GET /progress/stats']?.current_streak || 0
   let bestStreak = routes['GET /progress/stats']?.best_streak || 0
   const baseline = id => routes[`GET /progress/question/${id}`] || { question_id: id, never_seen: true }
@@ -67,6 +70,9 @@ export function createProgress(routes, questions) {
     row.interval_days = row.repetitions <= 1 ? 1 : row.repetitions === 2 ? 6 : Math.round(row.interval_days * row.ef)
     row.next_review_date = new Date(Date.now() + row.interval_days * 86400000).toISOString()
     row.last_attempt_date = new Date().toISOString()
+    const history = answers.get(item.id) || []
+    history.push({ date: row.last_attempt_date, correct, hinted: Boolean(body.hint_used) })
+    answers.set(item.id, history)
     row.is_mastered = row.repetitions >= 5 && row.ef >= 2.5 && row.success_rate >= 0.8
     row.mastery_percentage = Math.min(100, Math.trunc(row.repetitions / 10 * 30 + (row.ef - 1.3) / 1.2 * 35 + row.success_rate * 35))
     tracked.set(item.id, row)
@@ -78,6 +84,7 @@ export function createProgress(routes, questions) {
         points_total: correct ? 10 : 2, daily_streak: 1, mastery_achieved: false, awards: [] } } }
   }
   return { submit, stats, byNotebook,
+    mastery: recorded => sessionMastery(recorded, answers, routes),
     question: id => {
       if (!tracked.has(id)) return question(id)
       const row = question(id)

@@ -7,10 +7,11 @@ import Review from './pages/Review'
 import RedirectDeck from './components/RedirectDeck'
 import NotebookWorkspace from './pages/NotebookWorkspace'
 import Settings from './pages/Settings'
+import { dynamicEnabled } from './dynamic/flag'
 
 // The canvas pulls in React Flow and elkjs, roughly 1.6 MB. Loading it lazily
 // keeps that off every other page in the app.
-const DynamicStress = import.meta.env.DEV && import.meta.env.VITE_DEMO !== 'true'
+const DynamicStress = import.meta.env.DEV && import.meta.env.VITE_DEMO !== 'true' && dynamicEnabled()
   ? lazy(() => import('./dynamic/DynamicStress')) : null
 const Canvas = lazy(() => import('./pages/Canvas'))
 const DemoHome = import.meta.env.VITE_DEMO === 'true' ? lazy(() => import('./demo/DemoHome')) : null
@@ -70,7 +71,7 @@ function App() {
       <UpdateNotification />
       <Layout>
         <Routes>
-          {import.meta.env.DEV && import.meta.env.VITE_DEMO !== 'true' && <Route path="/dev/dynamic-stress"
+          {import.meta.env.DEV && import.meta.env.VITE_DEMO !== 'true' && dynamicEnabled() && <Route path="/dev/dynamic-stress"
             element={<Suspense fallback={<CanvasLoading />}><DynamicStress /></Suspense>} />}
           <Route path="/" element={DemoHome ? <Suspense fallback={<CanvasLoading />}><DemoHome /></Suspense> : <Notebooks />} />
           <Route path="/notebooks" element={DemoHome ? <Notebooks /> : <Navigate to="/" replace />} />

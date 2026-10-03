@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import DynamicSurface from './DynamicSurface'
 import { fromGraph } from './model'
+import { fitNode } from './fit'
 
 function useFPS() {
   const [fps, setFPS] = useState(0)
@@ -35,7 +36,9 @@ export default function DynamicStress() {
     const edges = nodes.map((node, i) => ({
       id: `edge-${i}`, source: node.id, target: nodes[i % columns === columns - 1 || i === n - 1 ? i - 1 : i + 1].id,
     }))
-    return fromGraph('flowchart', { nodes, edges })
+    const doc = fromGraph('flowchart', { nodes, edges })
+    doc.nodes = doc.nodes.map(node => fitNode({ ...node, keepSize: true }))
+    return doc
   }, [n])
   const fps = useFPS()
   return <div style={{ height: 'calc(100vh - 120px)', position: 'relative' }}>

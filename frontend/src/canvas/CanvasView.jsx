@@ -11,13 +11,15 @@ import { Generating, EmptyState, TemplateBadge } from './CanvasChrome'
 import { canvasTitle } from './canvasTitle'
 import './canvas.css'
 import '../dynamic/dynamic.css'
-import { fromGraph, fromExcalidraw } from '../dynamic/model'
+import { layoutDynamic } from '../dynamic/layoutDynamic'
+import { dynamicEnabled } from '../dynamic/flag'
 
 const ExcalidrawSurface = lazy(() => import('./ExcalidrawSurface'))
 
 const DynamicSurface = lazy(() => import('../dynamic/DynamicSurface'))
 
 function initialMode() {
+  if (!dynamicEnabled()) return 'sketch'
   try { return localStorage.getItem('test-me.canvasMode') === 'dynamic' ? 'dynamic' : 'sketch' }
   catch { return 'sketch' }
 }
@@ -58,11 +60,10 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
   const [selected, setSelected] = useState(null)
   const [source, setSource] = useState(null)
   const [elements, setElements] = useState([])
-  const [dynamicInput, setDynamicInput] = useState(null)
-  const [mode, setMode] = useState(initialMode)
-  const dynamic = useMemo(() => !dynamicInput ? null : dynamicInput.graph
-    ? { doc: fromGraph(dynamicInput.template, dynamicInput.graph), skipped: 0 }
-    : fromExcalidraw(dynamicInput.template, dynamicInput.elements), [dynamicInput])
+  const [dynamic, setDynamic] = useState(null)
+  const enabled = dynamicEnabled()
+  const [preferredMode, setMode] = useState(initialMode)
+  const mode = enabled ? preferredMode : 'sketch'
   const changeMode = next => {
     setMode(next)
     try { localStorage.setItem('test-me.canvasMode', next) } catch { /* Storage may be disabled. */ }
@@ -120,7 +121,6 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
     let scene
     if (record.edited?.schema_version === 2) {
       scene = record.edited.elements
-      setDynamicInput({ template: record.template, elements: scene })
     } else {
       const { graphToScene } = await import('./scene')
       const edited = record.edited && record.template === 'comparison_matrix'
@@ -134,7 +134,10 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
         ...graph, nodes: graph.nodes.map(node => ({ ...node, position: saved[node.id] || node.position })),
       }
       scene = graphToScene(record.template, positioned)
-      setDynamicInput({ template: record.template, graph: positioned })
+    }
+    if (dynamicEnabled()) {
+      try { await document.fonts?.load('500 16px Inter') } catch { /* Use the available font. */ }
+      setDynamic(await layoutDynamic(record))
     }
     sourceRequest.current++
     setSelected(null)
@@ -283,7 +286,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             >
               {canvasTitle(canvas.title || canvas.request_text)}
             </h1>}
-            {phase === 'ready' && <div className="tm-segmented" role="group" aria-label="View">
+            {enabled && phase === 'ready' && <div className="tm-segmented" role="group" aria-label="View">
               {['sketch', 'dynamic'].map(value => <button type="button" key={value}
                 aria-pressed={mode === value} onClick={() => changeMode(value)}>
                 {value === 'sketch' ? 'Sketch' : 'Dynamic'}
@@ -372,7 +375,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
               </p>}
               <div className="tm-drawing-surface min-h-0 flex-1">
                 <Suspense fallback={<Loader2 aria-label="Loading whiteboard" className="m-auto animate-spin" size={20} />}>
-                  {mode === 'dynamic' && dynamic ? <DynamicSurface key={sceneKey} doc={dynamic.doc}
+                  {enabled && mode === 'dynamic' && dynamic ? <DynamicSurface key={sceneKey} doc={dynamic.doc}
                     selectedId={selected?.id || null}
                     onSelectNode={(nodeId, data) => {
                       setHasSelection(Boolean(nodeId))
@@ -383,15 +386,18 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
                     onSelectNode={(nodeId, data) => openSource(canvas.id, nodeId ? {
                       id: nodeId, data: { label: data.label, detail: data.detail, source_section_id: data.sourceSectionId },
                     } : null)}
-                    onSave={payload => {
+                    onSave={async payload => {
                       save(payload)
                       setElements(payload.edited.elements)
-                      setDynamicInput({ template: canvas.template, elements: payload.edited.elements })
+                      if (dynamicEnabled()) {
+                        try { await document.fonts?.load('500 16px Inter') } catch { /* Use the available font. */ }
+                        setDynamic(await layoutDynamic({ ...canvas, edited: payload.edited }))
+                      }
                       setCanvas(current => ({ ...current, edited: payload.edited, has_edits: true }))
                     }} />}
                 </Suspense>
               </div>
-              {mode === 'dynamic' && dynamic?.skipped > 0 && <p className="px-4 py-1 text-xs" style={{ color: 'var(--text2)' }}>
+              {enabled && mode === 'dynamic' && dynamic?.skipped > 0 && <p className="px-4 py-1 text-xs" style={{ color: 'var(--text2)' }}>
                 {dynamic.skipped} sketch-only items are not shown in Dynamic view.
               </p>}
             </div>

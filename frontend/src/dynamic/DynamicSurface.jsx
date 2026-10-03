@@ -56,7 +56,8 @@ function Scene({ doc, preset, selectedId, onSelectNode, accent, onHover }) {
 function initialPreset() {
   try {
     const saved = localStorage.getItem('test-me.dynamicPreset')
-    return ['Flat', 'Isometric', 'Tilted'].includes(saved) ? saved : 'Tilted'
+    if (saved === 'Isometric') return 'Angled'
+    return ['Flat', 'Angled', 'Tilted'].includes(saved) ? saved : 'Tilted'
   } catch { return 'Tilted' }
 }
 
@@ -79,7 +80,7 @@ export default function DynamicSurface({ doc, onSelectNode = () => {}, selectedI
         accent={theme.accent} onHover={setHovered} />
     </Canvas>
     <div className="tm-dynamic-presets tm-segmented" role="group" aria-label="Camera preset">
-      {['Flat', 'Isometric', 'Tilted'].map(name => <button type="button" key={name}
+      {['Flat', 'Angled', 'Tilted'].map(name => <button type="button" key={name}
         aria-pressed={preset === name} onClick={() => changePreset(name)}>{name}</button>)}
     </div>
     <ul className="sr-only">

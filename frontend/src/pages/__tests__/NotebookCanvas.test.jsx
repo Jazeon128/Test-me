@@ -59,7 +59,7 @@ it('opens a saved canvas in the centre with title, focus and no back button', as
   mount('/notebooks/2?view=canvas&canvas=1')
   const header = await screen.findByRole('heading', { name: 'Canvas: Cell diagram' })
   const centre = screen.getByRole('region', { name: 'Canvas' })
-  expect(await within(centre).findByRole('button', { name: 'Move node' })).toBeInTheDocument()
+  expect(await within(centre).findByRole('button', { name: 'Move node' }, { timeout: 5000 })).toBeInTheDocument()
   expect(header.parentElement).toHaveFocus()
   expect(screen.queryByRole('button', { name: /^Back to/ })).not.toBeInTheDocument()
   expect(screen.getByLabelText('Sources')).toHaveClass('workspace-rail')

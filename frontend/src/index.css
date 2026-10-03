@@ -83,7 +83,7 @@ body { background: var(--shell); color: var(--ink); }
   background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--glow) 18%, transparent), transparent 48%),
     radial-gradient(ellipse at 0% 100%, color-mix(in srgb, var(--glow) 12%, transparent), transparent 50%);
 }
-.app-header { position: sticky; top: 0; z-index: 40; padding: 20px 24px 0; }
+.app-header { position: relative; top: 0; z-index: 40; padding: 20px 24px 0; }
 .glass-nav, .app-shell .glass-panel, .app-shell .card {
   background: var(--surface-solid);
   border: 1px solid var(--surface-border);

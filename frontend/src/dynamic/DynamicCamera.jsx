@@ -5,7 +5,7 @@ import { MOUSE, Vector3 } from 'three'
 import { boundsOf } from './geometry'
 
 const RAD = Math.PI / 180
-const ANGLES = { Flat: [0, 90], Isometric: [30, 35.264], Tilted: [0, 55] }
+const ANGLES = { Flat: [0, 90], Angled: [20, 50], Tilted: [0, 55] }
 
 function destination(preset, bounds) {
   const [azimuth, elevation] = ANGLES[preset].map(angle => angle * RAD)

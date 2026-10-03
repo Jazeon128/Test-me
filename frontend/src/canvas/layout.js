@@ -251,7 +251,7 @@ export async function layout(template, graph, { algorithm, orientation }) {
       byGroup.set(node.id, { id: node.id, children: [], layoutOptions: elkOptions(algorithm, orientation) })
       return
     }
-    const entry = { id: node.id, width: NODE_W, height: NODE_H }
+    const entry = { id: node.id, width: node.width ?? NODE_W, height: node.height ?? NODE_H }
     const groupId = memberOf.get(node.id)
     if (groupId && byGroup.has(groupId)) {
       byGroup.get(groupId).children.push(entry)

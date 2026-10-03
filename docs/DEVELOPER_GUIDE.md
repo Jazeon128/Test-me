@@ -42,6 +42,8 @@ Check account free allowances and known zero-price catalog models before paid ca
 
 ## Setup and configuration
 
+Set `VITE_DYNAMIC_CANVAS=true` in the frontend environment to enable the shelved Dynamic Canvas and its dev-only stress route.
+
 Use Python 3.11 and Node.js 20 to match continuous integration (CI). From `backend/`:
 
 ```powershell

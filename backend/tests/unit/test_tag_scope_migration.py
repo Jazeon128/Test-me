@@ -26,6 +26,7 @@ def test_upgrade_and_downgrade(tmp_path, monkeypatch, populated):
     for table in Base.metadata.sorted_tables:
         table.to_metadata(previous)
     previous.tables["canvases"]._columns.remove(previous.tables["canvases"].c.edited_json)
+    previous.tables["chat_messages"]._columns.remove(previous.tables["chat_messages"].c.mode)
     previous.remove(previous.tables["tags"])
     sa.Table("tags", previous,
              sa.Column("id", sa.Integer, primary_key=True, index=True),

@@ -22,6 +22,7 @@ def test_full_upgrade_and_downgrade(tmp_path, monkeypatch):
         table.to_metadata(previous)
     previous.tables["questions"]._columns.remove(previous.tables["questions"].c.card_type)
     previous.tables["canvases"]._columns.remove(previous.tables["canvases"].c.edited_json)
+    previous.tables["chat_messages"]._columns.remove(previous.tables["chat_messages"].c.mode)
     previous.remove(previous.tables["tags"])
     Table("tags", previous,
           Column("id", Integer, primary_key=True, index=True),

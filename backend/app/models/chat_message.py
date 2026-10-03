@@ -13,6 +13,7 @@ class ChatMessage(Base):
                          nullable=False, index=True)
     role = Column(String(16), nullable=False)
     content = Column(Text, nullable=False)
+    mode = Column(String(16), nullable=False, default="text", server_default="text")
     source_ids = Column(JSON, nullable=True)
     citations = Column(JSON, nullable=True)
     refused = Column(Boolean, nullable=False, default=False, server_default="0")

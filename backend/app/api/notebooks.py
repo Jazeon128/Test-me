@@ -3,12 +3,17 @@
 from typing import Dict, List, Optional, Literal
 import uuid
 
-from fastapi import Query, APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile
+from fastapi import Query, APIRouter, Depends, HTTPException, BackgroundTasks, File, Form, UploadFile, WebSocket
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from ..config import settings
+from ..utils.origin import is_cross_site_write
+from ..services.voice import live
+from ..services.secrets import get_secret
+from ..services.ai.clients import setting
 from ..services.source_names import display_name
 from ..utils.cache import invalidate_stats_cache
 from ..db import get_db
@@ -333,8 +338,10 @@ def _chat_message(db, turn):
     _, _, invalid, uncited = validate_citations(
         turn.content, max((citation["n"] for citation in citations), default=0),
     )
-    return dict(id=turn.id, role=turn.role, content=turn.content, citations=citations,
-                refused=turn.refused, uncited=uncited and not turn.refused and turn.role == "assistant",
+    voice = turn.mode == "voice"
+    return dict(id=turn.id, role=turn.role, mode=turn.mode, content=turn.content, citations=citations,
+                refused=turn.refused,
+                uncited=uncited and not turn.refused and turn.role == "assistant" and not voice,
                 invalid_citations=invalid, model=turn.model, created_at=turn.created_at.isoformat())
 
 
@@ -469,3 +476,46 @@ def post_bank_bulk(notebook_id: int, request: BankBulkRequest, db: Session = Dep
 def post_bank_practice(notebook_id: int, request: BankPracticeRequest, db: Session = Depends(get_db)):
     _chat_notebook(db, notebook_id)
     return practice_questions(db, notebook_id, request.question_ids)
+
+
+@router.websocket("/{notebook_id}/voice")
+async def voice_chat(websocket: WebSocket, notebook_id: int, source_ids: str = "",
+                     db: Session = Depends(get_db)):
+    if is_cross_site_write("POST", websocket.headers.get("origin"), None, settings.CORS_ORIGINS):
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    try:
+        _chat_notebook(db, notebook_id)
+        ids = _voice_source_ids(source_ids)
+        if _chat_sources(db, notebook_id, ids):
+            raise HTTPException(status_code=409, detail="Selected sources are still processing")
+    except HTTPException as error:
+        await live.reject(websocket, error.detail)
+        return
+    key = get_secret("gemini", db=db, config=settings)
+    if not key:
+        await live.reject(websocket, "Voice mode needs a Gemini API key. Add one in Settings.")
+        return
+    if live.SESSION_LOCK.locked():
+        await live.reject(websocket, "A voice session is already running.")
+        return
+    await live.SESSION_LOCK.acquire()
+    try:
+        model = setting(db, "voice_model") or "gemini-3.8-live"
+        bridge = live.Bridge(websocket, sessionmaker(bind=db.get_bind()), notebook_id, ids,
+                             live.default_connect(key), model, _chat_message)
+        await bridge.run()
+    finally:
+        live.SESSION_LOCK.release()
+
+
+def _voice_source_ids(value):
+    try:
+        ids = [int(part) for part in value.split(",")]
+        if not ids or any(source_id < 1 for source_id in ids):
+            raise ValueError()
+        return ids
+    except ValueError as error:
+        raise HTTPException(status_code=400,
+                            detail="A selected source is not in this notebook") from error

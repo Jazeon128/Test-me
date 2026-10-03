@@ -50,6 +50,96 @@ def post(client, chat, **changes):
                        json={"message": "What does quorum require?", "source_ids": [source.id], **changes})
 
 
+def test_tutor_just_tell_me_retrieves_earlier_question_sources(client, db_session, chat, monkeypatch):
+    from importlib import import_module
+
+    passage = db_session.query(DocumentPassage).order_by(DocumentPassage.id).first()
+    passage.text = "Amazon Athena lets you run SQL directly on data in S3."
+    for message in ("Which AWS service lets me run SQL directly on data in S3?",
+                    "Is it Amazon Redshift?"):
+        db_session.add(ChatMessage(notebook_id=chat[0].id, role="user", mode="tutor", content=message))
+    db_session.commit()
+    complete = Mock(return_value=SimpleNamespace(text="Amazon Athena [1].", actual_model="mock"))
+    monkeypatch.setattr(import_module("app.services.chat.answer"), "complete", complete)
+
+    response = post(client, chat, message="just tell me", style="tutor")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["refused"] is False
+    assert response.json()["citations"][0]["passage_id"] == passage.id
+    complete.assert_called_once()
+    assert passage.text in complete.call_args.args[3]
+    chat[2].assert_not_called()
+
+
+@pytest.mark.parametrize("style", [None, "answer", "tutor"])
+def test_chat_retrieval_previous_user_context(client, db_session, chat, monkeypatch, style):
+    from app.api import notebooks
+
+    messages = ["Oldest question", "Earlier question", "Original question", "Latest attempt"]
+    other = Notebook(name="Other notebook")
+    db_session.add(other)
+    db_session.flush()
+    for message in messages:
+        db_session.add(ChatMessage(notebook_id=chat[0].id, role="user", content=message))
+        db_session.add(ChatMessage(notebook_id=chat[0].id, role="assistant", content="Guiding question"))
+    db_session.add(ChatMessage(notebook_id=other.id, role="user", content="Other notebook question"))
+    db_session.commit()
+    retrieve = Mock(return_value=[])
+    monkeypatch.setattr(notebooks, "retrieve", retrieve)
+
+    changes = {} if style is None else {"style": style}
+    response = post(client, chat, message="why?", **changes)
+
+    assert response.status_code == 200, response.text
+    previous = "\n".join(messages[-3:]) if style == "tutor" else messages[-1]
+    retrieve.assert_called_once_with(db_session, chat[0].id, [chat[1].id], "why?", previous)
+    chat[2].assert_not_called()
+
+
+@pytest.mark.parametrize("style,mode", [(None, "text"), ("answer", "text"), ("tutor", "tutor")])
+def test_chat_style_prompt_storage_and_shared_history(client, db_session, chat, monkeypatch, style, mode):
+    from importlib import import_module
+    from app.services.chat.answer import INSTRUCTION, TUTOR_INSTRUCTION
+
+    service = import_module("app.services.chat.answer")
+    complete = Mock(return_value=SimpleNamespace(text="What number do you see in [1]?", actual_model="mock"))
+    monkeypatch.setattr(service, "complete", complete)
+    changes = {} if style is None else {"style": style}
+    response = post(client, chat, **changes)
+    assert response.status_code == 200, response.text
+    assert response.json()["mode"] == mode
+    rows = db_session.query(ChatMessage).order_by(ChatMessage.id).all()
+    assert [row.mode for row in rows] == [mode, mode]
+    prompt = complete.call_args.args[3]
+    instruction = TUTOR_INSTRUCTION if style == "tutor" else INSTRUCTION
+    assert prompt.startswith(instruction + "\n\n")
+    assert complete.call_args.kwargs["temperature"] == 0.2
+    assert complete.call_args.kwargs["max_tokens"] == 1500
+    assert complete.call_args.kwargs["timeout"] == 180.0
+    assert client.get(f"/api/notebooks/{chat[0].id}/chat").json()[0]["mode"] == mode
+    assert post(client, chat, message="Three nodes?", style="tutor").status_code == 200
+    assert "user: What does quorum require?" in complete.call_args.args[3]
+    assert "assistant: What number do you see in [1]?" in complete.call_args.args[3]
+    chat[2].assert_not_called()
+
+
+def test_invalid_chat_style_422(client, db_session, chat):
+    assert post(client, chat, style="coach").status_code == 422
+    assert db_session.query(ChatMessage).count() == 0
+    chat[2].assert_not_called()
+
+
+def test_tutor_without_citations_shows_uncited_on_reply_and_history(client, chat, monkeypatch):
+    from importlib import import_module
+
+    complete = Mock(return_value=SimpleNamespace(text="What do you think?", actual_model="mock"))
+    monkeypatch.setattr(import_module("app.services.chat.answer"), "complete", complete)
+    response = post(client, chat, style="tutor")
+    assert response.json()["uncited"] is True
+    assert client.get(f"/api/notebooks/{chat[0].id}/chat").json()[-1]["uncited"] is True
+
+
 def test_happy_path_and_ledger(client, db_session, chat):
     response = post(client, chat)
     assert response.status_code == 200, response.text

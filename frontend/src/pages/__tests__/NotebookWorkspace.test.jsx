@@ -289,7 +289,7 @@ describe('Workspace accessibility', () => {
   })
   it('focuses a deck opened through URL parameters', async () => {
     mount('?deck=9&view=edit'); await screen.findByText('Editing Cell quiz')
-    expect(screen.getByRole('heading', { name: 'Editing Cell quiz' }).parentElement).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Editing Cell quiz' }).parentElement).toHaveFocus())
     await act(async () => click('Close'))
     expect(screen.getByLabelText('Ask about your sources')).toHaveFocus()
   })

@@ -314,6 +314,7 @@ async def delete_notebook(notebook_id: int, db: Session = Depends(get_db)):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     source_ids: List[int] = Field(min_length=1)
+    style: Literal["answer", "tutor"] = "answer"
 
     @field_validator("message")
     @classmethod
@@ -369,12 +370,19 @@ def post_chat(notebook_id: int, request: ChatRequest, db: Session = Depends(get_
             "detail": "Selected sources are still processing", "processing": processing,
         })
     history = _chat_history(db, notebook_id)
-    prior = (db.query(ChatMessage)
-             .filter(ChatMessage.notebook_id == notebook_id, ChatMessage.role == "user")
-             .order_by(ChatMessage.id.desc()).first())
-    previous = prior.content if prior else ""
+    if request.style == "tutor":
+        prior = (db.query(ChatMessage)
+                 .filter(ChatMessage.notebook_id == notebook_id, ChatMessage.role == "user")
+                 .order_by(ChatMessage.id.desc()).limit(3).all())
+        previous = "\n".join(turn.content for turn in reversed(prior))
+    else:
+        prior = (db.query(ChatMessage)
+                 .filter(ChatMessage.notebook_id == notebook_id, ChatMessage.role == "user")
+                 .order_by(ChatMessage.id.desc()).first())
+        previous = prior.content if prior else ""
+    mode = "tutor" if request.style == "tutor" else "text"
     user = ChatMessage(notebook_id=notebook_id, role="user", content=request.message,
-                       source_ids=request.source_ids)
+                       source_ids=request.source_ids, mode=mode)
     db.add(user)
     db.commit()
     passages = retrieve(db, notebook_id, request.source_ids, request.message, previous)
@@ -382,12 +390,12 @@ def post_chat(notebook_id: int, request: ChatRequest, db: Session = Depends(get_
                   uncited=False, invalid_citations=[])
     if passages:
         try:
-            result = answer(db, passages, history, request.message, previous)
+            result = answer(db, passages, history, request.message, previous, style=request.style)
         except Exception as error:
             provider = getattr(error, "details", {}).get("provider", "")
             raise HTTPException(status_code=502, detail=explain_provider_error(
                 str(error), provider or "gemini")) from error
-    assistant = ChatMessage(notebook_id=notebook_id, role="assistant",
+    assistant = ChatMessage(notebook_id=notebook_id, role="assistant", mode=mode,
                             **{key: result[key] for key in ("content", "citations", "refused", "model")})
     db.add(assistant)
     db.commit()

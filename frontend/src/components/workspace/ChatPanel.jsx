@@ -15,6 +15,14 @@ const errorMessage = error => {
 export default function ChatPanel({ notebookId, sourceIds, sources }) {
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
+  const [style, setStyle] = useState(() => {
+    try { return localStorage.getItem('test-me.chatStyle') === 'tutor' ? 'tutor' : 'answer' }
+    catch { return 'answer' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('test-me.chatStyle', style) }
+    catch { /* Chat still works when storage is unavailable. */ }
+  }, [style])
   const [demoPrompts, setDemoPrompts] = useState([])
   const [loading, setLoading] = useState(true)
   const [paging, setPaging] = useState(false)
@@ -127,7 +135,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
   }
   const send = async (attempt = null) => {
     if (sending.current || voice.current || loading || clearing || !sourceIds.length) return
-    const body = attempt?.body || { message: draft.trim(), source_ids: [...sourceIds] }
+    const body = attempt?.body || { message: draft.trim(), source_ids: [...sourceIds], style }
     if (!body.message || body.message.length > 2000) return
     sending.current = true
     setBusy(true)
@@ -200,7 +208,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
       {messages.map(message => <ChatMessage key={message.id} message={message} />)}
       {busy && <div className="chat-message chat-assistant" role="status">
         <header className="chat-message-header"><span className="chat-role-label" aria-hidden="true">
-          <Sparkles size={14} aria-hidden="true" />AI answer
+          <Sparkles size={14} aria-hidden="true" />{style === 'tutor' ? 'AI tutor' : 'AI answer'}
         </span></header>
         <span className="chat-reading-dot" aria-hidden="true" /> Reading your sources...
       </div>}
@@ -213,6 +221,15 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
         <p><strong>Assistant:</strong> {transcript.assistant}</p>
       </div>
     </div>}
+    <div className="chat-mode">
+      <div className="tm-segmented" role="group" aria-label="Chat mode">
+        <button type="button" aria-pressed={style === 'answer'} disabled={busy} onClick={() => setStyle('answer')}>Answer</button>
+        <button type="button" aria-pressed={style === 'tutor'} disabled={busy} onClick={() => setStyle('tutor')}>Tutor me</button>
+      </div>
+      <p className="chat-note">{style === 'tutor'
+        ? 'Guides you with questions. Ask “just tell me” for the answer.'
+        : 'Answers from your sources, with citations.'}</p>
+    </div>
     <form className="chat-composer" onSubmit={event => { event.preventDefault(); send() }}>
       <label htmlFor={`chat-input-${notebookId}`}>Ask about your sources</label>
       <div className="chat-input-field"><textarea id={`chat-input-${notebookId}`} value={draft} disabled={composerDisabled} maxLength={2000}

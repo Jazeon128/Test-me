@@ -37,6 +37,55 @@ beforeEach(() => {
 })
 
 describe('Chat panel', () => {
+  it('toggles mode, shows helper text, persists and restores the choice', async () => {
+    const rendered = await mount()
+    const group = screen.getByRole('group', { name: 'Chat mode' })
+    expect(within(group).getByRole('button', { name: 'Answer' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Answers from your sources, with citations.')).toHaveClass('chat-note')
+    click('Tutor me')
+    expect(within(group).getByRole('button', { name: 'Tutor me' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(group).getByRole('button', { name: 'Answer' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('Guides you with questions. Ask “just tell me” for the answer.')).toBeInTheDocument()
+    expect(localStorage.getItem('test-me.chatStyle')).toBe('tutor')
+    rendered.unmount()
+    await mount()
+    expect(screen.getByRole('button', { name: 'Tutor me' })).toHaveAttribute('aria-pressed', 'true')
+    click('Answer')
+    expect(localStorage.getItem('test-me.chatStyle')).toBe('answer')
+    expect(screen.getByText('Answers from your sources, with citations.')).toBeInTheDocument()
+  })
+  it('defaults to Answer for invalid storage and works when storage throws', async () => {
+    localStorage.setItem('test-me.chatStyle', 'invalid')
+    const rendered = await mount()
+    expect(screen.getByRole('button', { name: 'Answer' })).toHaveAttribute('aria-pressed', 'true')
+    rendered.unmount()
+    const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Blocked') })
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Blocked') })
+    try {
+      await mount()
+      expect(screen.getByRole('button', { name: 'Answer' })).toHaveAttribute('aria-pressed', 'true')
+      click('Tutor me')
+      expect(screen.getByRole('button', { name: 'Tutor me' })).toHaveAttribute('aria-pressed', 'true')
+    } finally { read.mockRestore(); write.mockRestore() }
+  })
+  it('sends tutor style and labels the pending and cited reply as AI tutor', async () => {
+    let resolve
+    notebooksAPI.chat.mockReturnValue(new Promise(done => { resolve = done }))
+    await mount(); click('Tutor me'); fill('Explain cells'); click('Send')
+    expect(notebooksAPI.chat).toHaveBeenCalledWith('7', { message: 'Explain cells', source_ids: [1, 2], style: 'tutor' })
+    expect(within(screen.getByRole('status')).getByText('AI tutor')).toBeInTheDocument()
+    await act(async () => resolve({ data: answer({ mode: 'tutor' }) }))
+    expect(screen.getByText('AI tutor · from your sources')).toBeInTheDocument()
+  })
+  it('renders the mode control in the static demo', async () => {
+    vi.stubEnv('VITE_DEMO', 'true')
+    try {
+      await mount()
+      expect(screen.getByRole('group', { name: 'Chat mode' })).toBeInTheDocument()
+      click('Tutor me')
+      expect(screen.getByRole('button', { name: 'Tutor me' })).toHaveAttribute('aria-pressed', 'true')
+    } finally { vi.unstubAllEnvs() }
+  })
   it('loads history with accessible citation chips and opens the exact passage', async () => {
     notebooksAPI.chatHistory.mockResolvedValue({ data: [{ id: 1, role: 'user', content: 'Explain cells' }, answer()] })
     await mount()
@@ -73,7 +122,7 @@ describe('Chat panel', () => {
     expect(notebooksAPI.chat).not.toHaveBeenCalled()
     rendered.rerender(<ChatPanel notebookId="7" sourceIds={[2]} sources={sources} />)
     fireEvent.keyDown(input(), { key: 'Enter' })
-    expect(notebooksAPI.chat).toHaveBeenCalledWith('7', { message: 'Explain cells', source_ids: [2] })
+    expect(notebooksAPI.chat).toHaveBeenCalledWith('7', { message: 'Explain cells', source_ids: [2], style: 'answer' })
     await screen.findByRole('button', { name: 'Citation 1: Cells.pdf, Page 4' })
     expect(input()).toHaveValue('')
   })

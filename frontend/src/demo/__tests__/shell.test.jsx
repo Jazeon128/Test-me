@@ -59,5 +59,5 @@ it('shows recorded question chips and replays the chosen question', async () => 
   expect(screen.getByRole('textbox')).toHaveValue('What is active recall?')
   fireEvent.click(screen.getByRole('button', { name: 'Send' }))
   await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''))
-  expect(notebooksAPI.chat).toHaveBeenCalledWith('1', { message: 'What is active recall?', source_ids: [1] })
+  expect(notebooksAPI.chat).toHaveBeenCalledWith('1', { message: 'What is active recall?', source_ids: [1], style: 'answer' })
 })

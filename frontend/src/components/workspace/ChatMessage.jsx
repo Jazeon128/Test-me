@@ -37,13 +37,14 @@ function contentBlocks(content) {
 
 export default function ChatMessage({ message }) {
   const citations = message.role === 'assistant' ? message.citations || [] : []
+  const label = message.mode === 'tutor' ? 'AI tutor' : 'AI answer'
   const renderText = text => message.role === 'assistant' ? inline(text, citations) : text
   return <article aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} message`}
     className={`chat-message chat-${message.role} ${message.refused ? 'chat-refused' : ''}`}>
     <header className="chat-message-header">
       <span className="chat-role-label" aria-hidden="true">
         {message.role === 'user' ? 'You' : <><Sparkles size={14} aria-hidden="true" />
-          {citations.length ? 'AI answer · from your sources' : 'AI answer'}</>}
+          {citations.length ? `${label} · from your sources` : label}</>}
       </span>
       {message.mode === 'voice' && <span className="chat-voice-label">Voice</span>}
     </header>

@@ -31,6 +31,19 @@ const released = () => {
   expect(audio.track.stop).toHaveBeenCalledOnce()
   for (const context of audio.contexts) expect(context.close).toHaveBeenCalledOnce()
 }
+it('keeps voice in answer mode when Tutor me is selected', async () => {
+  await mount()
+  fireEvent.click(screen.getByRole('button', { name: 'Tutor me' }))
+  const socket = await start()
+  expect(voiceURL).toHaveBeenCalledWith(7, [1, 2])
+  event(socket, { type: 'turn_saved', messages: [
+    { id: 1, role: 'assistant', content: 'Spoken answer', mode: 'voice' },
+  ] })
+  expect(screen.getByText('AI answer')).toBeInTheDocument()
+  expect(screen.getByText('Voice')).toBeInTheDocument()
+  expect(screen.queryByText('AI tutor')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Stop talking' }))
+})
 it('starts with ticked ids, shows fragments, saves 2 and 1 messages, and disables typing and Send', async () => {
   await mount()
   fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Question' } })

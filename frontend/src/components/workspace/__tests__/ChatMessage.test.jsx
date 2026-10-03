@@ -6,6 +6,19 @@ const citation = n => ({ n, display_name: 'Research.pdf', locator: 'Page 4', exc
 const assistant = content => ({ role: 'assistant', content, citations: [citation(2), citation(3), citation(5)] })
 
 describe('Chat message', () => {
+  it.each([false, true])('labels tutor replies with citations: %s', cited => {
+    render(<ChatMessage message={{ role: 'assistant', mode: 'tutor', content: 'Read [2].',
+      citations: cited ? [citation(2)] : [], uncited: !cited }} />)
+    const label = screen.getByText(cited ? 'AI tutor · from your sources' : 'AI tutor')
+    expect(label).toHaveAttribute('aria-hidden', 'true')
+    expect(label.querySelector('svg')).toHaveAttribute('width', '14')
+    if (!cited) expect(screen.getByText('No citations. Check this answer against your sources.')).toBeInTheDocument()
+  })
+  it('keeps tutor user turns labelled You', () => {
+    render(<ChatMessage message={{ role: 'user', mode: 'tutor', content: 'My attempt' }} />)
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.queryByText('AI tutor')).not.toBeInTheDocument()
+  })
   it('labels user questions while preserving the article accessible name', () => {
     render(<ChatMessage message={{ role: 'user', content: 'Explain cells' }} />)
     const article = screen.getByRole('article', { name: 'You message' })

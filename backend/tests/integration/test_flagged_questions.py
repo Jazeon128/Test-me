@@ -1,5 +1,6 @@
 """Exercise generation and the held-back review routes without external APIs."""
 from types import SimpleNamespace
+import random
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -56,7 +57,7 @@ def process(state):
                                state.deck_id, job_id="held-job")
 
 
-def test_process_and_restore(client, db_session, generation):
+def test_process_and_restore(client, db_session, generation, monkeypatch):
     process(generation)
     db_session.expire_all()
     assert len(db_session.get(Deck, generation.deck_id).questions) == 2
@@ -82,6 +83,7 @@ def test_process_and_restore(client, db_session, generation):
     assert listed["reasons"] == item.reasons
     assert listed["document_id"] == generation.document_id
     assert listed["created_at"]
+    monkeypatch.setattr(documents, "_option_rng", random.Random(1))
     response = client.post(f"/api/flagged/{item.id}/restore")
     assert response.status_code == 200
     db_session.expire_all()
@@ -91,6 +93,10 @@ def test_process_and_restore(client, db_session, generation):
     assert restored.explanation == "Because"
     assert restored.difficulty == "hard"
     assert [option.option_text for option in restored.options if option.is_correct] == ["Right"]
+    assert [(option.order, option.option_text, option.is_correct)
+            for option in sorted(restored.options, key=lambda option: option.order)] == [
+        (0, "Right", True), (1, "Wrong", False)
+    ]
     assert len(db_session.get(Deck, generation.deck_id).questions) == 3
     assert item.status == "restored" and item.resolved_at
     assert client.post(f"/api/flagged/{item.id}/restore").status_code == 409

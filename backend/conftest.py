@@ -14,6 +14,10 @@ fixture's.
 
 import os
 import tempfile
+import importlib
+from unittest.mock import patch
+
+from pydantic_settings import DotEnvSettingsSource
 
 _TEST_STATE = tempfile.mkdtemp(prefix="testme-tests-")
 os.environ["DATABASE_URL"] = "sqlite:///" + os.path.join(_TEST_STATE, "test.db")
@@ -36,6 +40,10 @@ for _credential in (
     "OPENROUTER_API_KEY",
 ):
     os.environ[_credential] = ""
+
+# Initialize application settings without opening the developer's .env file.
+with patch.object(DotEnvSettingsSource, "_read_env_files", return_value={}):
+    importlib.import_module("app.config")
 
 from hypothesis import settings, HealthCheck  # noqa: E402,F401
 

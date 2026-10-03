@@ -1,9 +1,11 @@
 """Canvas node generation persists in one reusable practice deck."""
 from unittest.mock import Mock
+import random
 
 import pytest
 
 from app.api import canvas as api
+from app.api import documents
 from app.models.canvas import Canvas
 from app.models.deck import Deck, DeckQuestion
 from app.models.document import Document, DocumentType
@@ -44,6 +46,7 @@ def setup_node(db_session, sample_document, monkeypatch):
 
 
 def test_save_reuse_more_get_and_second_source(client, db_session, setup_node, monkeypatch):
+    monkeypatch.setattr(documents, "_option_rng", random.Random(1))
     canvas, second_id, generator, factory = setup_node
     url = f"/api/canvas/{canvas.id}/nodes/n/questions"
     invalidate = Mock()
@@ -60,8 +63,12 @@ def test_save_reuse_more_get_and_second_source(client, db_session, setup_node, m
     assert len(data["questions"]) == 1
     question = db_session.query(Question).one()
     assert data["questions"][0] == {"id": question.id, "question": question.question_text, "card_type": "mcq",
-        "options": [{"option": "A", "text": "Topic"}, {"option": "B", "text": "Other"}],
-        "correct_answer": "A", "explanation": "The passage says so."}
+        "options": [{"option": "A", "text": "Other"}, {"option": "B", "text": "Topic"}],
+        "correct_answer": "B", "explanation": "The passage says so."}
+    assert [(option.order, option.option_text, option.is_correct)
+            for option in sorted(question.options, key=lambda option: option.order)] == [
+        (0, "Other", False), (1, "Topic", True)
+    ]
     assert question.document_id == second_id
     assert question.source_reference == {"page": 2, "canvas_id": canvas.id, "node_id": "n"}
     deck = db_session.query(Deck).one()

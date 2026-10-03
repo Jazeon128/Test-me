@@ -807,6 +807,7 @@ CRITICAL QUALITY REQUIREMENTS:
 - Ensure all distractors are plausible to someone who hasn't mastered the material
 - Avoid obviously wrong answers, joke options, or "none of the above"
 - The correct answer should be definitively correct based on the text
+- Explanations must explain the correct answer by its content and never refer to options by letter (A, B, C or D), because the options are shuffled after generation.
 
 **Cognitive Level Alignment:**
 - For "easy": Test remembering key facts and basic comprehension (Bloom's levels 1-2)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
 import os
+import random
 import hashlib
 from datetime import datetime
 import traceback
@@ -44,6 +45,7 @@ from ..exceptions import (
 logger = get_logger(__name__)
 
 router = APIRouter()
+_option_rng = random.SystemRandom()
 
 
 @router.post("/upload")
@@ -280,7 +282,7 @@ def _parser_for(file_type: DocumentType):
     }[file_type]()
 
 
-def _save_generated_question(db, q_data, document_id, deck) -> Question:
+def _save_generated_question(db, q_data, document_id, deck, *, rng=None) -> Question:
     """Save a generated question and its children without committing."""
     from ..models.deck import DeckQuestion
 
@@ -307,11 +309,16 @@ def _save_generated_question(db, q_data, document_id, deck) -> Question:
     if card_type == "flashcard":
         return question
     correct_answer = str(q_data["correct_answer"]).strip().upper()
-    for order, option in enumerate(q_data["options"]):
+    options = [
+        (option["text"], str(option["option"]).strip().upper() == correct_answer)
+        for option in q_data["options"]
+    ]
+    (rng if rng is not None else _option_rng).shuffle(options)
+    for order, (text, is_correct) in enumerate(options):
         db.add(QuestionOption(
             question_id=question.id,
-            option_text=option["text"],
-            is_correct=str(option["option"]).strip().upper() == correct_answer,
+            option_text=text,
+            is_correct=is_correct,
             order=order,
         ))
     return question

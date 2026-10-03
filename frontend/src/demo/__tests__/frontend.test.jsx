@@ -3,6 +3,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { DEMO_NOTICE } from '../notice'
 
+vi.mock('../../../demo/fixture.json', async () => ({
+  default: (await import('./fixture.sample.json')).default,
+}))
+
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
 it('runs the real frontend with recorded sources, bank, chat, and blocked writes without a transport', async () => {

@@ -14,10 +14,14 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "test": "vitest",
-    "atlas": "node flow-atlas/capture.js"
+    "atlas": "node flow-atlas/capture.js",
+    "predev": "node scripts/copy-excalidraw-assets.mjs",
+    "prebuild": "node scripts/copy-excalidraw-assets.mjs",
+    "prebuild:demo": "node scripts/copy-excalidraw-assets.mjs",
+    "prepreview": "node scripts/copy-excalidraw-assets.mjs"
   },
   "dependencies": {
-    "@xyflow/react": "^12.12.0",
+    "@excalidraw/excalidraw": "0.18.1",
     "axios": "^1.6.2",
     "elkjs": "^0.12.0",
     "framer-motion": "^10.16.5",

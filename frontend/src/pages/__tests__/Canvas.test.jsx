@@ -14,18 +14,10 @@ vi.mock('../../canvas/layout', () => ({
   toGraph: () => ({ nodes: [], edges: [] }),
   layout: async (_, graph) => graph,
 }))
-vi.mock('@xyflow/react', async () => {
-  const { useState } = await import('react')
-  const useGraphState = () => {
-    const [items, setItems] = useState([])
-    return [items, setItems, vi.fn()]
-  }
-  return {
-    ReactFlow: () => null, Background: () => null, Controls: () => null,
-    BackgroundVariant: { Dots: 'dots' },
-    useNodesState: useGraphState,
-    useEdgesState: useGraphState,
-  }
+vi.mock('@excalidraw/excalidraw', () => {
+  const MainMenu = () => null
+  MainMenu.DefaultItems = { Export: () => null, Help: () => null }
+  return { Excalidraw: () => null, MainMenu, convertToExcalidrawElements: () => [] }
 })
 
 beforeEach(() => {

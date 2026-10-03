@@ -1,13 +1,3 @@
-/* Canvas design tokens.
- *
- * Taken from the Test Me design canvas (NodeSystem artboard). The app uses
- * class-based dark mode, so the dark values hang off `.dark`, and everything is
- * scoped to `.tm-canvas` so the canvas surface can have its own type and colour
- * without restyling the rest of the app.
- */
-
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap');
-
 .tm-canvas {
   --bg: #f3f4f6;
   --dot: #cdd2d9;
@@ -120,275 +110,6 @@
   font-family: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* One node. Shape and colour vary; this is what they share. */
-.tm-node {
-  position: relative;
-  min-width: 150px;
-  max-width: 220px;
-  padding: 7px 10px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: var(--node);
-  border: 1px solid var(--node-line);
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  box-sizing: border-box;
-}
-
-.tm-node.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.tm-node-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 16px;
-}
-
-.tm-sw {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--slate-s);
-}
-
-.tm-kind {
-  flex: 1;
-  min-width: 0;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--text3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tm-label {
-  font-size: 12.5px;
-  line-height: 17px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.tm-detail {
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--text2);
-}
-
-/* The citation chip. Every node type carries one. */
-.tm-cite {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 16px;
-  padding: 0 4px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--chrome);
-  font-size: 11px;
-  line-height: 14px;
-  color: var(--text3);
-  cursor: pointer;
-}
-
-.tm-cite.is-active {
-  color: var(--accent);
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-
-/* An uncited node says so rather than pretending. */
-.tm-cite.is-missing {
-  color: var(--rose-i);
-  border-color: var(--rose-s);
-  background: var(--rose-f);
-  cursor: default;
-}
-
-.tm-node.shape-pill {
-  border-radius: 24px;
-  padding: 7px 16px 8px;
-}
-
-.tm-node.shape-pill .tm-sw {
-  border-radius: 50%;
-}
-
-.tm-node.shape-hex {
-  border-radius: 0;
-  clip-path: polygon(13px 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 13px 100%, 0 50%);
-  padding: 7px 22px 8px;
-}
-
-.tm-node.shape-hex .tm-sw {
-  width: 7px;
-  height: 7px;
-  border-radius: 1px;
-  transform: rotate(45deg);
-}
-
-/* Colour families. One system reused across every template, so an architecture
- * diagram and a fishbone plainly belong to the same application. */
-.tm-node.c-blue {
-  background: var(--blue-f);
-  border-color: var(--blue-s);
-}
-.tm-node.c-blue .tm-sw {
-  background: var(--blue-s);
-}
-.tm-node.c-blue .tm-kind {
-  color: var(--blue-i);
-}
-
-.tm-node.c-teal {
-  background: var(--teal-f);
-  border-color: var(--teal-s);
-}
-.tm-node.c-teal .tm-sw {
-  background: var(--teal-s);
-}
-.tm-node.c-teal .tm-kind {
-  color: var(--teal-i);
-}
-
-.tm-node.c-amber {
-  background: var(--amber-f);
-  border-color: var(--amber-s);
-}
-.tm-node.c-amber .tm-sw {
-  background: var(--amber-s);
-}
-.tm-node.c-amber .tm-kind {
-  color: var(--amber-i);
-}
-
-.tm-node.c-violet {
-  background: var(--violet-f);
-  border-color: var(--violet-s);
-}
-.tm-node.c-violet .tm-sw {
-  background: var(--violet-s);
-}
-.tm-node.c-violet .tm-kind {
-  color: var(--violet-i);
-}
-
-.tm-node.c-rose {
-  background: var(--rose-f);
-  border-color: var(--rose-s);
-}
-.tm-node.c-rose .tm-sw {
-  background: var(--rose-s);
-}
-.tm-node.c-rose .tm-kind {
-  color: var(--rose-i);
-}
-
-.tm-node.c-slate {
-  background: var(--slate-f);
-  border-color: var(--slate-s);
-}
-.tm-node.c-slate .tm-sw {
-  background: var(--slate-s);
-}
-.tm-node.c-slate .tm-kind {
-  color: var(--slate-i);
-}
-
-/* A labelled container: dashed for a logical group, solid for a boundary. */
-.tm-group {
-  border: 1px dashed var(--blue-s);
-  border-radius: 10px;
-  width: 100%;
-  height: 100%;
-}
-
-.tm-group.is-boundary {
-  border-style: solid;
-  border-color: var(--line2);
-  background: var(--rgn);
-  border-radius: 12px;
-}
-
-.tm-group-label {
-  position: absolute;
-  left: 12px;
-  top: 8px;
-  font-size: 11.5px;
-  line-height: 16px;
-  font-weight: 600;
-  color: var(--blue-i);
-  white-space: nowrap;
-}
-
-.tm-group.is-boundary .tm-group-label {
-  color: var(--text2);
-}
-
-/* A fishbone rib: text sitting on the bone rather than in a box. */
-.tm-bone {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 170px;
-  padding: 0 6px 3px 0;
-  border-bottom: 1px solid var(--edge);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text);
-}
-
-/* React Flow surface */
-.tm-canvas .react-flow__edge-path {
-  stroke: var(--edge);
-  stroke-width: 1.3;
-}
-
-.tm-canvas .react-flow__edge.selected .react-flow__edge-path,
-.tm-canvas .react-flow__edge:hover .react-flow__edge-path {
-  stroke: var(--accent);
-  stroke-width: 1.8;
-}
-
-.tm-canvas .react-flow__edge-text {
-  fill: var(--edge-label);
-  font-size: 11px;
-}
-
-.tm-canvas .react-flow__edge-textbg {
-  fill: var(--bg);
-}
-
-.tm-canvas .react-flow__handle {
-  width: 5px;
-  height: 5px;
-  border: none;
-  background: var(--edge);
-  opacity: 0;
-}
-
-.tm-canvas .react-flow__node:hover .react-flow__handle {
-  opacity: 1;
-}
-
-.tm-canvas .react-flow__controls-button {
-  background: var(--chrome);
-  border-bottom: 1px solid var(--line);
-  fill: var(--text2);
-}
-
-.tm-canvas .react-flow__attribution {
-  background: transparent;
-  color: var(--text3);
-}
-
 .tm-canvas.tm-canvas-embedded {
   --chrome: var(--surface-solid);
   --s2: var(--surface-solid);
@@ -409,14 +130,26 @@
   --text3: var(--drawing-text3);
   --accent: var(--drawing-accent);
 }
-.tm-canvas-embedded :is(.tm-canvas-header, .tm-edit-toolbar) {
+.tm-canvas-embedded .tm-canvas-header {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   line-height: 20px;
 }
-.tm-canvas-embedded .tm-edit-toolbar { background: var(--chrome); color: var(--text); border-color: var(--line); }
 
 .tm-canvas-meta { flex-direction: column; align-items: stretch; }
 .tm-canvas-embedded .tm-canvas-meta { flex-direction: row; align-items: center; }
 .tm-canvas-embedded :is(.tm-canvas-sources, .tm-canvas-controls) { display: contents; }
-.tm-node:has(.tm-editor) { clip-path: none; overflow: visible; }
+
+
+/* Excalidraw has no option to disable its library sidebar. */
+.tm-whiteboard .excalidraw .default-sidebar-trigger,
+.tm-whiteboard .excalidraw .default-sidebar,
+.tm-whiteboard .excalidraw [data-testid="addToLibrary"] {
+  display: none !important;
+}
+
+/* Keep the notebook's 44px target minimum outside the drawing tools. */
+.notebook-workspace .tm-canvas.tm-canvas-embedded .tm-whiteboard .excalidraw :is(button, input, select, [role="button"]) {
+  min-height: 0;
+  min-width: 0;
+}

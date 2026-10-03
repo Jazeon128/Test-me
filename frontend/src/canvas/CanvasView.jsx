@@ -1,28 +1,17 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import {
-  ReactFlow,
-  Background,
-  BackgroundVariant,
-  Controls,
-  useNodesState,
-  useEdgesState,
-} from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
+import { lazy, Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText } from 'lucide-react'
 import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../services/api'
-import { nodeTypes } from './nodeTypes'
 import { layout, toGraph, withMatrixHeaders } from './layout'
 import TemplatePicker from './TemplatePicker'
 import NodePanel from './NodePanel'
 import useCanvasPersistence from './useCanvasPersistence'
 import useCanvasHeight from './useCanvasHeight'
-import useCanvasEditing from './useCanvasEditing'
-import CanvasToolbar from './CanvasToolbar'
 import CanvasSaveControls from './CanvasSaveControls'
-import canvasShortcuts from './canvasShortcuts'
 import { Generating, EmptyState, TemplateBadge } from './CanvasChrome'
 import { canvasTitle } from './canvasTitle'
 import './canvas.css'
+
+const ExcalidrawSurface = lazy(() => import('./ExcalidrawSurface'))
 
 const POLL_MS = 900
 
@@ -57,20 +46,13 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
   const selectedSourceIds = useMemo(() => canvasId ? canvas?.source_ids || (canvas ? [canvas.document_id] : []) : sourceIds, [canvasId, canvas, sourceIds])
   const [picker, setPicker] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [selectedEdge, setSelectedEdge] = useState(null)
-  const flowRef = useRef(null)
-  const wrapperRef = useRef(null)
   const [source, setSource] = useState(null)
-
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
-
+  const [elements, setElements] = useState([])
+  const [sceneKey, setSceneKey] = useState(0)
+  const [hasSelection, setHasSelection] = useState(false)
+  const sourceRequest = useRef(0)
   const { status: saveStatus, save, flush, retry } = useCanvasPersistence(canvas?.id)
   useImperativeHandle(ref, () => ({ flush }), [flush])
-  const {
-    displayNodes, editing, startEditing, applyGraph, add, connect, canDelete, remove,
-    recolour, labelEdge, undo, redo, canUndo, canRedo, clearHistory, beginDrag,
-  } = useCanvasEditing({ nodes, edges, setNodes, setEdges, setCanvas, save, canvasId })
   const [restoring, setRestoring] = useState(false)
 
   const pollRef = useRef(null)
@@ -102,50 +84,47 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
 
   useEffect(() => () => clearTimeout(pollRef.current), [])
 
-  const openSource = useCallback(
-    async (targetCanvasId, node) => {
-      setSelected(node)
-      setSelectedEdge(null)
-      setSource(null)
-      if (!node.data.source_section_id || node.data.added || node.type === 'MatrixHeader') return
-      try {
-        const response = await canvasAPI.nodeSource(targetCanvasId, node.id)
-        setSource(response.data)
-      } catch {
-        setSource({ section: null })
-      }
-    },
-    []
-  )
+  const openSource = useCallback(async (targetCanvasId, node) => {
+    const requestId = ++sourceRequest.current
+    setSelected(node)
+    setSource(null)
+    if (!node) return
+    try {
+      const response = await canvasAPI.nodeSource(targetCanvasId, node.id)
+      if (requestId === sourceRequest.current) setSource(response.data)
+    } catch {
+      if (requestId === sourceRequest.current) setSource({ section: null })
+    }
+  }, [])
 
-  const draw = useCallback(
-    async (record) => {
+  const draw = useCallback(async (record) => {
+    let scene
+    if (record.edited?.schema_version === 2) {
+      scene = record.edited.elements
+    } else {
+      const { graphToScene } = await import('./scene')
       const edited = record.edited && record.template === 'comparison_matrix'
         ? withMatrixHeaders(record.edited, record.payload) : record.edited
-      const laidOut = edited || await layout(record.template, toGraph(record.template, record.payload), {
+      const graph = edited || await layout(record.template, toGraph(record.template, record.payload), {
         algorithm: LAYOUTS[record.template] || 'layered',
         orientation: record.payload?.orientation || 'horizontal',
       })
       const saved = record.edited ? {} : record.layout || {}
-      setNodes(
-        laidOut.nodes.map((node) => ({
-          ...node,
-          position: saved[node.id] || node.position,
-          data: {
-            ...node.data,
-            onOpenSource: () => openSource(record.id, node),
-          },
-        }))
-      )
-      clearHistory()
-      setEdges(laidOut.edges)
-      setCanvas(record)
-      onTitle?.(record.title || record.request_text)
-      drawnIdRef.current = String(record.id)
-      setPhase('ready')
-    },
-    [openSource, setEdges, setNodes, clearHistory, onTitle]
-  )
+      scene = graphToScene(record.template, {
+        ...graph, nodes: graph.nodes.map(node => ({ ...node, position: saved[node.id] || node.position })),
+      })
+    }
+    sourceRequest.current++
+    setSelected(null)
+    setSource(null)
+    setHasSelection(false)
+    setElements(scene)
+    setSceneKey(key => key + 1)
+    setCanvas(record)
+    onTitle?.(record.title || record.request_text)
+    drawnIdRef.current = String(record.id)
+    setPhase('ready')
+  }, [onTitle])
 
   useEffect(() => {
     if (!canvasId || drawnIdRef.current === canvasId) return
@@ -223,36 +202,10 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
     [selectedSourceIds, poll, request]
   )
 
-  const persistLayout = useCallback((_, dragged, draggedNodes) => {
-    if (!canvas) return
-    const moved = new Map((draggedNodes || [dragged]).filter(Boolean).map(node => [node.id, node.position]))
-    const next = nodes.map(node => moved.has(node.id) ? { ...node, position: moved.get(node.id) } : node)
-    applyGraph(next, edges, true, !(canvas.has_edits || canvas.edited))
-  }, [canvas, nodes, edges, applyGraph])
-
-  const addNode = note => {
-    const rect = wrapperRef.current.getBoundingClientRect()
-    const position = flowRef.current.screenToFlowPosition({
-      x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
-    })
-    setSelected(add(position, note))
-    setSelectedEdge(null)
-    setSource(null)
-  }
-  const deleteSelected = () => {
-    if (remove(selected, selectedEdge)) {
-      setSelected(null)
-      setSelectedEdge(null)
-      setSource(null)
-    }
-  }
-
   const restore = async () => {
     save({ edited: null, layout: null })
     if (await flush()) {
-      startEditing(null)
       setSelected(null)
-      setSelectedEdge(null)
       setSource(null)
       await draw({ ...canvas, edited: null, has_edits: false, layout: null })
       setRestoring(false)
@@ -385,67 +338,33 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             />
           )}
           {phase === 'ready' && (
-            <div
-              className="tm-flow-editor"
-              inert={restoring ? '' : undefined}
-              tabIndex={0}
-              onKeyDown={event => canvasShortcuts(event, {
-                undo, redo, add: addNode, remove: deleteSelected, edit: startEditing, selected, editing,
-                clear: () => { setSelected(null); setSelectedEdge(null); setSource(null) },
-              })}
-            >
-              <CanvasToolbar undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
-                selected={nodes.find(node => node.id === selected?.id)}
-                edge={edges.find(edge => edge.id === selectedEdge?.id)} onEdit={startEditing}
-                onSource={() => openSource(canvas.id, nodes.find(node => node.id === selected?.id))}
-                onAdd={addNode} onDelete={deleteSelected} canDelete={canDelete(selected)}
-                onColour={color => recolour(selected, color)}
-                onLabel={label => labelEdge(selectedEdge, label)} />
-              <div className="tm-drawing-surface" ref={wrapperRef}>
-                <ReactFlow
-                  onInit={instance => { flowRef.current = instance }}
-                  onConnect={connect}
-                  nodes={displayNodes.map(node => ({ ...node, data: {
-                    ...node.data, onOpenSource: () => openSource(canvas.id, node),
-                  } }))}
-                  deleteKeyCode={null}
-                  onNodeDoubleClick={(_, node) => startEditing(node.id)}
-                  edges={edges.map(edge => ({ ...edge, selectable: true }))}
-                  onEdgeClick={(_, edge) => {
-                    setSelectedEdge(edge)
-                    setSelected(null)
-                    setSource(null)
-                  }}
-                  nodeTypes={nodeTypes}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onNodeDragStart={beginDrag}
-                  onNodeDragStop={persistLayout}
-                  onNodeClick={(_, node) => { setSelected(node); setSelectedEdge(null); setSource(null) }}
-                  onPaneClick={() => {
-                    setSelected(null)
-                    setSelectedEdge(null)
-                    setSource(null)
-                  }}
-                  fitView
-                  proOptions={{ hideAttribution: true }}
-                >
-                  <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--dot)" />
-                  <Controls showInteractive={false} />
-                </ReactFlow>
+            <div className="tm-whiteboard flex h-full flex-col" inert={restoring ? '' : undefined}>
+              {!hasSelection && <p className="px-4 py-1 text-xs" style={{ color: 'var(--text2)' }}>
+                Click a shape drawn from your source to see its passage and questions.
+              </p>}
+              <div className="tm-drawing-surface min-h-0 flex-1">
+                <Suspense fallback={<Loader2 aria-label="Loading whiteboard" className="m-auto animate-spin" size={20} />}>
+                  <ExcalidrawSurface key={sceneKey} elements={elements} onSelectionChange={setHasSelection}
+                    onSelectNode={(nodeId, data) => openSource(canvas.id, nodeId ? {
+                      id: nodeId, data: { label: data.label, detail: data.detail, source_section_id: data.sourceSectionId },
+                    } : null)}
+                    onSave={payload => {
+                      save(payload)
+                      setCanvas(current => ({ ...current, edited: payload.edited, has_edits: true }))
+                    }} />
+                </Suspense>
               </div>
             </div>
           )}
         </div>
-        {phase === 'ready' && source && selected && !selected.data.added && selected.type !== 'MatrixHeader' && (
+        {phase === 'ready' && source && selected && (
           <NodePanel
             key={`${canvas.id}:${selected.id}`}
             canvasId={canvas.id}
-            node={nodes.find(node => node.id === selected.id) || selected}
+            node={selected}
             source={source}
             onClose={() => {
-              setSelected(null)
-              setSource(null)
+              openSource(canvas.id, null)
             }}
           />
         )}

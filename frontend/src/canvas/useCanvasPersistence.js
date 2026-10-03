@@ -38,6 +38,7 @@ export default function useCanvasPersistence(canvasId) {
     }
     state.flush = flush
     state.save = payload => {
+      if (import.meta.env.VITE_DEMO === 'true') return
       pending = payload
       notify('Saving...')
       clearTimeout(timer)

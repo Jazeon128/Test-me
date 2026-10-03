@@ -10,26 +10,20 @@ vi.mock('../../services/api', () => ({
 }))
 vi.mock('../layout', () => ({
   toGraph: () => ({ nodes: [
-    { id: 'A', data: { label: 'Node A', source_section_id: 's1' } },
-    { id: 'B', data: { label: 'Node B', source_section_id: 's2' } },
+    { id: 'A', position: { x: 0, y: 0 }, data: { label: 'Node A', source_section_id: 's1' } },
+    { id: 'B', position: { x: 200, y: 0 }, data: { label: 'Node B', source_section_id: 's2' } },
   ], edges: [] }),
   layout: async (_, graph) => graph,
 }))
-vi.mock('@xyflow/react', async () => {
-  const { useState } = await import('react')
-  const { default: PropTypes } = await import('prop-types')
-  const useGraphState = () => {
-    const [items, setItems] = useState([])
-    return [items, setItems, vi.fn()]
-  }
-  const ReactFlow = ({ nodes }) => <>{nodes.map(node => (
-    <button key={node.id} onClick={node.data.onOpenSource}>Open {node.data.label}</button>
-  ))}</>
-  ReactFlow.propTypes = { nodes: PropTypes.array.isRequired }
-  return {
-    ReactFlow, Background: () => null, Controls: () => null,
-    BackgroundVariant: { Dots: 'dots' }, useNodesState: useGraphState, useEdgesState: useGraphState,
-  }
+vi.mock('@excalidraw/excalidraw', () => {
+  const MainMenu = () => null
+  MainMenu.DefaultItems = { Export: () => null, Help: () => null }
+  return { Excalidraw: ({ initialData, onChange }) => <>{initialData.elements.map(element => (
+    <button key={element.id} onClick={() => onChange(initialData.elements, {
+      selectedElementIds: { [element.id]: true },
+    })}>Open {element.customData.label}</button>
+  ))}</>, MainMenu,
+  convertToExcalidrawElements: skeletons => skeletons.map(element => ({ ...element, version: 1 })) }
 })
 
 beforeEach(() => {

@@ -1,9 +1,6 @@
-import { render, screen } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { expect, it } from 'vitest'
 import { matrixGraph, withMatrixHeaders } from '../layout'
-import { MatrixHeader, MatrixCell } from '../nodes'
 
-vi.mock('@xyflow/react', () => ({ Handle: () => null, Position: { Left: 'left', Right: 'right' } }))
 const payload = {
   options: ['Athena', 'Glue'], criteria: ['Purpose', 'Pricing'],
   cells: [{ option: 'Glue', criterion: 'Pricing', value: 'Usage', verdict: 'good' }],
@@ -29,15 +26,4 @@ it('adds headers to old edited graphs without mutating them and leaves existing 
   expect(withMatrixHeaders(result, payload)).toBe(result)
   const partial = { ...graph, nodes: [headers[0]] }
   expect(withMatrixHeaders(partial, payload)).toBe(partial)
-})
-it('renders header text with no handles, source chip or added chip', () => {
-  const { container } = render(<MatrixHeader data={{ label: 'Athena', header: 'column', added: true, source_section_id: 's' }} selected />)
-  expect(screen.getByText('Athena')).toBeInTheDocument()
-  expect(container.querySelector('.tm-cite')).toBeNull()
-  expect(screen.queryByText('added')).not.toBeInTheDocument()
-})
-it('renders matrix value without a criterion caption', () => {
-  render(<MatrixCell data={{ label: 'Usage', criterion: 'Pricing' }} />)
-  expect(screen.getByText('Usage')).toBeInTheDocument()
-  expect(screen.queryByText('Pricing')).not.toBeInTheDocument()
 })

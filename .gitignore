@@ -101,3 +101,5 @@ frontend/dist-demo/
 
 # Firebase
 .firebase/
+
+frontend/public/excalidraw-assets/

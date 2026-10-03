@@ -22,14 +22,14 @@ export default function CanvasSaveControls({
   const Icon = status === 'Saved' ? Check : status === 'Saving...' ? Loader2 : AlertCircle
   return (
     <>
-      <span className="tm-save-status" aria-live="polite">
+      {import.meta.env.VITE_DEMO === 'true' ? <span>Changes stay in this tab. The demo does not save.</span> : <span className="tm-save-status" aria-live="polite">
         <Icon
           size={16}
           aria-hidden="true"
           className={status === 'Saving...' ? 'animate-spin' : undefined}
         />
         {status}
-      </span>
+      </span>}
       {status === 'Save failed' && (
         <button type="button" className="btn-secondary" onClick={restoring ? restore : retry}>
           Retry

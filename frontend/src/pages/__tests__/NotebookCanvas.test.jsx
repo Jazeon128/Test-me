@@ -13,12 +13,16 @@ vi.mock('../../services/api', () => ({
   statusAPI: { get: vi.fn() },
 }))
 vi.mock('../../canvas/layout', () => ({ toGraph: () => ({ nodes: [], edges: [] }), layout: async (_, graph) => graph }))
-vi.mock('@xyflow/react', async () => {
-  const { useState } = await import('react')
-  const useGraphState = () => { const [items, set] = useState([]); return [items, set, () => {}] }
-  return { ReactFlow: ({ nodes, onNodeDragStop }) => <div className="react-flow"><button onClick={() => onNodeDragStop(null, { ...nodes[0], position: { x: 99, y: 99 } })}>Move node</button></div>,
-    useNodesState: useGraphState, useEdgesState: useGraphState, Background: () => null, Controls: () => null,
-    BackgroundVariant: { Dots: 'dots' } }
+vi.mock('@excalidraw/excalidraw', () => {
+  const MainMenu = () => null
+  MainMenu.DefaultItems = { Export: () => null, Help: () => null }
+  return {
+    Excalidraw: ({ initialData, onChange }) => <div className="excalidraw"><button onClick={() => onChange(
+      initialData.elements.map(element => ({ ...element, x: 99, version: element.version + 1 })),
+      { selectedElementIds: {} },
+    )}>Move node</button></div>, MainMenu,
+    convertToExcalidrawElements: skeletons => skeletons.map(element => ({ ...element, version: 1 })),
+  }
 })
 const record = (id = 1, notebook_id = 2) => ({ id, notebook_id, title: 'Cell diagram', request_text: 'Explain cells',
   template: 'flowchart', source_ids: [3], sources: [{ id: 3, name: 'Cells.pdf' }], payload: {},
@@ -168,7 +172,7 @@ it('keeps the standalone inner title', async () => {
   mount('/canvas/5')
   expect(await screen.findByRole('heading', { name: 'Cell diagram' })).toBeInTheDocument()
 })
-it('scopes notebook target sizing outside the embedded React Flow surface', async () => {
+it('scopes notebook target sizing outside the embedded whiteboard surface', async () => {
   const { container } = mount('/notebooks/2?view=canvas&canvas=1')
   const nodeButton = await screen.findByRole('button', { name: 'Move node' })
   expect(container.querySelector('.tm-canvas')).toHaveClass('tm-canvas-embedded')
@@ -176,8 +180,11 @@ it('scopes notebook target sizing outside the embedded React Flow surface', asyn
   const rule = css.match(/([^{}]+)\{ min-height: 44px; min-width: 44px; \}/)
   expect(rule).not.toBeNull()
   const selector = rule[1].trim()
-  expect(nodeButton.matches(selector)).toBe(false)
-  expect(screen.getByRole('button', { name: 'Undo' }).matches(selector)).toBe(true)
+  expect(nodeButton.closest('.tm-whiteboard .excalidraw')).not.toBeNull()
+  const canvasCss = readFileSync('src/canvas/canvas.css', 'utf8')
+  expect(canvasCss).toContain('.notebook-workspace .tm-canvas.tm-canvas-embedded .tm-whiteboard .excalidraw :is(button, input, select, [role="button"])')
+  expect(canvasCss).toContain('min-height: 0;')
+  expect(screen.getByRole('button', { name: 'Restore original' }).matches(selector)).toBe(true)
   expect(screen.getByRole('button', { name: 'Close', exact: true }).matches(selector)).toBe(true)
   expect(css).toContain('.tm-edit-toolbar button { width: 36px; height: 36px;')
 })

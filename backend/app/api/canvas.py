@@ -95,7 +95,24 @@ def _graph_ids(items, limit):
     return set(ids)
 
 
+def _validate_scene(scene):
+    _graph_ids(scene.get("elements"), 5000)
+    allowed = {"rectangle", "ellipse", "diamond", "arrow", "line", "freedraw",
+               "text", "frame", "magicframe"}
+    for element in scene["elements"]:
+        if not isinstance(element.get("type"), str) or element["type"] not in allowed:
+            raise ValueError("Unknown element type")
+        if "customData" in element and not isinstance(element["customData"], dict):
+            raise ValueError("customData must be a dict")
+    _check_strings(scene)
+    if len(json.dumps(scene, ensure_ascii=False).encode("utf-8")) > 2_000_000:
+        raise ValueError("Edited scene must be at most 2000000 bytes")
+
+
 def _validate_edited(graph):
+    if type(graph.get("schema_version")) is int and graph["schema_version"] == 2:
+        _validate_scene(graph)
+        return
     if type(graph.get("schema_version")) is not int or graph["schema_version"] != 1:
         raise ValueError("Expected schema_version 1")
     node_ids = _graph_ids(graph.get("nodes"), 400)
@@ -711,8 +728,19 @@ async def questions_for_node(
     return _node_questions(db, db.get(Canvas, canvas_id), node_id, generated=True)
 
 
+def _find_scene_node(canvas, node_id):
+    node = _find_node(canvas.payload_json, node_id)
+    for element in canvas.edited_json["elements"]:
+        data = element.get("customData", {})
+        if data.get("nodeId") == node_id and node is not None:
+            return {**node, **{key: data[key] for key in ("label", "detail") if key in data}}
+    return node
+
+
 def _find_canvas_node(canvas, node_id):
     if canvas.edited_json is not None:
+        if canvas.edited_json.get("schema_version") == 2:
+            return _find_scene_node(canvas, node_id)
         for node in canvas.edited_json["nodes"]:
             if node["id"] == node_id:
                 return node["data"]

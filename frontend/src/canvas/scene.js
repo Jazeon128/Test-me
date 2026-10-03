@@ -1,8 +1,14 @@
 import './excalidrawAssets'
-import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
+import { convertToExcalidrawElements, exportToCanvas } from '@excalidraw/excalidraw'
 
 import { SCENE_COLOURS } from './sceneColours'
 export { SCENE_COLOURS } from './sceneColours'
+
+export async function registerSketchFonts() {
+  // The public export API invokes Excalidraw's font loader even for an empty
+  // scene. This registers its bundled FontFaces without measuring any text.
+  await exportToCanvas({ elements: [], files: null, getDimensions: () => ({ width: 1, height: 1 }) })
+}
 
 function connectionPoint(shape, towards) {
   const x = shape.x + shape.width / 2
@@ -18,7 +24,7 @@ function connectionPoint(shape, towards) {
   return { x: x + dx * scale, y: y + dy * scale }
 }
 
-function measurePyramidText(text, fontSize) {
+export function measurePyramidText(text, fontSize) {
   const [element] = convertToExcalidrawElements([
     { id: 'pyramid-measure', type: 'text', text, fontSize, x: 0, y: 0 },
   ], { regenerateIds: false })
@@ -94,15 +100,17 @@ export function graphSkeletons(template, graph) {
   const arrows = graph.edges.map(edge => {
     const source = byId.get(edge.source)
     const target = byId.get(edge.target)
-    const { x, y } = connectionPoint(source, target)
-    const end = connectionPoint(target, source)
+    const labelCentre = edge.labelPosition && { ...edge.labelPosition, width: 0, height: 0 }
+    const { x, y } = connectionPoint(source, labelCentre || target)
+    const end = connectionPoint(target, labelCentre || source)
     const dx = end.x - x
     const dy = end.y - y
     return {
       id: edge.id, type: 'arrow', x, y, width: Math.abs(dx), height: Math.abs(dy),
-      points: [[0, 0], [dx, dy]], roughness: 1,
+      points: labelCentre ? [[0, 0], [labelCentre.x - x, labelCentre.y - y], [dx, dy]] : [[0, 0], [dx, dy]], roughness: 1,
       start: { id: edge.source }, end: { id: edge.target },
-      ...(edge.label ? { label: { text: edge.label, strokeColor: '#1e1e1e' } } : {}),
+      ...(edge.label ? { label: { text: labelCentre ? edge.labelText : edge.label, strokeColor: '#1e1e1e',
+        ...(labelCentre ? { fontSize: 16 } : {}) } } : {}),
     }
   })
   const bottom = Math.max(180, ...shapes.map(shape => shape.y + shape.height)) + 60

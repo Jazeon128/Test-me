@@ -2,6 +2,7 @@ import { lazy, Suspense, forwardRef, useCallback, useEffect, useImperativeHandle
 import { Loader2, Sparkles, AlertCircle, ArrowLeft, FileText } from 'lucide-react'
 import { canvasAPI, documentsAPI, notebooksAPI, statusAPI } from '../services/api'
 import { layout, toGraph, withMatrixHeaders } from './layout'
+import { applySavedPositions } from './savedPositions'
 import TemplatePicker from './TemplatePicker'
 import NodePanel from './NodePanel'
 import useCanvasPersistence from './useCanvasPersistence'
@@ -122,18 +123,25 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
     if (record.edited?.schema_version === 2) {
       scene = record.edited.elements
     } else {
-      const { graphToScene } = await import('./scene')
+      const sceneModule = await import('./scene')
+      try {
+        if (document.fonts?.[Symbol.iterator]
+          && !Array.from(document.fonts).some(face => face.family.replaceAll('"', '') === 'Excalifont')) {
+          await sceneModule.registerSketchFonts()
+        }
+        await Promise.all([document.fonts?.load('16px Excalifont'), document.fonts?.load('20px Excalifont')])
+      } catch { /* Use the available font if loading fails. */ }
       const edited = record.edited && record.template === 'comparison_matrix'
         ? withMatrixHeaders(record.edited, record.payload) : record.edited
-      const graph = edited || await layout(record.template, toGraph(record.template, record.payload), {
+      const initialGraph = edited || toGraph(record.template, record.payload)
+      const graph = edited || await layout(record.template, initialGraph, {
         algorithm: LAYOUTS[record.template] || 'layered',
         orientation: record.payload?.orientation || 'horizontal',
+        ...(initialGraph.edges.some(edge => edge.label?.trim()) ? { measureText: sceneModule.measurePyramidText } : {}),
       })
       const saved = record.edited ? {} : record.layout || {}
-      const positioned = {
-        ...graph, nodes: graph.nodes.map(node => ({ ...node, position: saved[node.id] || node.position })),
-      }
-      scene = graphToScene(record.template, positioned)
+      const positioned = applySavedPositions(graph, saved)
+      scene = sceneModule.graphToScene(record.template, positioned)
     }
     if (dynamicEnabled()) {
       try { await document.fonts?.load('500 16px Inter') } catch { /* Use the available font. */ }

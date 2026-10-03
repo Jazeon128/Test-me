@@ -26,7 +26,31 @@ const elkOptions = (algorithm, orientation) => ({
   'elk.spacing.nodeNode': '40',
   'elk.layered.spacing.nodeNodeBetweenLayers': algorithm === 'layeredDown' ? '90' : '70',
   'elk.padding': '[top=32,left=24,bottom=24,right=24]',
+  'elk.edgeLabels.placement': 'CENTER',
+  'elk.spacing.edgeLabel': '6',
+  ...(algorithm === 'layeredDown' ? { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' } : {}),
 })
+
+const estimateText = (text, fontSize) => ({ width: text.length * fontSize * 0.55 })
+
+/** Reserve space for the same wrapped text Sketch draws on an arrow. */
+export function wrapEdgeLabel(text, measureText = estimateText) {
+  const lines = []
+  let line = ''
+  for (const word of text.trim().split(/\s+/)) {
+    const candidate = line ? `${line} ${word}` : word
+    if (line && measureText(candidate, 16).width > 200) {
+      lines.push(line)
+      line = word
+    } else {
+      line = candidate
+    }
+  }
+  if (line) lines.push(line)
+  return { text: lines.join('\n'),
+    width: Math.max(0, ...lines.map(value => measureText(value, 16).width)) + 16,
+    height: lines.length * 16 * 1.25 + 8 }
+}
 
 /** Which node component a template's node uses. */
 const nodeTypeFor = (template, node) => {
@@ -232,7 +256,7 @@ function layoutFishbone(nodes) {
  * Groups are laid out as elk parents so a container ends up sized around its
  * children rather than guessed at.
  */
-export async function layout(template, graph, { algorithm, orientation }) {
+export async function layout(template, graph, { algorithm, orientation, measureText = estimateText }) {
   if (template === 'fishbone') {
     return { ...graph, nodes: layoutFishbone(graph.nodes) }
   }
@@ -272,6 +296,7 @@ export async function layout(template, graph, { algorithm, orientation }) {
       id: edge.id,
       sources: [edge.source],
       targets: [edge.target],
+      ...(edge.label?.trim() ? { labels: [{ id: `${edge.id}-label`, ...wrapEdgeLabel(edge.label, measureText) }] } : {}),
     })),
   })
 
@@ -296,5 +321,17 @@ export async function layout(template, graph, { algorithm, orientation }) {
     return next
   })
 
-  return { ...graph, nodes }
+  const elkEdges = new Map((result.edges || []).map(edge => [edge.id, edge]))
+  const edges = graph.edges.map(edge => {
+    const label = elkEdges.get(edge.id)?.labels?.[0]
+    if (!label) return edge
+    const source = positions.get(edge.source)
+    const target = positions.get(edge.target)
+    return { ...edge,
+      labelPosition: { x: label.x + label.width / 2, y: label.y + label.height / 2 },
+      labelText: label.text,
+      labelAnchor: { source: { x: source.x, y: source.y }, target: { x: target.x, y: target.y } },
+    }
+  })
+  return { ...graph, nodes, edges }
 }

@@ -21,7 +21,8 @@ vi.mock('../../services/api', () => ({
   canvasAPI: { get: vi.fn(), update: vi.fn() },
   documentsAPI: {}, notebooksAPI: {}, statusAPI: {},
 }))
-vi.mock('../scene', () => ({ graphToScene: (_template, graph) => {
+vi.mock('../scene', () => ({ measurePyramidText: (text, fontSize) => ({ width: text.length * fontSize * 0.55 }),
+  graphToScene: (_template, graph) => {
   state.graph = graph
   return []
 } }))
@@ -87,6 +88,8 @@ it.each([['horizontal', 'RIGHT'], ['vertical', 'DOWN']])('keeps flowchart option
     'elk.spacing.nodeNode': '40',
     'elk.layered.spacing.nodeNodeBetweenLayers': '70',
     'elk.padding': '[top=32,left=24,bottom=24,right=24]',
+    'elk.edgeLabels.placement': 'CENTER',
+    'elk.spacing.edgeLabel': '6',
   })
 })
 

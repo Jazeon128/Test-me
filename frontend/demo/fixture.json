@@ -1,6 +1,6 @@
 {
   "notebook": {
-    "canvases": 1,
+    "canvases": 4,
     "created_at": "2026-10-03T04:24:40.782435",
     "decks": 2,
     "description": "Where the famous retention chart came from, why researchers reject its numbers, and what the evidence does support.",
@@ -2562,9 +2562,9 @@
           "questions_correct": 0
         },
         {
-          "canvases_created": 2,
+          "canvases_created": 7,
           "date": "2026-10-03",
-          "points": 10,
+          "points": 35,
           "questions_answered": 0,
           "questions_correct": 0
         }
@@ -2578,8 +2578,8 @@
       "streak": 0,
       "totals": {
         "active_days": 1,
-        "canvases_created": 2,
-        "points": 10,
+        "canvases_created": 7,
+        "points": 35,
         "questions_answered": 0,
         "questions_correct": 0
       }
@@ -2663,6 +2663,93 @@
       "streak": 0
     },
     "GET /canvas/": [
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:23:15.518958",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 6,
+        "layout": null,
+        "node_count": 12,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "request_text": "Who claimed what about the learning pyramid, and how do the people, the chart and the evidence connect. The source says the chart's numbers are unsupported but some of its spirit is supported, so label links from research findings to the chart accordingly.",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "concept_map",
+        "template_title": "Concept map",
+        "title": "Who claimed what about the learning pyramid"
+      },
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:19:46.563910",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 5,
+        "layout": null,
+        "node_count": 14,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "request_text": "For each method on the chart, compare the chart's claimed retention with what the studies in this source actually measured about that method. Where no study in the source tested that method, say so plainly. Only mark a verdict on the evidence column.",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "comparison_matrix",
+        "template_title": "Comparison matrix",
+        "title": "What the chart claims versus what studies measured"
+      },
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:15:29.039796",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 3,
+        "layout": null,
+        "node_count": 7,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "request_text": "Show me the learning pyramid itself, each band with its percentage, and who made the claim",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "pyramid",
+        "template_title": "Pyramid",
+        "title": "The learning pyramid, as the chart claims it"
+      },
       {
         "chosen_by_user": false,
         "created_at": "2026-10-03T04:27:07.462722",
@@ -3168,7 +3255,1573 @@
         "text": "- 1906. Letrud and Hernes trace a quantified claim back to Charles Roads, writing in a Sunday school magazine. His fractions work out to about 10% for hearing, 50% for seeing, 70% for saying and 90% for doing. - 1967. D. G. Treichler printed a list in a film and audio-visual trade magazine: 10% of what people read, 20% of what they hear, 30% of what they see, 50% of what they see and hear, 70% of what they say, and 90% of what they say while doing. Treichler named no studies. - 1977. Ann Bauman's training manual is the earliest clearly documented case of percentages printed on a cone, according to a 2014 audit by Subramony, Molenda, Betrus and Thalheimer. - 1978. A United States government workbook for alcoholism trainers printed recall percentages beside a cone credited to Dale."
       }
     },
+    "GET /canvas/3": {
+      "chosen_by_user": true,
+      "created_at": "2026-10-03T14:15:29.039796",
+      "document_id": 1,
+      "document_name": "The learning pyramid: a famous chart and what the evidence says",
+      "edited": null,
+      "has_edits": false,
+      "id": 3,
+      "layout": null,
+      "notebook_icon": null,
+      "notebook_id": 1,
+      "notebook_name": "The learning pyramid",
+      "payload": {
+        "edges": [
+          {
+            "label": null,
+            "source": "n1",
+            "target": "n2"
+          },
+          {
+            "label": null,
+            "source": "n2",
+            "target": "n3"
+          },
+          {
+            "label": null,
+            "source": "n3",
+            "target": "n4"
+          },
+          {
+            "label": null,
+            "source": "n4",
+            "target": "n5"
+          },
+          {
+            "label": null,
+            "source": "n5",
+            "target": "n6"
+          },
+          {
+            "label": null,
+            "source": "n6",
+            "target": "n7"
+          }
+        ],
+        "nodes": [
+          {
+            "color": "slate",
+            "detail": "NTL Institute claimed lecture yields 5% average retention, though no underlying research was located.",
+            "id": "n1",
+            "label": "Lecture",
+            "level": 1,
+            "source_section_id": "d1-s1",
+            "value": "5%"
+          },
+          {
+            "color": "blue",
+            "detail": "NTL Institute claimed reading yields 10% average retention.",
+            "id": "n2",
+            "label": "Reading",
+            "level": 2,
+            "source_section_id": "d1-s1",
+            "value": "10%"
+          },
+          {
+            "color": "teal",
+            "detail": "NTL Institute claimed audio-visual learning yields 20% average retention.",
+            "id": "n3",
+            "label": "Audio-visual",
+            "level": 3,
+            "source_section_id": "d1-s1",
+            "value": "20%"
+          },
+          {
+            "color": "amber",
+            "detail": "NTL Institute claimed demonstration yields 30% average retention.",
+            "id": "n4",
+            "label": "Demonstration",
+            "level": 4,
+            "source_section_id": "d1-s1",
+            "value": "30%"
+          },
+          {
+            "color": "violet",
+            "detail": "NTL Institute claimed discussion yields 50% average retention.",
+            "id": "n5",
+            "label": "Discussion",
+            "level": 5,
+            "source_section_id": "d1-s1",
+            "value": "50%"
+          },
+          {
+            "color": "rose",
+            "detail": "NTL Institute claimed practice by doing yields 75% average retention.",
+            "id": "n6",
+            "label": "Practice by doing",
+            "level": 6,
+            "source_section_id": "d1-s1",
+            "value": "75%"
+          },
+          {
+            "color": "rose",
+            "detail": "NTL Institute claimed teaching others yields 90% average retention.",
+            "id": "n7",
+            "label": "Teaching others",
+            "level": 7,
+            "source_section_id": "d1-s1",
+            "value": "90%"
+          }
+        ]
+      },
+      "request_text": "Show me the learning pyramid itself, each band with its percentage, and who made the claim",
+      "routing_confidence": null,
+      "source_ids": [
+        1
+      ],
+      "source_name": "The learning pyramid: a famous chart and what the evidence says",
+      "sources": [
+        {
+          "id": 1,
+          "name": "The learning pyramid: a famous chart and what the evidence says"
+        }
+      ],
+      "template": "pyramid",
+      "template_title": "Pyramid",
+      "title": "The learning pyramid, as the chart claims it"
+    },
+    "GET /canvas/3/nodes/n1/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n1",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n1/source": {
+      "label": "Lecture",
+      "node_id": "n1",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n2/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n2",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n2/source": {
+      "label": "Reading",
+      "node_id": "n2",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n3/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n3",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n3/source": {
+      "label": "Audio-visual",
+      "node_id": "n3",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n4/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n4",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n4/source": {
+      "label": "Demonstration",
+      "node_id": "n4",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n5/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n5",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n5/source": {
+      "label": "Discussion",
+      "node_id": "n5",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n6/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n6",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n6/source": {
+      "label": "Practice by doing",
+      "node_id": "n6",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/3/nodes/n7/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n7",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/3/nodes/n7/source": {
+      "label": "Teaching others",
+      "node_id": "n7",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5": {
+      "chosen_by_user": true,
+      "created_at": "2026-10-03T14:19:46.563910",
+      "document_id": 1,
+      "document_name": "The learning pyramid: a famous chart and what the evidence says",
+      "edited": null,
+      "has_edits": false,
+      "id": 5,
+      "layout": null,
+      "notebook_icon": null,
+      "notebook_id": 1,
+      "notebook_name": "The learning pyramid",
+      "payload": {
+        "cells": [
+          {
+            "criterion": "Claimed retention",
+            "option": "Lecture",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 5% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Lecture",
+            "source_section_id": "d1-s23",
+            "value": "Freeman et al.: lecturing had 33.8% failure rate",
+            "verdict": "poor"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Reading",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 10% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Reading",
+            "source_section_id": "d1-s19",
+            "value": "Roediger & Karpicke: restudying gave 42% delayed recall",
+            "verdict": "mixed"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Audio-visual",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 20% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Audio-visual",
+            "source_section_id": "d1-s17",
+            "value": "No study in source tested this method",
+            "verdict": "poor"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Demonstration",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 30% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Demonstration",
+            "source_section_id": "d1-s17",
+            "value": "No study in source tested this method",
+            "verdict": "poor"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Discussion",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 50% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Discussion",
+            "source_section_id": "d1-s17",
+            "value": "No study in source tested this method",
+            "verdict": "poor"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Practice by doing",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 75% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Practice by doing",
+            "source_section_id": "d1-s19",
+            "value": "Retrieval testing produced 56% delayed recall (d = 0.83)",
+            "verdict": "good"
+          },
+          {
+            "criterion": "Claimed retention",
+            "option": "Teaching others",
+            "source_section_id": "d1-s1",
+            "value": "Chart claims 90% average retention",
+            "verdict": "neutral"
+          },
+          {
+            "criterion": "Evidence from studies",
+            "option": "Teaching others",
+            "source_section_id": "d1-s21",
+            "value": "Fiorella & Mayer: teaching others produced d = 0.79",
+            "verdict": "good"
+          }
+        ],
+        "criteria": [
+          "Claimed retention",
+          "Evidence from studies"
+        ],
+        "options": [
+          "Lecture",
+          "Reading",
+          "Audio-visual",
+          "Demonstration",
+          "Discussion",
+          "Practice by doing",
+          "Teaching others"
+        ]
+      },
+      "request_text": "For each method on the chart, compare the chart's claimed retention with what the studies in this source actually measured about that method. Where no study in the source tested that method, say so plainly. Only mark a verdict on the evidence column.",
+      "routing_confidence": null,
+      "source_ids": [
+        1
+      ],
+      "source_name": "The learning pyramid: a famous chart and what the evidence says",
+      "sources": [
+        {
+          "id": 1,
+          "name": "The learning pyramid: a famous chart and what the evidence says"
+        }
+      ],
+      "template": "comparison_matrix",
+      "template_title": "Comparison matrix",
+      "title": "What the chart claims versus what studies measured"
+    },
+    "GET /canvas/5/nodes/cell-0/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-0",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-0/source": {
+      "label": "Chart claims 5% average retention",
+      "node_id": "cell-0",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-1/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-1",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-1/source": {
+      "label": "Freeman et al.: lecturing had 33.8% failure rate",
+      "node_id": "cell-1",
+      "section": {
+        "document_id": 1,
+        "heading": "Active learning in science courses",
+        "id": "d1-s23",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Freeman and colleagues (2014) combined 225 studies of undergraduate science, engineering and mathematics courses. Exam scores were 0.47 standard deviations higher under active learning than under traditional lecturing. Failure rates were 21.8% with active learning and 33.8% with lecturing. Note that this measures exam performance and course failure, not a percentage of material remembered."
+      }
+    },
+    "GET /canvas/5/nodes/cell-10/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-10",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-10/source": {
+      "label": "Chart claims 75% average retention",
+      "node_id": "cell-10",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-11/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-11",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-11/source": {
+      "label": "Retrieval testing produced 56% delayed recall (d = 0.83)",
+      "node_id": "cell-11",
+      "section": {
+        "document_id": 1,
+        "heading": "Retrieval practice",
+        "id": "d1-s19",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Roediger and Karpicke (2006) had students read short prose passages. Some students then took a recall test. Others restudied the passage instead. On a test five minutes later, restudying won: 81% recalled versus 75%. One week later the pattern reversed. The students who had been tested recalled 56% of the material. The students who had restudied recalled 42%. The effect size was d = 0.83."
+      }
+    },
+    "GET /canvas/5/nodes/cell-12/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-12",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-12/source": {
+      "label": "Chart claims 90% average retention",
+      "node_id": "cell-12",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-13/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-13",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-13/source": {
+      "label": "Fiorella & Mayer: teaching others produced d = 0.79",
+      "node_id": "cell-13",
+      "section": {
+        "document_id": 1,
+        "heading": "Learning by teaching",
+        "id": "d1-s21",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Fiorella and Mayer (2013) compared students who studied and then explained the material on video with students who studied for a test. One week later, the students who had taught did better, with an effect size of d = 0.79. Students who only prepared to teach, without actually teaching, showed a smaller difference that was not statistically significant."
+      }
+    },
+    "GET /canvas/5/nodes/cell-2/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-2",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-2/source": {
+      "label": "Chart claims 10% average retention",
+      "node_id": "cell-2",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-3/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-3",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-3/source": {
+      "label": "Roediger & Karpicke: restudying gave 42% delayed recall",
+      "node_id": "cell-3",
+      "section": {
+        "document_id": 1,
+        "heading": "Retrieval practice",
+        "id": "d1-s19",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Roediger and Karpicke (2006) had students read short prose passages. Some students then took a recall test. Others restudied the passage instead. On a test five minutes later, restudying won: 81% recalled versus 75%. One week later the pattern reversed. The students who had been tested recalled 56% of the material. The students who had restudied recalled 42%. The effect size was d = 0.83."
+      }
+    },
+    "GET /canvas/5/nodes/cell-4/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-4",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-4/source": {
+      "label": "Chart claims 20% average retention",
+      "node_id": "cell-4",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-5/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-5",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-5/source": {
+      "label": "No study in source tested this method",
+      "node_id": "cell-5",
+      "section": {
+        "document_id": 1,
+        "heading": "The critics",
+        "id": "d1-s17",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "An honest summary is this: no identifiable empirical study has been found that measured the seven figures. Failing to find a study does not prove one never existed. It does mean nobody should present the numbers as established fact."
+      }
+    },
+    "GET /canvas/5/nodes/cell-6/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-6",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-6/source": {
+      "label": "Chart claims 30% average retention",
+      "node_id": "cell-6",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-7/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-7",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-7/source": {
+      "label": "No study in source tested this method",
+      "node_id": "cell-7",
+      "section": {
+        "document_id": 1,
+        "heading": "The critics",
+        "id": "d1-s17",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "An honest summary is this: no identifiable empirical study has been found that measured the seven figures. Failing to find a study does not prove one never existed. It does mean nobody should present the numbers as established fact."
+      }
+    },
+    "GET /canvas/5/nodes/cell-8/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-8",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-8/source": {
+      "label": "Chart claims 50% average retention",
+      "node_id": "cell-8",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s1",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "| Activity | Claimed average retention | |---|---| | Lecture | 5% | | Reading | 10% | | Audio-visual | 20% | | Demonstration | 30% | | Discussion | 50% | | Practice by doing | 75% | | Teaching others | 90% |"
+      }
+    },
+    "GET /canvas/5/nodes/cell-9/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "cell-9",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/5/nodes/cell-9/source": {
+      "label": "No study in source tested this method",
+      "node_id": "cell-9",
+      "section": {
+        "document_id": 1,
+        "heading": "The critics",
+        "id": "d1-s17",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "An honest summary is this: no identifiable empirical study has been found that measured the seven figures. Failing to find a study does not prove one never existed. It does mean nobody should present the numbers as established fact."
+      }
+    },
+    "GET /canvas/6": {
+      "chosen_by_user": true,
+      "created_at": "2026-10-03T14:23:15.518958",
+      "document_id": 1,
+      "document_name": "The learning pyramid: a famous chart and what the evidence says",
+      "edited": null,
+      "has_edits": false,
+      "id": 6,
+      "layout": null,
+      "notebook_icon": null,
+      "notebook_id": 1,
+      "notebook_name": "The learning pyramid",
+      "payload": {
+        "edges": [
+          {
+            "label": "claimed to develop",
+            "source": "n2",
+            "target": "n1"
+          },
+          {
+            "label": "overlaid onto",
+            "source": "n4",
+            "target": "n3"
+          },
+          {
+            "label": "borrowed authority from",
+            "source": "n1",
+            "target": "n3"
+          },
+          {
+            "label": "was not a ranking, unlike",
+            "source": "n3",
+            "target": "n1"
+          },
+          {
+            "label": "found no study for",
+            "source": "n6",
+            "target": "n5"
+          },
+          {
+            "label": "critiqued citations of",
+            "source": "n6",
+            "target": "n1"
+          },
+          {
+            "label": "unsupported numbers in",
+            "source": "n5",
+            "target": "n1"
+          },
+          {
+            "label": "supports active spirit of",
+            "source": "n7",
+            "target": "n1"
+          },
+          {
+            "label": "supports active spirit of",
+            "source": "n8",
+            "target": "n1"
+          },
+          {
+            "label": "supports active spirit of",
+            "source": "n9",
+            "target": "n1"
+          },
+          {
+            "label": "supports active spirit of",
+            "source": "n10",
+            "target": "n1"
+          },
+          {
+            "label": "supports active spirit of",
+            "source": "n11",
+            "target": "n1"
+          },
+          {
+            "label": "often travels with",
+            "source": "n12",
+            "target": "n1"
+          }
+        ],
+        "nodes": [
+          {
+            "color": "amber",
+            "detail": "Triangle diagram claiming average retention rates from 5% for lectures to 90% for teaching.",
+            "id": "n1",
+            "label": "The Learning Pyramid",
+            "source_section_id": "d1-s0"
+          },
+          {
+            "color": "blue",
+            "detail": "Said in 2009 it developed the pyramid in the 1960s but could no longer locate the research.",
+            "id": "n2",
+            "label": "NTL Institute",
+            "source_section_id": "d1-s4"
+          },
+          {
+            "color": "blue",
+            "detail": "Dale's 1946 book introduced a visual metaphor of abstraction with no percentages or ranking.",
+            "id": "n3",
+            "label": "Dale's Cone of Experience",
+            "source_section_id": "d1-s6"
+          },
+          {
+            "color": "slate",
+            "detail": "Lists of retention percentages circulated from Roads in 1906, Treichler in 1967, and Bauman in 1977.",
+            "id": "n4",
+            "label": "Circulating retention percentages",
+            "source_section_id": "d1-s13"
+          },
+          {
+            "color": "rose",
+            "detail": "No identifiable empirical study has been found measuring the seven specific retention rates.",
+            "id": "n5",
+            "label": "Specific pyramid percentages",
+            "source_section_id": "d1-s17"
+          },
+          {
+            "color": "rose",
+            "detail": "Thalheimer, Lalley, Miller, Letrud, and Masters documented missing, unsuitable, and circular citations.",
+            "id": "n6",
+            "label": "Pyramid critique researchers",
+            "source_section_id": "d1-s16"
+          },
+          {
+            "color": "teal",
+            "detail": "Roediger and Karpicke showed testing yourself produces better delayed recall than restudying.",
+            "id": "n7",
+            "label": "Retrieval practice research",
+            "source_section_id": "d1-s19"
+          },
+          {
+            "color": "teal",
+            "detail": "Fiorella and Mayer found students who taught material on video performed better one week later.",
+            "id": "n8",
+            "label": "Learning by teaching research",
+            "source_section_id": "d1-s21"
+          },
+          {
+            "color": "teal",
+            "detail": "Nestojko and colleagues showed students expecting to teach recalled more than those expecting a test.",
+            "id": "n9",
+            "label": "Teaching expectancy research",
+            "source_section_id": "d1-s22"
+          },
+          {
+            "color": "teal",
+            "detail": "Freeman and colleagues found active learning improved science exam scores and reduced failure rates.",
+            "id": "n10",
+            "label": "Active learning meta-analysis",
+            "source_section_id": "d1-s23"
+          },
+          {
+            "color": "teal",
+            "detail": "Slamecka and Graf showed people remember words they generate better than words they read.",
+            "id": "n11",
+            "label": "Generation effect research",
+            "source_section_id": "d1-s24"
+          },
+          {
+            "color": "slate",
+            "detail": "Pashler and colleagues found insufficient evidence that matching instruction to styles improves learning.",
+            "id": "n12",
+            "label": "Learning styles matching claim",
+            "source_section_id": "d1-s25"
+          }
+        ]
+      },
+      "request_text": "Who claimed what about the learning pyramid, and how do the people, the chart and the evidence connect. The source says the chart's numbers are unsupported but some of its spirit is supported, so label links from research findings to the chart accordingly.",
+      "routing_confidence": null,
+      "source_ids": [
+        1
+      ],
+      "source_name": "The learning pyramid: a famous chart and what the evidence says",
+      "sources": [
+        {
+          "id": 1,
+          "name": "The learning pyramid: a famous chart and what the evidence says"
+        }
+      ],
+      "template": "concept_map",
+      "template_title": "Concept map",
+      "title": "Who claimed what about the learning pyramid"
+    },
+    "GET /canvas/6/nodes/n1/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n1",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n1/source": {
+      "label": "The Learning Pyramid",
+      "node_id": "n1",
+      "section": {
+        "document_id": 1,
+        "heading": "The chart",
+        "id": "d1-s0",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Few diagrams in education travel as far as the learning pyramid. It usually appears as a triangle split into seven bands. Each band names a way of learning and gives the share of material people supposedly remember afterwards. The common version reads like this:"
+      }
+    },
+    "GET /canvas/6/nodes/n10/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n10",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n10/source": {
+      "label": "Active learning meta-analysis",
+      "node_id": "n10",
+      "section": {
+        "document_id": 1,
+        "heading": "Active learning in science courses",
+        "id": "d1-s23",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Freeman and colleagues (2014) combined 225 studies of undergraduate science, engineering and mathematics courses. Exam scores were 0.47 standard deviations higher under active learning than under traditional lecturing. Failure rates were 21.8% with active learning and 33.8% with lecturing. Note that this measures exam performance and course failure, not a percentage of material remembered."
+      }
+    },
+    "GET /canvas/6/nodes/n11/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n11",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n11/source": {
+      "label": "Generation effect research",
+      "node_id": "n11",
+      "section": {
+        "document_id": 1,
+        "heading": "The generation effect",
+        "id": "d1-s24",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Slamecka and Graf (1978) showed that people remember words they generate themselves better than words they simply read. A 2007 meta-analysis by Bertsch and colleagues, covering 86 studies, put the average advantage at 0.40 standard deviations."
+      }
+    },
+    "GET /canvas/6/nodes/n12/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n12",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n12/source": {
+      "label": "Learning styles matching claim",
+      "node_id": "n12",
+      "section": {
+        "document_id": 1,
+        "heading": "A related myth: learning styles",
+        "id": "d1-s25",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "The pyramid sometimes travels with labels such as visual, auditory and kinaesthetic learners. The claim is that teaching to a person's preferred style improves learning. Pashler and colleagues (2008) reviewed the evidence and found it insufficient to support that matching prescription. People do have preferences. What lacks support is the claim that matching instruction to them improves results."
+      }
+    },
+    "GET /canvas/6/nodes/n2/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n2",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n2/source": {
+      "label": "NTL Institute",
+      "node_id": "n2",
+      "section": {
+        "document_id": 1,
+        "heading": "Where the numbers are said to come from",
+        "id": "d1-s4",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "The seven-band version is most often credited to the NTL Institute for Applied Behavioral Science in Bethel, Maine. When the researcher Kåre Letrud asked NTL for the underlying study, the institute replied in October 2009. It said it had developed and used the pyramid in the early 1960s, when it was part of the National Education Association's adult education division. It said it still believed the figures were accurate. It also said it could no longer locate the original research. Letrud published this exchange in 2012 in the journal Education."
+      }
+    },
+    "GET /canvas/6/nodes/n3/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n3",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n3/source": {
+      "label": "Dale's Cone of Experience",
+      "node_id": "n3",
+      "section": {
+        "document_id": 1,
+        "heading": "Edgar Dale and the Cone of Experience",
+        "id": "d1-s6",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "The second name often printed on the chart is Edgar Dale. Dale was an American educator. In 1946 he published Audio-Visual Methods in Teaching, which introduced a diagram he called the Cone of Experience."
+      }
+    },
+    "GET /canvas/6/nodes/n4/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n4",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n4/source": {
+      "label": "Circulating retention percentages",
+      "node_id": "n4",
+      "section": {
+        "document_id": 1,
+        "heading": "How the numbers got attached to the cone",
+        "id": "d1-s13",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "- 1906. Letrud and Hernes trace a quantified claim back to Charles Roads, writing in a Sunday school magazine. His fractions work out to about 10% for hearing, 50% for seeing, 70% for saying and 90% for doing. - 1967. D. G. Treichler printed a list in a film and audio-visual trade magazine: 10% of what people read, 20% of what they hear, 30% of what they see, 50% of what they see and hear, 70% of what they say, and 90% of what they say while doing. Treichler named no studies. - 1977. Ann Bauman's training manual is the earliest clearly documented case of percentages printed on a cone, according to a 2014 audit by Subramony, Molenda, Betrus and Thalheimer. - 1978. A United States government workbook for alcoholism trainers printed recall percentages beside a cone credited to Dale."
+      }
+    },
+    "GET /canvas/6/nodes/n5/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n5",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n5/source": {
+      "label": "Specific pyramid percentages",
+      "node_id": "n5",
+      "section": {
+        "document_id": 1,
+        "heading": "The critics",
+        "id": "d1-s17",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "An honest summary is this: no identifiable empirical study has been found that measured the seven figures. Failing to find a study does not prove one never existed. It does mean nobody should present the numbers as established fact."
+      }
+    },
+    "GET /canvas/6/nodes/n6/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n6",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n6/source": {
+      "label": "Pyramid critique researchers",
+      "node_id": "n6",
+      "section": {
+        "document_id": 1,
+        "heading": "The critics",
+        "id": "d1-s16",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "- Will Thalheimer, 2006. Thalheimer followed one citation to a published research article. The article did not contain the graph. The researcher named as its source told him she did not recognise it. - Lalley and Miller, 2007. They found no credible research supporting the chart's specific rates. They concluded that the best method depends on the task and the learners. - Letrud, 2012. Besides NTL's missing study, Letrud showed that the categories are poorly defined. \"Audio-visual\" and \"demonstration\" overlap, for example, and no test conditions are given. - Kevin Masters, 2013 and 2020. Masters reviewed 43 medical education publications that used the pyramid, then 41 more in a follow-up. Many cited unsuitable, missing or circular sources. Some even cited the critiques as if they supported the chart. - Letrud and Hernes, 2016 and 2018. They found the myth spreading through academic journals and traced many changing versions back over a century."
+      }
+    },
+    "GET /canvas/6/nodes/n7/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n7",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n7/source": {
+      "label": "Retrieval practice research",
+      "node_id": "n7",
+      "section": {
+        "document_id": 1,
+        "heading": "Retrieval practice",
+        "id": "d1-s19",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Roediger and Karpicke (2006) had students read short prose passages. Some students then took a recall test. Others restudied the passage instead. On a test five minutes later, restudying won: 81% recalled versus 75%. One week later the pattern reversed. The students who had been tested recalled 56% of the material. The students who had restudied recalled 42%. The effect size was d = 0.83."
+      }
+    },
+    "GET /canvas/6/nodes/n8/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n8",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n8/source": {
+      "label": "Learning by teaching research",
+      "node_id": "n8",
+      "section": {
+        "document_id": 1,
+        "heading": "Learning by teaching",
+        "id": "d1-s21",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Fiorella and Mayer (2013) compared students who studied and then explained the material on video with students who studied for a test. One week later, the students who had taught did better, with an effect size of d = 0.79. Students who only prepared to teach, without actually teaching, showed a smaller difference that was not statistically significant."
+      }
+    },
+    "GET /canvas/6/nodes/n9/questions": {
+      "deck_id": null,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "n9",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/6/nodes/n9/source": {
+      "label": "Teaching expectancy research",
+      "node_id": "n9",
+      "section": {
+        "document_id": 1,
+        "heading": "Learning by teaching",
+        "id": "d1-s22",
+        "page": null,
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "text": "Nestojko and colleagues (2014) found a related effect. Students who merely expected to teach the material recalled more of it than students who expected a test, with d = 0.56, even though they never taught."
+      }
+    },
     "GET /canvas/document/1": [
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:23:15.518958",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 6,
+        "layout": null,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "payload": {
+          "edges": [
+            {
+              "label": "claimed to develop",
+              "source": "n2",
+              "target": "n1"
+            },
+            {
+              "label": "overlaid onto",
+              "source": "n4",
+              "target": "n3"
+            },
+            {
+              "label": "borrowed authority from",
+              "source": "n1",
+              "target": "n3"
+            },
+            {
+              "label": "was not a ranking, unlike",
+              "source": "n3",
+              "target": "n1"
+            },
+            {
+              "label": "found no study for",
+              "source": "n6",
+              "target": "n5"
+            },
+            {
+              "label": "critiqued citations of",
+              "source": "n6",
+              "target": "n1"
+            },
+            {
+              "label": "unsupported numbers in",
+              "source": "n5",
+              "target": "n1"
+            },
+            {
+              "label": "supports active spirit of",
+              "source": "n7",
+              "target": "n1"
+            },
+            {
+              "label": "supports active spirit of",
+              "source": "n8",
+              "target": "n1"
+            },
+            {
+              "label": "supports active spirit of",
+              "source": "n9",
+              "target": "n1"
+            },
+            {
+              "label": "supports active spirit of",
+              "source": "n10",
+              "target": "n1"
+            },
+            {
+              "label": "supports active spirit of",
+              "source": "n11",
+              "target": "n1"
+            },
+            {
+              "label": "often travels with",
+              "source": "n12",
+              "target": "n1"
+            }
+          ],
+          "nodes": [
+            {
+              "color": "amber",
+              "detail": "Triangle diagram claiming average retention rates from 5% for lectures to 90% for teaching.",
+              "id": "n1",
+              "label": "The Learning Pyramid",
+              "source_section_id": "d1-s0"
+            },
+            {
+              "color": "blue",
+              "detail": "Said in 2009 it developed the pyramid in the 1960s but could no longer locate the research.",
+              "id": "n2",
+              "label": "NTL Institute",
+              "source_section_id": "d1-s4"
+            },
+            {
+              "color": "blue",
+              "detail": "Dale's 1946 book introduced a visual metaphor of abstraction with no percentages or ranking.",
+              "id": "n3",
+              "label": "Dale's Cone of Experience",
+              "source_section_id": "d1-s6"
+            },
+            {
+              "color": "slate",
+              "detail": "Lists of retention percentages circulated from Roads in 1906, Treichler in 1967, and Bauman in 1977.",
+              "id": "n4",
+              "label": "Circulating retention percentages",
+              "source_section_id": "d1-s13"
+            },
+            {
+              "color": "rose",
+              "detail": "No identifiable empirical study has been found measuring the seven specific retention rates.",
+              "id": "n5",
+              "label": "Specific pyramid percentages",
+              "source_section_id": "d1-s17"
+            },
+            {
+              "color": "rose",
+              "detail": "Thalheimer, Lalley, Miller, Letrud, and Masters documented missing, unsuitable, and circular citations.",
+              "id": "n6",
+              "label": "Pyramid critique researchers",
+              "source_section_id": "d1-s16"
+            },
+            {
+              "color": "teal",
+              "detail": "Roediger and Karpicke showed testing yourself produces better delayed recall than restudying.",
+              "id": "n7",
+              "label": "Retrieval practice research",
+              "source_section_id": "d1-s19"
+            },
+            {
+              "color": "teal",
+              "detail": "Fiorella and Mayer found students who taught material on video performed better one week later.",
+              "id": "n8",
+              "label": "Learning by teaching research",
+              "source_section_id": "d1-s21"
+            },
+            {
+              "color": "teal",
+              "detail": "Nestojko and colleagues showed students expecting to teach recalled more than those expecting a test.",
+              "id": "n9",
+              "label": "Teaching expectancy research",
+              "source_section_id": "d1-s22"
+            },
+            {
+              "color": "teal",
+              "detail": "Freeman and colleagues found active learning improved science exam scores and reduced failure rates.",
+              "id": "n10",
+              "label": "Active learning meta-analysis",
+              "source_section_id": "d1-s23"
+            },
+            {
+              "color": "teal",
+              "detail": "Slamecka and Graf showed people remember words they generate better than words they read.",
+              "id": "n11",
+              "label": "Generation effect research",
+              "source_section_id": "d1-s24"
+            },
+            {
+              "color": "slate",
+              "detail": "Pashler and colleagues found insufficient evidence that matching instruction to styles improves learning.",
+              "id": "n12",
+              "label": "Learning styles matching claim",
+              "source_section_id": "d1-s25"
+            }
+          ]
+        },
+        "request_text": "Who claimed what about the learning pyramid, and how do the people, the chart and the evidence connect. The source says the chart's numbers are unsupported but some of its spirit is supported, so label links from research findings to the chart accordingly.",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "concept_map",
+        "template_title": "Concept map",
+        "title": "Who claimed what about the learning pyramid"
+      },
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:19:46.563910",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 5,
+        "layout": null,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "payload": {
+          "cells": [
+            {
+              "criterion": "Claimed retention",
+              "option": "Lecture",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 5% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Lecture",
+              "source_section_id": "d1-s23",
+              "value": "Freeman et al.: lecturing had 33.8% failure rate",
+              "verdict": "poor"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Reading",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 10% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Reading",
+              "source_section_id": "d1-s19",
+              "value": "Roediger & Karpicke: restudying gave 42% delayed recall",
+              "verdict": "mixed"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Audio-visual",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 20% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Audio-visual",
+              "source_section_id": "d1-s17",
+              "value": "No study in source tested this method",
+              "verdict": "poor"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Demonstration",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 30% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Demonstration",
+              "source_section_id": "d1-s17",
+              "value": "No study in source tested this method",
+              "verdict": "poor"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Discussion",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 50% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Discussion",
+              "source_section_id": "d1-s17",
+              "value": "No study in source tested this method",
+              "verdict": "poor"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Practice by doing",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 75% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Practice by doing",
+              "source_section_id": "d1-s19",
+              "value": "Retrieval testing produced 56% delayed recall (d = 0.83)",
+              "verdict": "good"
+            },
+            {
+              "criterion": "Claimed retention",
+              "option": "Teaching others",
+              "source_section_id": "d1-s1",
+              "value": "Chart claims 90% average retention",
+              "verdict": "neutral"
+            },
+            {
+              "criterion": "Evidence from studies",
+              "option": "Teaching others",
+              "source_section_id": "d1-s21",
+              "value": "Fiorella & Mayer: teaching others produced d = 0.79",
+              "verdict": "good"
+            }
+          ],
+          "criteria": [
+            "Claimed retention",
+            "Evidence from studies"
+          ],
+          "options": [
+            "Lecture",
+            "Reading",
+            "Audio-visual",
+            "Demonstration",
+            "Discussion",
+            "Practice by doing",
+            "Teaching others"
+          ]
+        },
+        "request_text": "For each method on the chart, compare the chart's claimed retention with what the studies in this source actually measured about that method. Where no study in the source tested that method, say so plainly. Only mark a verdict on the evidence column.",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "comparison_matrix",
+        "template_title": "Comparison matrix",
+        "title": "What the chart claims versus what studies measured"
+      },
+      {
+        "chosen_by_user": true,
+        "created_at": "2026-10-03T14:15:29.039796",
+        "document_id": 1,
+        "document_name": "The learning pyramid: a famous chart and what the evidence says",
+        "edited": null,
+        "has_edits": false,
+        "id": 3,
+        "layout": null,
+        "notebook_icon": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "payload": {
+          "edges": [
+            {
+              "label": null,
+              "source": "n1",
+              "target": "n2"
+            },
+            {
+              "label": null,
+              "source": "n2",
+              "target": "n3"
+            },
+            {
+              "label": null,
+              "source": "n3",
+              "target": "n4"
+            },
+            {
+              "label": null,
+              "source": "n4",
+              "target": "n5"
+            },
+            {
+              "label": null,
+              "source": "n5",
+              "target": "n6"
+            },
+            {
+              "label": null,
+              "source": "n6",
+              "target": "n7"
+            }
+          ],
+          "nodes": [
+            {
+              "color": "slate",
+              "detail": "NTL Institute claimed lecture yields 5% average retention, though no underlying research was located.",
+              "id": "n1",
+              "label": "Lecture",
+              "level": 1,
+              "source_section_id": "d1-s1",
+              "value": "5%"
+            },
+            {
+              "color": "blue",
+              "detail": "NTL Institute claimed reading yields 10% average retention.",
+              "id": "n2",
+              "label": "Reading",
+              "level": 2,
+              "source_section_id": "d1-s1",
+              "value": "10%"
+            },
+            {
+              "color": "teal",
+              "detail": "NTL Institute claimed audio-visual learning yields 20% average retention.",
+              "id": "n3",
+              "label": "Audio-visual",
+              "level": 3,
+              "source_section_id": "d1-s1",
+              "value": "20%"
+            },
+            {
+              "color": "amber",
+              "detail": "NTL Institute claimed demonstration yields 30% average retention.",
+              "id": "n4",
+              "label": "Demonstration",
+              "level": 4,
+              "source_section_id": "d1-s1",
+              "value": "30%"
+            },
+            {
+              "color": "violet",
+              "detail": "NTL Institute claimed discussion yields 50% average retention.",
+              "id": "n5",
+              "label": "Discussion",
+              "level": 5,
+              "source_section_id": "d1-s1",
+              "value": "50%"
+            },
+            {
+              "color": "rose",
+              "detail": "NTL Institute claimed practice by doing yields 75% average retention.",
+              "id": "n6",
+              "label": "Practice by doing",
+              "level": 6,
+              "source_section_id": "d1-s1",
+              "value": "75%"
+            },
+            {
+              "color": "rose",
+              "detail": "NTL Institute claimed teaching others yields 90% average retention.",
+              "id": "n7",
+              "label": "Teaching others",
+              "level": 7,
+              "source_section_id": "d1-s1",
+              "value": "90%"
+            }
+          ]
+        },
+        "request_text": "Show me the learning pyramid itself, each band with its percentage, and who made the claim",
+        "routing_confidence": null,
+        "source_ids": [
+          1
+        ],
+        "source_name": "The learning pyramid: a famous chart and what the evidence says",
+        "sources": [
+          {
+            "id": 1,
+            "name": "The learning pyramid: a famous chart and what the evidence says"
+          }
+        ],
+        "template": "pyramid",
+        "template_title": "Pyramid",
+        "title": "The learning pyramid, as the chart claims it"
+      },
       {
         "chosen_by_user": false,
         "created_at": "2026-10-03T04:27:07.462722",
@@ -3482,6 +5135,12 @@
         "id": "causal_loop",
         "layout": "force",
         "title": "Causal loop"
+      },
+      {
+        "description": "Ranked layers stacked from a narrow top to a wide base, where a layer's position in the stack is the point. Use for pyramids, tiers, layered models such as Maslow's hierarchy or the testing pyramid, and any chart the material describes as a pyramid or cone.",
+        "id": "pyramid",
+        "layout": "box",
+        "title": "Pyramid"
       }
     ],
     "GET /decks/": [
@@ -4215,7 +5874,7 @@
     "GET /flagged": [],
     "GET /notebooks/": [
       {
-        "canvases": 1,
+        "canvases": 4,
         "created_at": "2026-10-03T04:24:40.782435",
         "decks": 2,
         "description": "Where the famous retention chart came from, why researchers reject its numbers, and what the evidence does support.",
@@ -4228,6 +5887,36 @@
     ],
     "GET /notebooks/1": {
       "canvases": [
+        {
+          "chosen_by_user": true,
+          "created_at": "2026-10-03T14:23:15.518958",
+          "document_id": 1,
+          "id": 6,
+          "request_text": "Who claimed what about the learning pyramid, and how do the people, the chart and the evidence connect. The source says the chart's numbers are unsupported but some of its spirit is supported, so label links from research findings to the chart accordingly.",
+          "routing_confidence": null,
+          "template": "concept_map",
+          "title": "Who claimed what about the learning pyramid"
+        },
+        {
+          "chosen_by_user": true,
+          "created_at": "2026-10-03T14:19:46.563910",
+          "document_id": 1,
+          "id": 5,
+          "request_text": "For each method on the chart, compare the chart's claimed retention with what the studies in this source actually measured about that method. Where no study in the source tested that method, say so plainly. Only mark a verdict on the evidence column.",
+          "routing_confidence": null,
+          "template": "comparison_matrix",
+          "title": "What the chart claims versus what studies measured"
+        },
+        {
+          "chosen_by_user": true,
+          "created_at": "2026-10-03T14:15:29.039796",
+          "document_id": 1,
+          "id": 3,
+          "request_text": "Show me the learning pyramid itself, each band with its percentage, and who made the claim",
+          "routing_confidence": null,
+          "template": "pyramid",
+          "title": "The learning pyramid, as the chart claims it"
+        },
         {
           "chosen_by_user": false,
           "created_at": "2026-10-03T04:27:07.462722",
@@ -4281,6 +5970,7 @@
         "created_at": "2026-10-03T04:29:47",
         "id": 1,
         "invalid_citations": [],
+        "mode": "text",
         "model": null,
         "refused": false,
         "role": "user",
@@ -4320,6 +6010,7 @@
         "created_at": "2026-10-03T04:29:52",
         "id": 2,
         "invalid_citations": [],
+        "mode": "text",
         "model": "google/gemini-3.8-flash",
         "refused": false,
         "role": "assistant",
@@ -4331,6 +6022,7 @@
         "created_at": "2026-10-03T04:29:52",
         "id": 3,
         "invalid_citations": [],
+        "mode": "text",
         "model": null,
         "refused": false,
         "role": "user",
@@ -4370,6 +6062,7 @@
         "created_at": "2026-10-03T04:29:55",
         "id": 4,
         "invalid_citations": [],
+        "mode": "text",
         "model": "google/gemini-3.8-flash",
         "refused": false,
         "role": "assistant",
@@ -4381,6 +6074,7 @@
         "created_at": "2026-10-03T04:29:55",
         "id": 5,
         "invalid_citations": [],
+        "mode": "text",
         "model": null,
         "refused": false,
         "role": "user",
@@ -4429,6 +6123,7 @@
         "created_at": "2026-10-03T04:29:59",
         "id": 6,
         "invalid_citations": [],
+        "mode": "text",
         "model": "google/gemini-3.8-flash",
         "refused": false,
         "role": "assistant",
@@ -5085,6 +6780,24 @@
     "GET /notebooks/1/workspace": {
       "artifacts": {
         "canvases": [
+          {
+            "created_at": "2026-10-03T14:23:15.518958",
+            "document_id": 1,
+            "id": 6,
+            "title": "Who claimed what about the learning pyramid"
+          },
+          {
+            "created_at": "2026-10-03T14:19:46.563910",
+            "document_id": 1,
+            "id": 5,
+            "title": "What the chart claims versus what studies measured"
+          },
+          {
+            "created_at": "2026-10-03T14:15:29.039796",
+            "document_id": 1,
+            "id": 3,
+            "title": "The learning pyramid, as the chart claims it"
+          },
           {
             "created_at": "2026-10-03T04:27:07.462722",
             "document_id": 1,

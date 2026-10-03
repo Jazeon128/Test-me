@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import CitationChip from './CitationChip'
 
 function inline(text, citations) {
@@ -39,7 +40,13 @@ export default function ChatMessage({ message }) {
   const renderText = text => message.role === 'assistant' ? inline(text, citations) : text
   return <article aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} message`}
     className={`chat-message chat-${message.role} ${message.refused ? 'chat-refused' : ''}`}>
-    {message.mode === 'voice' && <header className="chat-voice-label">Voice</header>}
+    <header className="chat-message-header">
+      <span className="chat-role-label" aria-hidden="true">
+        {message.role === 'user' ? 'You' : <><Sparkles size={14} aria-hidden="true" />
+          {citations.length ? 'AI answer · from your sources' : 'AI answer'}</>}
+      </span>
+      {message.mode === 'voice' && <span className="chat-voice-label">Voice</span>}
+    </header>
     {message.role === 'user' ? <p>{message.content}</p> : contentBlocks(message.content).map((block, index) => {
       if (block.type === 'p') return <p key={index}>{renderText(block.lines.join('\n'))}</p>
       const List = block.type

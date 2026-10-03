@@ -89,6 +89,7 @@ describe('Chat panel', () => {
     await mount(); fill('Explain cells'); click('Send')
     expect(screen.getByText('Explain cells', { selector: 'p' })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Reading your sources...')
+    expect(within(screen.getByRole('status')).getByText('AI answer')).toHaveAttribute('aria-hidden', 'true')
     expect(input()).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
     fireEvent.keyDown(input(), { key: 'Enter' })
@@ -230,7 +231,7 @@ describe('Chat panel', () => {
 
 it('opens history at the latest user message with an 8 pixel gap', async () => {
   const offset = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function () {
-    return this.classList.contains('chat-user') && this.textContent === 'Latest question' ? 420 : 120
+    return this.classList.contains('chat-user') && this.querySelector('p')?.textContent === 'Latest question' ? 420 : 120
   })
   try {
     notebooksAPI.chatHistory.mockResolvedValue({ data: [

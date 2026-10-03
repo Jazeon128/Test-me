@@ -6,6 +6,40 @@ const citation = n => ({ n, display_name: 'Research.pdf', locator: 'Page 4', exc
 const assistant = content => ({ role: 'assistant', content, citations: [citation(2), citation(3), citation(5)] })
 
 describe('Chat message', () => {
+  it('labels user questions while preserving the article accessible name', () => {
+    render(<ChatMessage message={{ role: 'user', content: 'Explain cells' }} />)
+    const article = screen.getByRole('article', { name: 'You message' })
+    expect(within(article).getByText('You')).toHaveAttribute('aria-hidden', 'true')
+    expect(within(article).getByText('Explain cells')).toBeInTheDocument()
+  })
+
+  it('labels cited answers and hides the label and 14 pixel icon from screen readers', () => {
+    render(<ChatMessage message={assistant('Evidence [2]')} />)
+    const article = screen.getByRole('article', { name: 'Assistant message' })
+    const label = within(article).getByText('AI answer · from your sources')
+    expect(label).toHaveAttribute('aria-hidden', 'true')
+    expect(label.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(label.querySelector('svg')).toHaveAttribute('width', '14')
+    expect(label.querySelector('svg')).toHaveAttribute('height', '14')
+  })
+
+  it.each([undefined, []])('labels answers without citations (%s)', citations => {
+    render(<ChatMessage message={{ role: 'assistant', content: 'An answer', citations }} />)
+    const article = screen.getByRole('article', { name: 'Assistant message' })
+    expect(within(article).getByText('AI answer')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('keeps the Voice tag after the AI role label in the same header', () => {
+    render(<ChatMessage message={{ role: 'assistant', mode: 'voice', content: 'Spoken answer' }} />)
+    const article = screen.getByRole('article', { name: 'Assistant message' })
+    const label = within(article).getByText('AI answer')
+    const voice = within(article).getByText('Voice')
+    expect(label).toHaveAttribute('aria-hidden', 'true')
+    expect(voice.parentElement).toBe(label.parentElement)
+    expect(label.nextElementSibling).toBe(voice)
+    expect(voice).not.toHaveAttribute('aria-hidden')
+  })
+
   it('groups star, dot, indented and dash bullets into one unordered list', () => {
     const { container } = render(<ChatMessage message={assistant('* First\n• Second\n  * Third\n- Fourth\n  • Fifth\n  - Sixth')} />)
     const list = screen.getByRole('list')

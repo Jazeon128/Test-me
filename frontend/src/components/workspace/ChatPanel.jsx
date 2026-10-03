@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { notebooksAPI } from '../../services/api'
 import { serverMessage } from '../../utils/serverMessage'
 import ChatMessage from './ChatMessage'
@@ -198,6 +199,9 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
         <button key={prompt} type="button" disabled={disabled} onClick={() => setDraft(prompt)}>{prompt}</button>)}</div>}
       {messages.map(message => <ChatMessage key={message.id} message={message} />)}
       {busy && <div className="chat-message chat-assistant" role="status">
+        <header className="chat-message-header"><span className="chat-role-label" aria-hidden="true">
+          <Sparkles size={14} aria-hidden="true" />AI answer
+        </span></header>
         <span className="chat-reading-dot" aria-hidden="true" /> Reading your sources...
       </div>}
     </div>

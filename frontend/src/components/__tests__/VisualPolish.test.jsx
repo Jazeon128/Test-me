@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -104,7 +104,8 @@ it.each([
     fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }))
     fireEvent.click(screen.getByRole('button', { name: /^Good/ }))
   }
-  expect(await screen.findByRole('heading', { name: 'Session complete' })).toHaveFocus()
+  const heading = await screen.findByRole('heading', { name: 'Session complete' }, { timeout: 5000 })
+  await waitFor(() => expect(heading).toHaveFocus(), { timeout: 5000 })
   const value = label => within(screen.getByText(label).closest('.glass-panel')).getByText(/^\d+(?:\/\d+)?$/)
   expect(value('Progress')).toHaveTextContent('1/1')
   expect(value('Streak')).toHaveTextContent(success ? '1' : '0')

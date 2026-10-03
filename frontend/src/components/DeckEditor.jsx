@@ -197,8 +197,8 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition ${filterTags.length > 0 || showFilters
-                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 hover:bg-primary-200'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100'
+                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-900/50'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}
                         >
                             <Filter size={16} />

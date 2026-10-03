@@ -340,7 +340,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
               const showCorrect = showResult && isCorrect
               const showIncorrect = showResult && isSelected && !result?.correct
 
-              let optionClass = 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
+              let optionClass = 'border-gray-300 hover:border-primary-500 hover:bg-primary-50 dark:border-gray-600 dark:hover:border-primary-400 dark:hover:bg-primary-900/30'
               if (showCorrect) {
                 optionClass = 'border-green-500 bg-green-50 dark:bg-green-900/30'
               } else if (showIncorrect) {
@@ -434,7 +434,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
               <button
                 disabled={submitting}
                 onClick={() => handleGrading(1)}
-                className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-2 border-red-200 px-4 py-3 rounded-lg font-bold hover:bg-red-200 transition flex flex-col items-center"
+                className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-2 border-red-200 px-4 py-3 rounded-lg font-bold hover:bg-red-200 dark:border-red-800 dark:hover:bg-red-900/50 transition flex flex-col items-center"
               >
                 <span>Again</span>
                 <span className="text-xs font-normal opacity-75">&lt; 1m</span>
@@ -442,7 +442,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
               <button
                 disabled={submitting}
                 onClick={() => handleGrading(3)}
-                className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-200 border-2 border-orange-200 px-4 py-3 rounded-lg font-bold hover:bg-orange-200 transition flex flex-col items-center"
+                className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-200 border-2 border-orange-200 px-4 py-3 rounded-lg font-bold hover:bg-orange-200 dark:border-orange-800 dark:hover:bg-orange-900/50 transition flex flex-col items-center"
               >
                 <span>Hard</span>
                 <span className="text-xs font-normal opacity-75">2d</span>
@@ -450,7 +450,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
               <button
                 disabled={submitting}
                 onClick={() => handleGrading(4)}
-                className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200 border-2 border-green-200 px-4 py-3 rounded-lg font-bold hover:bg-green-200 transition flex flex-col items-center"
+                className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200 border-2 border-green-200 px-4 py-3 rounded-lg font-bold hover:bg-green-200 dark:border-green-800 dark:hover:bg-green-900/50 transition flex flex-col items-center"
               >
                 <span>Good</span>
                 <span className="text-xs font-normal opacity-75">4d</span>
@@ -458,7 +458,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
               <button
                 disabled={submitting}
                 onClick={() => handleGrading(5)}
-                className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border-2 border-blue-200 px-4 py-3 rounded-lg font-bold hover:bg-blue-200 transition flex flex-col items-center"
+                className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border-2 border-blue-200 px-4 py-3 rounded-lg font-bold hover:bg-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/50 transition flex flex-col items-center"
               >
                 <span>Easy</span>
                 <span className="text-xs font-normal opacity-75">7d</span>

@@ -196,7 +196,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
       <button type="button" disabled={clearing} onClick={() => setConfirmClear(false)}>Cancel</button>
     </div>}
     {demoPrompts.length > 0 && <div className="chat-prompts">{demoPrompts.map(prompt => <button key={prompt} type="button" disabled={disabled} onClick={() => setDraft(prompt)}>{prompt}</button>)}</div>}
-    <div ref={scroll} className="chat-history" aria-label="Chat history" onScroll={() => {
+    <div data-tour="chat" ref={scroll} className="chat-history" aria-label="Chat history" onScroll={() => {
       const element = scroll.current
       scrolledUp.current = element.scrollHeight - element.scrollTop - element.clientHeight > 200
       if (!scrolledUp.current) setNewReply(false)
@@ -222,7 +222,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
       </div>
     </div>}
     <div className="chat-mode">
-      <div className="tm-segmented" role="group" aria-label="Chat mode">
+      <div data-tour="chat-mode" className="tm-segmented" role="group" aria-label="Chat mode">
         <button type="button" aria-pressed={style === 'answer'} disabled={busy} onClick={() => setStyle('answer')}>Answer</button>
         <button type="button" aria-pressed={style === 'tutor'} disabled={busy} onClick={() => setStyle('tutor')}>Tutor me</button>
       </div>

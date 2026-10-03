@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { BookOpen, Settings, Sun, Moon, Search, Menu, X, RotateCcw } from 'lucide-react'
 import { useTheme } from '../context/useTheme'
 import SearchModal from './SearchModal'
 import { progressAPI } from '../services/api'
+
+const DemoTour = import.meta.env.VITE_DEMO === 'true'
+  ? lazy(() => import('../demo/DemoTour')) : null
 
 const links = [
   { to: import.meta.env.VITE_DEMO === 'true' ? '/notebooks' : '/', label: 'Notebooks', icon: BookOpen },
@@ -101,10 +104,7 @@ export default function Layout({ children }) {
           )}
         </nav>
       </header>
-      {import.meta.env.VITE_DEMO === 'true' && <aside className="demo-banner">
-        <span>Demo notebook: the learning pyramid. Nothing you do here is saved.</span>
-        <a href="https://github.com/Jazeon128/Test-me" target="_blank" rel="noopener noreferrer">Get Test Me</a>
-      </aside>}
+      {DemoTour && <Suspense fallback={null}><DemoTour /></Suspense>}
       <main id="main-content" tabIndex={-1} className="app-content">{children}</main>
       <footer className="app-footer"><span>Test Me</span><span>Make room for what you’ll learn next.</span></footer>
     </div>

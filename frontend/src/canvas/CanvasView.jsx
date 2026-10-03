@@ -377,7 +377,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             />
           )}
           {phase === 'ready' && (
-            <div className="tm-whiteboard flex h-full flex-col" inert={restoring}>
+            <div data-tour="canvas" className="tm-whiteboard flex h-full flex-col" inert={restoring}>
               {!hasSelection && <p className="px-4 py-1 text-xs" style={{ color: 'var(--text2)' }}>
                 Click a shape drawn from your source to see its passage and questions.
               </p>}

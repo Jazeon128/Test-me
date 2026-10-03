@@ -384,7 +384,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
           </div>}
 
           {!typed && !showResult && hintAvailable && <div className="mb-6">
-            {hintStep < 2 && <button className="btn-secondary flex items-center gap-2"
+            {hintStep < 2 && <button data-tour="hint" className="btn-secondary flex items-center gap-2"
               onClick={() => setHintStep(step => step + 1)}>
               <Lightbulb size={16} aria-hidden="true" />
               {hintStep === 0 ? 'Hint' : 'Show the passage'}

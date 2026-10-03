@@ -239,8 +239,8 @@ function Workspace({ notebookId }) {
     toggle={desktop ? () => toggle(side) : null}>{panels[side]}</WorkspacePanel>
   return <div className="notebook-workspace" style={{ '--sources-width': effectiveCollapsed.sources ? '44px' : '280px', '--studio-width': effectiveCollapsed.studio ? '44px' : '320px' }}>
     {!desktop && <div className="workspace-topbar" inert={Boolean(drawer)}>
-      <button className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{counts.sources}</span></button>
-      <button className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{counts.studio}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</button>
+      <button data-tour="sources-button" className="btn-secondary" onClick={() => setDrawer('sources')}><FileText size={18} aria-hidden="true" />Sources <span>{counts.sources}</span></button>
+      <button data-tour="studio-button" className="btn-secondary" onClick={() => setDrawer('studio')}><Sparkles size={18} aria-hidden="true" />Studio <span>{counts.studio}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</button>
     </div>}
     {desktop && panel('sources')}
     <section ref={centre} className="workspace-centre" aria-label={hasOpenSource ? sourceTitle : hasOpenCanvas ? 'Canvas' : hasOpenBank ? 'Questions' : hasSelectionPractice ? 'Practising selection' : hasOpenDeck ? `${view === 'practice' ? 'Practising' : 'Editing'} ${deckName}` : 'Chat'} inert={Boolean(drawer)}>
@@ -248,7 +248,7 @@ function Workspace({ notebookId }) {
       <div className="workspace-chat" hidden={hasOpenCentre}>
         <p className="eyebrow">Notebook</p>
         <div className="workspace-title-row"><h1>{workspace.notebook.name}</h1>
-          <button ref={questionsButton} className="btn-secondary workspace-questions-button" onClick={event => {
+          <button data-tour="questions" ref={questionsButton} className="btn-secondary workspace-questions-button" onClick={event => {
             opener.current = event.currentTarget
             setParams(current => {
               const next = new URLSearchParams(current)

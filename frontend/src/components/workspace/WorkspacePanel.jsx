@@ -12,7 +12,7 @@ export default function WorkspacePanel({ side, count, runningCount = 0, collapse
   const Icon = sources ? FileText : Sparkles
   const Control = sources ? (collapsed ? PanelLeftOpen : PanelLeftClose) : (collapsed ? PanelRightOpen : PanelRightClose)
   const title = sources ? 'Sources' : 'Studio'
-  return <aside className={`workspace-panel glass-panel ${collapsed ? 'workspace-rail' : ''}`} aria-label={title}>
+  return <aside data-tour={side} className={`workspace-panel glass-panel ${collapsed ? 'workspace-rail' : ''}`} aria-label={title}>
     <header className="workspace-panel-header">
       {!collapsed && <><Icon aria-hidden="true" size={20} /><h2>{title}</h2><span className="workspace-count">{count}</span>{runningCount > 0 && <span className="workspace-running"><Loader2 size={12} className="animate-spin" aria-hidden="true" />{runningCount} running</span>}</>}
       {toggle && <button ref={button} className="icon-button" aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${side}`}

@@ -10,8 +10,8 @@ const ErrorDialog = ({
   onClose, 
   title, 
   message, 
-  troubleshootingSteps, 
-  onRetry,
+  troubleshootingSteps = [],
+  onRetry = null,
   showRetry = true 
 }) => {
   if (!isOpen) return null;
@@ -112,12 +112,6 @@ ErrorDialog.propTypes = {
   troubleshootingSteps: PropTypes.arrayOf(PropTypes.string),
   onRetry: PropTypes.func,
   showRetry: PropTypes.bool,
-};
-
-ErrorDialog.defaultProps = {
-  troubleshootingSteps: [],
-  onRetry: null,
-  showRetry: true,
 };
 
 export default ErrorDialog;

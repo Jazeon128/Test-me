@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import AboutDialog from '../AboutDialog'
 
 describe('AboutDialog', () => {
@@ -29,7 +29,9 @@ describe('AboutDialog', () => {
 
   describe('Rendering', () => {
     it('should render dialog when open', async () => {
-      render(<AboutDialog isOpen={true} onClose={() => {}} />)
+      await act(async () => {
+        render(<AboutDialog isOpen={true} onClose={() => {}} />)
+      })
       expect(screen.getByText('About Test Me')).toBeInTheDocument()
     })
 
@@ -38,10 +40,15 @@ describe('AboutDialog', () => {
       expect(screen.queryByText('About Test Me')).not.toBeInTheDocument()
     })
 
-    it('should show loading state initially', () => {
+    it('should show loading state initially', async () => {
+      let resolveAppInfo
+      window.electronAPI.getAppInfo.mockReturnValue(new Promise(resolve => { resolveAppInfo = resolve }))
       render(<AboutDialog isOpen={true} onClose={() => {}} />)
       const loadingSpinner = document.querySelector('.animate-spin')
       expect(loadingSpinner).toBeInTheDocument()
+      await act(async () => {
+        resolveAppInfo({ success: true, data: mockAppInfo })
+      })
     })
   })
 

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LogViewer from '../LogViewer'
 
 describe('LogViewer', () => {
@@ -29,7 +29,9 @@ describe('LogViewer', () => {
 
   describe('Rendering', () => {
     it('should render dialog when open', async () => {
-      render(<LogViewer isOpen={true} onClose={() => {}} />)
+      await act(async () => {
+        render(<LogViewer isOpen={true} onClose={() => {}} />)
+      })
       expect(screen.getByText('Application logs')).toBeInTheDocument()
     })
 
@@ -38,9 +40,14 @@ describe('LogViewer', () => {
       expect(screen.queryByText('Application logs')).not.toBeInTheDocument()
     })
 
-    it('should show loading state initially', () => {
+    it('should show loading state initially', async () => {
+      let resolveLogs
+      window.electronAPI.getLogs.mockReturnValue(new Promise(resolve => { resolveLogs = resolve }))
       render(<LogViewer isOpen={true} onClose={() => {}} />)
       expect(screen.getByText('Loading logs...')).toBeInTheDocument()
+      await act(async () => {
+        resolveLogs({ success: true, data: mockLogs })
+      })
     })
   })
 

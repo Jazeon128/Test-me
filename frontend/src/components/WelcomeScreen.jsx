@@ -163,7 +163,7 @@ export default function WelcomeScreen({ onComplete }) {
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-8 text-white">
             <div className="flex items-center gap-4 mb-4">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+              <div className="bg-white/20 p-3 rounded-xl">
                 <Icon className="h-8 w-8" />
               </div>
               <div>

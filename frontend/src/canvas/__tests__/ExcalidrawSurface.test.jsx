@@ -125,7 +125,7 @@ it.each([0.4, 1, 2])('fits loaded elements once and caps a resulting zoom of %s'
   act(() => state.props.onChange([], { selectedElementIds: {} }))
   expect(api.scrollToContent).not.toHaveBeenCalled()
   act(() => state.props.onChange(elements, { selectedElementIds: {} }))
-  expect(api.scrollToContent).toHaveBeenCalledOnce()
+  await waitFor(() => expect(api.scrollToContent).toHaveBeenCalledOnce())
   expect(api.scrollToContent).toHaveBeenCalledWith(elements, { fitToContent: true, viewportZoomFactor: 0.8, animate: false })
   await waitFor(() => expect(api.getAppState).toHaveBeenCalledOnce())
   const zoomChanges = api.updateScene.mock.calls.filter(([payload]) => payload.appState.zoom)
@@ -145,7 +145,7 @@ it('fits again after Restore remounts the whiteboard', async () => {
   const api = { scrollToContent: vi.fn(), getSceneElements: vi.fn(() => state.props.initialData.elements),
     getAppState: vi.fn(() => ({ zoom: { value: 1 } })), updateScene: vi.fn() }
   act(() => { state.props.excalidrawAPI(api); state.props.onChange(elements, { selectedElementIds: {} }) })
-  expect(api.scrollToContent).toHaveBeenCalledOnce()
+  await waitFor(() => expect(api.scrollToContent).toHaveBeenCalledOnce())
   fireEvent.click(screen.getByRole('button', { name: 'Restore original' }))
   fireEvent.click(screen.getByRole('button', { name: 'Restore', exact: true }))
   await waitFor(() => expect(state.props.initialData.elements.some(element => element.label?.text === 'Free')).toBe(true))
@@ -153,7 +153,7 @@ it('fits again after Restore remounts the whiteboard', async () => {
     state.props.excalidrawAPI(api)
     state.props.onChange(state.props.initialData.elements, { selectedElementIds: {} })
   })
-  expect(api.scrollToContent).toHaveBeenCalledTimes(2)
+  await waitFor(() => expect(api.scrollToContent).toHaveBeenCalledTimes(2))
 })
 
 it('shows the demo note and skips saves including flush and unmount', async () => {

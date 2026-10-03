@@ -14,7 +14,7 @@ export default function ExcalidrawSurface({ elements, onSelectNode, onSave, onSe
   const [sceneReady, setSceneReady] = useState(elements.length === 0)
   const fitted = useRef(false)
   const board = useRef(null)
-  const initialData = useRef({ elements, appState: { theme, viewBackgroundColor: background }, scrollToContent: true })
+  const initialData = useRef({ elements, appState: { theme, viewBackgroundColor: background } })
   useEffect(() => {
     const observer = new MutationObserver(() => setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light'))
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
@@ -24,21 +24,23 @@ export default function ExcalidrawSurface({ elements, onSelectNode, onSave, onSe
   useEffect(() => {
     if (!api || !sceneReady || fitted.current) return
     fitted.current = true
-    api.scrollToContent(api.getSceneElements(), { fitToContent: true, viewportZoomFactor: 0.8, animate: false })
-    // scrollToContent commits its zoom through React state before the next frame.
+    // Fit after the hydrated scene commits, then wait for the fitted state.
     requestAnimationFrame(() => {
-      const appState = api.getAppState()
-      const zoom = appState.zoom
-      const zoomValue = Math.min(zoom.value, 1)
-      const surface = board.current?.querySelector('.excalidraw') || board.current
-      const toolbar = surface?.querySelector('.App-toolbar, .App-menu_top')
-      const toolbarHeight = toolbar ? Math.max(0, toolbar.getBoundingClientRect().bottom - surface.getBoundingClientRect().top) : 0
-      if (toolbarHeight > 0 || zoom.value > 1) {
-        api.updateScene({ appState: {
-          ...(toolbarHeight > 0 ? { scrollY: (appState.scrollY || 0) + (toolbarHeight / 2) / zoomValue } : {}),
-          ...(zoom.value > 1 ? { zoom: { ...zoom, value: 1 } } : {}),
-        } })
-      }
+      api.scrollToContent(api.getSceneElements(), { fitToContent: true, viewportZoomFactor: 0.8, animate: false })
+      requestAnimationFrame(() => {
+        const appState = api.getAppState()
+        const zoom = appState.zoom
+        const zoomValue = Math.min(zoom.value, 1)
+        const surface = board.current?.querySelector('.excalidraw') || board.current
+        const toolbar = surface?.querySelector('.App-toolbar, .App-menu_top')
+        const toolbarHeight = toolbar ? Math.max(0, toolbar.getBoundingClientRect().bottom - surface.getBoundingClientRect().top) : 0
+        if (toolbarHeight > 0 || zoom.value > 1) {
+          api.updateScene({ appState: {
+            ...(toolbarHeight > 0 ? { scrollY: (appState.scrollY || 0) + (toolbarHeight / 2) / zoomValue } : {}),
+            ...(zoom.value > 1 ? { zoom: { ...zoom, value: 1 } } : {}),
+          } })
+        }
+      })
     })
   }, [api, sceneReady])
   const onChange = (next, appState) => {

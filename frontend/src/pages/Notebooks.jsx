@@ -26,11 +26,18 @@ export default function Notebooks() {
   const [icon, setIcon] = useState(ICONS[0])
   const [error, setError] = useState(null)
   const [progress, setProgress] = useState({})
+  const [lastNotebook, setLastNotebook] = useState(null)
 
   const load = async () => {
     try {
       const { data } = await notebooksAPI.list()
       setNotebooks(data)
+      try {
+        const saved = JSON.parse(localStorage.getItem('test-me.lastNotebook'))
+        const last = saved && data.find(notebook => String(notebook.id) === String(saved.notebookId))
+        setLastNotebook(last || null)
+        if (saved && !last) localStorage.removeItem('test-me.lastNotebook')
+      } catch { setLastNotebook(null) }
     } catch {
       setError('Could not load your notebooks.')
     } finally {
@@ -83,6 +90,15 @@ export default function Notebooks() {
 
   return (
     <div className="mx-auto max-w-6xl px-4">
+      {lastNotebook && <section aria-label="Continue where you left off" className="card mb-6">
+        <h2 className="text-xl font-bold">Continue where you left off</h2>
+        <p>{lastNotebook.name}</p>
+        <p>{progress[lastNotebook.id]?.questions_due > 0 ? `${progress[lastNotebook.id].questions_due} questions due` : 'Nothing due'}</p>
+        <div className="mt-3 flex gap-3">
+          <button className="btn-primary" onClick={() => navigate(`/notebooks/${lastNotebook.id}`)}>Open notebook</button>
+          {progress[lastNotebook.id]?.questions_due > 0 && <button className="btn-secondary" onClick={() => navigate('/review')}>Review due</button>}
+        </div>
+      </section>}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Your study space</p>

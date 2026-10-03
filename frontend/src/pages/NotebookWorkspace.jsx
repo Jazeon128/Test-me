@@ -61,6 +61,16 @@ function Workspace({ notebookId }) {
   }, [view, practiceIds, setParams])
   const hasOpenCentre = hasOpenDeck || hasOpenBank || hasSelectionPractice || hasOpenCanvas || hasOpenSource
   const [workspace, setWorkspace] = useState(null)
+  const openedNotebookId = workspace?.notebook.id
+  const openedNotebookName = workspace?.notebook.name
+  useEffect(() => {
+    if (!openedNotebookId) return
+    try {
+      localStorage.setItem('test-me.lastNotebook', JSON.stringify({
+        notebookId: openedNotebookId, name: openedNotebookName, openedAt: new Date().toISOString(),
+      }))
+    } catch { /* Opening a notebook works without storage. */ }
+  }, [openedNotebookId, openedNotebookName])
   const loaded = Boolean(workspace)
   const wasOpen = useRef(false)
   useEffect(() => {

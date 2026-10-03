@@ -71,12 +71,12 @@ export default function SearchModal({ isOpen, onClose }) {
         <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20" role="dialog" aria-modal="true">
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/80 transition-opacity backdrop-blur-sm"
+                className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/80 transition-opacity glass-floating"
                 onClick={onClose}
             />
 
             {/* Modal Panel */}
-            <div className="mx-auto max-w-2xl transform divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black ring-opacity-5 transition-all">
+            <div className="glass-floating mx-auto max-w-2xl transform divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black ring-opacity-5 transition-all">
                 <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
                     <input

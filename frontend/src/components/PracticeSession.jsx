@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 export default function PracticeSession({ deckId, questionIds, onExit, onFinished, onEmpty, embedded = false }) {
 
+  useEffect(() => {
+    document.documentElement.classList.add('focus-mode')
+    return () => document.documentElement.classList.remove('focus-mode')
+  }, [])
+
   const { notebookId } = useParams()
   const [deckHasItems, setDeckHasItems] = useState(false)
   const [complete, setComplete] = useState(false)

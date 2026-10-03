@@ -59,7 +59,7 @@ export default function Layout({ children }) {
       <header className="app-header">
         <nav className="glass-nav" aria-label="Main navigation">
           <Link to="/" className="brand" aria-label="Test Me home">
-            <span className="brand-symbol"><BookOpen size={22} strokeWidth={1.8} /></span>
+            <span className="brand-symbol"><img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width="36" height="36" /></span>
             <span>Test Me<span className="brand-caption">A little more, every day.</span></span>
           </Link>
           <div className="hidden lg:flex nav-links">

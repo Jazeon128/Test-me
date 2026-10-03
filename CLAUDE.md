@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Test Me** is a full-stack gamified learning platform that transforms documents (PDF, HTML, Markdown, DOCX) into AI-generated multiple-choice questions with spaced repetition learning and multiple export formats (Anki .apkg and CSV).
+**Test Me** is a full-stack interactive learning platform that transforms documents (PDF, HTML, Markdown, DOCX) into AI-generated multiple-choice questions with spaced repetition learning and multiple export formats (Anki .apkg and CSV).
 
 **Type**: Web Application (Full-Stack)
 **Stack**: FastAPI (Python) + React (Vite) + SQLite

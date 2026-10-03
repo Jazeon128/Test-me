@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "test-me-backend"
 version = "0.1.0"
-description = "AI-powered gamified learning platform backend"
+description = "AI-powered interactive learning platform backend"
 requires-python = ">=3.9"
 
 [tool.black]

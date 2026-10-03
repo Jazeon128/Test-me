@@ -103,3 +103,12 @@ frontend/dist-demo/
 .firebase/
 
 frontend/public/excalidraw-assets/
+
+# Packaged Electron icons only. Keep all other build output ignored.
+!/electron/build/
+/electron/build/*
+!/electron/build/icon.ico
+!/electron/build/icon.icns
+!/electron/build/icons/
+/electron/build/icons/*
+!/electron/build/icons/*.png

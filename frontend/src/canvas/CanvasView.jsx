@@ -10,8 +10,17 @@ import CanvasSaveControls from './CanvasSaveControls'
 import { Generating, EmptyState, TemplateBadge } from './CanvasChrome'
 import { canvasTitle } from './canvasTitle'
 import './canvas.css'
+import '../dynamic/dynamic.css'
+import { fromGraph, fromExcalidraw } from '../dynamic/model'
 
 const ExcalidrawSurface = lazy(() => import('./ExcalidrawSurface'))
+
+const DynamicSurface = lazy(() => import('../dynamic/DynamicSurface'))
+
+function initialMode() {
+  try { return localStorage.getItem('test-me.canvasMode') === 'dynamic' ? 'dynamic' : 'sketch' }
+  catch { return 'sketch' }
+}
 
 const POLL_MS = 900
 
@@ -49,6 +58,15 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
   const [selected, setSelected] = useState(null)
   const [source, setSource] = useState(null)
   const [elements, setElements] = useState([])
+  const [dynamicInput, setDynamicInput] = useState(null)
+  const [mode, setMode] = useState(initialMode)
+  const dynamic = useMemo(() => !dynamicInput ? null : dynamicInput.graph
+    ? { doc: fromGraph(dynamicInput.template, dynamicInput.graph), skipped: 0 }
+    : fromExcalidraw(dynamicInput.template, dynamicInput.elements), [dynamicInput])
+  const changeMode = next => {
+    setMode(next)
+    try { localStorage.setItem('test-me.canvasMode', next) } catch { /* Storage may be disabled. */ }
+  }
   const [sceneKey, setSceneKey] = useState(0)
   const [hasSelection, setHasSelection] = useState(false)
   const sourceRequest = useRef(0)
@@ -102,6 +120,7 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
     let scene
     if (record.edited?.schema_version === 2) {
       scene = record.edited.elements
+      setDynamicInput({ template: record.template, elements: scene })
     } else {
       const { graphToScene } = await import('./scene')
       const edited = record.edited && record.template === 'comparison_matrix'
@@ -111,9 +130,11 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
         orientation: record.payload?.orientation || 'horizontal',
       })
       const saved = record.edited ? {} : record.layout || {}
-      scene = graphToScene(record.template, {
+      const positioned = {
         ...graph, nodes: graph.nodes.map(node => ({ ...node, position: saved[node.id] || node.position })),
-      })
+      }
+      scene = graphToScene(record.template, positioned)
+      setDynamicInput({ template: record.template, graph: positioned })
     }
     sourceRequest.current++
     setSelected(null)
@@ -262,9 +283,15 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
             >
               {canvasTitle(canvas.title || canvas.request_text)}
             </h1>}
-            <CanvasSaveControls status={saveStatus} retry={retry} restore={restore}
+            {phase === 'ready' && <div className="tm-segmented" role="group" aria-label="View">
+              {['sketch', 'dynamic'].map(value => <button type="button" key={value}
+                aria-pressed={mode === value} onClick={() => changeMode(value)}>
+                {value === 'sketch' ? 'Sketch' : 'Dynamic'}
+              </button>)}
+            </div>}
+            {mode === 'sketch' && <CanvasSaveControls status={saveStatus} retry={retry} restore={restore}
               restoring={restoring} setRestoring={setRestoring}
-              hasChanges={Boolean(canvas.has_edits || canvas.edited || canvas.layout)} />
+              hasChanges={Boolean(canvas.has_edits || canvas.edited || canvas.layout)} />}
             <TemplateBadge canvas={canvas} />
           </div>
         )}
@@ -345,16 +372,28 @@ const CanvasView = forwardRef(function CanvasView({ canvasId, sourceIds = [], no
               </p>}
               <div className="tm-drawing-surface min-h-0 flex-1">
                 <Suspense fallback={<Loader2 aria-label="Loading whiteboard" className="m-auto animate-spin" size={20} />}>
-                  <ExcalidrawSurface key={sceneKey} elements={elements} onSelectionChange={setHasSelection}
+                  {mode === 'dynamic' && dynamic ? <DynamicSurface key={sceneKey} doc={dynamic.doc}
+                    selectedId={selected?.id || null}
+                    onSelectNode={(nodeId, data) => {
+                      setHasSelection(Boolean(nodeId))
+                      openSource(canvas.id, nodeId ? { id: nodeId, data: {
+                        label: data.label, detail: data.detail, source_section_id: data.sourceSectionId,
+                      } } : null)
+                    }} /> : <ExcalidrawSurface key={sceneKey} elements={elements} onSelectionChange={setHasSelection}
                     onSelectNode={(nodeId, data) => openSource(canvas.id, nodeId ? {
                       id: nodeId, data: { label: data.label, detail: data.detail, source_section_id: data.sourceSectionId },
                     } : null)}
                     onSave={payload => {
                       save(payload)
+                      setElements(payload.edited.elements)
+                      setDynamicInput({ template: canvas.template, elements: payload.edited.elements })
                       setCanvas(current => ({ ...current, edited: payload.edited, has_edits: true }))
-                    }} />
+                    }} />}
                 </Suspense>
               </div>
+              {mode === 'dynamic' && dynamic?.skipped > 0 && <p className="px-4 py-1 text-xs" style={{ color: 'var(--text2)' }}>
+                {dynamic.skipped} sketch-only items are not shown in Dynamic view.
+              </p>}
             </div>
           )}
         </div>

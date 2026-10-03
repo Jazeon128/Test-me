@@ -76,6 +76,17 @@ it('excludes radios and chips from the workspace minimum and uses 20 px radios',
   expect(css).toMatch(/\.deck-option-radio[^}]*width: 20px;[^}]*height: 20px;[^}]*accent-color: var\(--accent\)/)
 })
 
+it('lets the chat box grow around its composer and bounds the history height', () => {
+  const css = readFileSync('src/index.css', 'utf8')
+  const chatRules = [...css.matchAll(/\.workspace-chat\s*\{([^}]*)\}/g)]
+  expect(chatRules.length).toBeGreaterThan(0)
+  for (const [, declarations] of chatRules) {
+    expect(declarations).not.toMatch(/(?:^|;)\s*(?:min-)?height\s*:/)
+  }
+  const historyRule = css.match(/\.chat-history\s*\{([^}]*)\}/)[1]
+  expect(historyRule).toMatch(/(?:^|;)\s*height:\s*max\(12rem, calc\(100dvh - 480px\)\);/)
+})
+
 it.each([
   ['flashcard', true, 'Recalled', 'To review'],
   ['flashcard', false, 'Recalled', 'To review'],

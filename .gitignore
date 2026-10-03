@@ -98,3 +98,6 @@ backend/evals/pilot.local.json
 *.db-shm
 
 frontend/dist-demo/
+
+# Firebase
+.firebase/

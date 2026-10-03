@@ -15,16 +15,16 @@ const NODE_H = 62
 
 const ALGORITHMS = {
   layered: 'layered',
+  layeredDown: 'layered',
   mrtree: 'mrtree',
   box: 'box',
-  force: 'force',
 }
 
 const elkOptions = (algorithm, orientation) => ({
   'elk.algorithm': ALGORITHMS[algorithm] || 'layered',
-  'elk.direction': orientation === 'vertical' ? 'DOWN' : 'RIGHT',
+  'elk.direction': algorithm === 'layeredDown' || orientation === 'vertical' ? 'DOWN' : 'RIGHT',
   'elk.spacing.nodeNode': '40',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '70',
+  'elk.layered.spacing.nodeNodeBetweenLayers': algorithm === 'layeredDown' ? '90' : '70',
   'elk.padding': '[top=32,left=24,bottom=24,right=24]',
 })
 

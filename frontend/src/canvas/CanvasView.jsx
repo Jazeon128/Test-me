@@ -27,8 +27,8 @@ const LAYOUTS = {
   hierarchy: 'mrtree',
   state_machine: 'layered',
   c4_context: 'layered',
-  concept_map: 'force',
-  causal_loop: 'force',
+  concept_map: 'layeredDown',
+  causal_loop: 'layeredDown',
   decision_tree: 'layered',
   sequence: 'sequence',
 }

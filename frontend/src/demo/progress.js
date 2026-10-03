@@ -39,7 +39,7 @@ export function createProgress(routes, questions) {
     const item = questions.find(item => item.id === body.question_id)
     if (!item) return { status: 404, data: { detail: 'Not part of the demo.' } }
     const flashcard = item.card_type === 'flashcard'
-    if (flashcard && (!Number.isInteger(body.manual_quality) || body.manual_quality < 0 || body.manual_quality > 5 || body.selected_option || body.retry_allowed || body.after_feedback)) {
+    if (flashcard && (!Number.isInteger(body.manual_quality) || body.manual_quality < 0 || body.manual_quality > 5 || body.selected_option || body.retry_allowed || body.after_feedback || body.hint_used)) {
       return { status: 422, data: { detail: 'Rate this card.' } }
     }
     const correctOption = flashcard ? null : item.options.find(option => option.is_correct)?.option
@@ -60,6 +60,7 @@ export function createProgress(routes, questions) {
     currentStreak = correct ? currentStreak + 1 : 0
     bestStreak = Math.max(bestStreak, currentStreak)
     let quality = body.manual_quality ?? (correct ? (body.time_taken_seconds <= 15 ? 5 : body.time_taken_seconds <= 24 ? 4 : 3) : body.time_taken_seconds < 15 ? 2 : 1)
+    if (body.hint_used && correct) quality = Math.min(quality, 3)
     if (!flashcard && body.time_taken_seconds > 30) quality = Math.max(0, quality - 1)
     row.ef = Math.max(1.3, row.ef + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
     row.repetitions = quality < 3 ? 0 : row.repetitions + 1

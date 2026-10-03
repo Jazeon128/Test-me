@@ -26,23 +26,25 @@ export default function MasteryBar({ notebookId, refreshSignal, practise }) {
   }, [notebookId, refreshSignal])
   if (!mastery?.summary.topic_count) return null
   const { topics, summary } = mastery
+  const sharedDocument = topics.every(topic => topic.document_id === topics[0].document_id && topic.document_name === topics[0].document_name)
   return <div className="mastery">
     <p>Mastery: {summary.proficient_or_above} of {summary.topic_count} topics Proficient or above</p>
     <div className="mastery-bar" role="img" aria-label={levels.map(([key, label]) => `${summary.levels[key]} ${label.toLowerCase()}`).join(', ')}>
       {levels.map(([key, , token]) => <span key={key} style={{ width: `${summary.levels[key] / summary.topic_count * 100}%`, background: `var(${token})` }} />)}
     </div>
-    <button className="btn-secondary mastery-disclosure" aria-expanded={expanded} aria-controls={listId} onClick={() => setExpanded(value => !value)}>Show topics</button>
+    <button className="btn-secondary mastery-disclosure" aria-expanded={expanded} aria-controls={listId} onClick={() => setExpanded(value => !value)}>{expanded ? 'Hide topics' : 'Show topics'}</button>
     {expanded && <div id={listId}>
+      {sharedDocument && <p className="mastery-muted">{topics[0].document_name}</p>}
       <ul className="mastery-topics">{topics.map(topic => {
         const [, label, token] = levels.find(([key]) => key === topic.level)
         return <li key={topic.key}>
-          <div className="mastery-topic-name"><span>{topic.section}</span><span className="mastery-muted">{topic.document_name}</span></div>
+          <div className="mastery-topic-name"><span>{topic.section}</span>{!sharedDocument && <span className="mastery-muted">{topic.document_name}</span>}</div>
           <span className="mastery-chip" style={{ borderLeftColor: `var(${token})` }}>{label}</span>
           <span className="mastery-muted">{topic.attempted_count} of {topic.question_count} tried</span>
           <button className="btn-secondary" onClick={() => practise(topic.question_ids)}>Practise</button>
         </li>
       })}</ul>
-      <p className="mastery-explainer">Levels follow your latest answer to each question. Proficient means all of at least 4 questions right. Mastered means right twice, on different days.</p>
+      <p className="mastery-explainer">Levels follow your latest answer to each question. Proficient means all of at least 4 questions right. Mastered means right twice, on different days. Answers found with a hint count as not yet right.</p>
     </div>}
   </div>
 }

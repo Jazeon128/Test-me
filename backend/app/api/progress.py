@@ -43,6 +43,7 @@ class SubmitAnswerRequest(BaseModel):
     retry_allowed: bool = False
     # after_feedback: this is the retry, so a pass is capped at quality 3.
     after_feedback: bool = False
+    hint_used: bool = False
 
 
 class ReviewSessionRequest(BaseModel):
@@ -56,7 +57,7 @@ def validate_flashcard_rating(request):
     if request.manual_quality is None:
         raise HTTPException(status_code=422, detail="Rate this card.")
     if any((request.selected_option, request.written_answer, request.explain,
-            request.retry_allowed, request.after_feedback)):
+            request.retry_allowed, request.after_feedback, request.hint_used)):
         raise HTTPException(status_code=422, detail="Only a rating is allowed for flashcards.")
 
 
@@ -210,6 +211,10 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
             time_limit_seconds=30.0,
         )
 
+    if request.hint_used and is_correct:
+        # Recalled only with help: SM-2's "correct, with serious difficulty".
+        quality = ReviewResult(min(quality.value, 3))
+
     # Calculate next review using SM-2 algorithm
     new_ef, new_interval, new_repetitions, next_review = SM2Algorithm.calculate_next_review(
         easiness_factor=float(progress.easiness_factor),
@@ -241,6 +246,7 @@ async def submit_answer(request: SubmitAnswerRequest, db: Session = Depends(get_
             "correct": is_correct,
             "time_seconds": request.time_taken_seconds,
             "quality": quality.value,
+            **({"hinted": True} if request.hint_used else {}),
         }
     )
 

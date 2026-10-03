@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import Spinner from './Spinner'
 import FlashcardCard from './FlashcardCard'
+import PassageText from './PassageText'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { notebooksAPI, progressAPI, decksAPI } from '../services/api'
 import { Clock, CheckCircle, XCircle, Flame, Trophy, Target, Lightbulb } from 'lucide-react'
@@ -43,6 +44,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   const [questions, setQuestions] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState(null)
+  const [hintStep, setHintStep] = useState(0)
   const [showResult, setShowResult] = useState(false)
   const [result, setResult] = useState(null)
   const [timeLeft, setTimeLeft] = useState(30)
@@ -134,6 +136,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
       const response = await progressAPI.submit({
         question_id: currentQuestion.id,
         selected_option: selectedOption || '',
+        ...(!flashcard && hintStep > 0 ? { hint_used: true } : {}),
         ...(typed ? {
           written_answer: writtenAnswer.trim(),
           explain: mode === 'explain',
@@ -172,6 +175,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   }
 
   const handleNext = () => {
+    setHintStep(0)
     setWrittenAnswer('')
     setFeedback(null)
     setSubmitError('')
@@ -226,6 +230,10 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
   }
 
   const currentQuestion = questions[currentIndex]
+  const source = currentQuestion.source_reference || {}
+  const hintPassage = source.passage || source.text
+  const hintAvailable = source.section || hintPassage
+  const documentName = currentQuestion.document_name || currentQuestion.source_name || currentQuestion.document?.name || currentQuestion.source?.name
   const notebooks = !deckId && !questionIds ? currentQuestion.notebooks || [] : []
   const notebookLine = notebooks.length > 0 && <p className="review-notebook">
     From {notebooks[0].name}{notebooks.length > 1 ? ` and ${notebooks.length - 1} more` : ''}
@@ -375,6 +383,21 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
             })}
           </div>}
 
+          {!typed && !showResult && hintAvailable && <div className="mb-6">
+            {hintStep < 2 && <button className="btn-secondary flex items-center gap-2"
+              onClick={() => setHintStep(step => step + 1)}>
+              <Lightbulb size={16} aria-hidden="true" />
+              {hintStep === 0 ? 'Hint' : 'Show the passage'}
+            </button>}
+            <div aria-live="polite" className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+              {hintStep >= 1 && <p>Hint 1 of 2: Look at {source.section ? <>the section &ldquo;{source.section}&rdquo;</> : 'the source passage'}{documentName ? ` in ${documentName}` : ''}</p>}
+              {hintStep >= 2 && <>
+                <p className="mt-3">Hint 2 of 2:</p>
+                <blockquote className="mt-2 border-l-2 border-gray-300 dark:border-gray-600 pl-4"><PassageText text={hintPassage} /></blockquote>
+              </>}
+            </div>
+          </div>}
+
           {feedback && !showResult && <FeedbackPanel feedback={feedback} />}
           {submitError && <p role="alert" className="mb-4 text-red-600">{submitError}</p>}
           {/* Result Feedback */}
@@ -416,6 +439,7 @@ export default function PracticeSession({ deckId, questionIds, onExit, onFinishe
                       </span>
                     )}
                   </p>
+                  {result.correct && hintStep > 0 && <p className="text-sm mb-2 text-gray-500 dark:text-gray-400">Correct, with a hint. It counts towards mastery once you get it without one.</p>}
                   {result.gamification.points_earned > 0 && (
                     <p className="text-sm font-semibold text-green-700 dark:text-green-200">
                       +{result.gamification.points_earned} points

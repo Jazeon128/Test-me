@@ -40,8 +40,8 @@ def notebook_mastery(db, notebook_id) -> dict:
         attempts = sorted(progress.attempt_history or [], key=_date) if progress else []
         if attempts:
             group['attempted_count'] += 1
-            group['correct_count'] += bool(attempts[-1]['correct'])
-            group['repeated'] &= (len(attempts) >= 2 and all(a['correct'] for a in attempts[-2:])
+            group['correct_count'] += bool(attempts[-1]['correct'] and not attempts[-1].get('hinted'))
+            group['repeated'] &= (len(attempts) >= 2 and all(a['correct'] and not a.get('hinted') for a in attempts[-2:])
                                   and _date(attempts[-1]).date() != _date(attempts[-2]).date())
     topics = sorted(groups.values(), key=lambda topic: (topic['document_name'], topic['question_ids'][0]))
     counts = dict.fromkeys(LEVELS, 0)

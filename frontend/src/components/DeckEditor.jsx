@@ -17,6 +17,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
     const [deck, setDeck] = useState(null)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState('')
+    const [writeError, setWriteError] = useState('')
     const [showAddModal, setShowAddModal] = useState(false)
 
     // Tag filtering
@@ -96,7 +97,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
             loadDeck()
         } catch (error) {
             console.error('Failed to delete question:', error)
-            alert('Failed to delete question')
+            setWriteError(serverMessage(error.originalError || error) || 'Failed to delete question')
         }
     }
 
@@ -131,6 +132,7 @@ export default function DeckEditor({ deckId, onPractice, onDeleted: _onDeleted, 
 
     return (
         <div className="max-w-4xl mx-auto px-4">
+            {writeError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{writeError}</p>}
             {/* Header */}
             <div className="mb-8">
                 {!embedded && <button

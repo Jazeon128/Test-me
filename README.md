@@ -162,3 +162,5 @@ Open a GitHub issue for bugs or documentation corrections without sharing creden
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+[Static demo build and snapshot instructions](frontend/demo/README.md).

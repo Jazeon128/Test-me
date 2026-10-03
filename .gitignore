@@ -96,3 +96,5 @@ backend/evals/pilot.local.json
 # SQLite write-ahead log files
 *.db-wal
 *.db-shm
+
+frontend/dist-demo/

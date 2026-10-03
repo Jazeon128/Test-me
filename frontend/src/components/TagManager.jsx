@@ -1,3 +1,4 @@
+import { serverMessage } from '../utils/serverMessage'
 import Spinner from './Spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { tagsAPI } from '../services/api'
@@ -54,6 +55,7 @@ export default function TagManager({
 }) {
     const [tags, setTags] = useState([])
     const [loading, setLoading] = useState(true)
+    const [writeError, setWriteError] = useState('')
     const [showCreateForm, setShowCreateForm] = useState(false)
     const [newTagName, setNewTagName] = useState('')
     const [newTagColor, setNewTagColor] = useState('blue')
@@ -97,7 +99,7 @@ export default function TagManager({
             }
         } catch (error) {
             console.error('Failed to create tag:', error)
-            alert(error.message || 'Failed to create tag')
+            setWriteError(serverMessage(error.originalError || error) || error.message || 'Failed to create tag')
         }
     }
 
@@ -113,7 +115,7 @@ export default function TagManager({
             }
         } catch (error) {
             console.error('Failed to delete tag:', error)
-            alert('Failed to delete tag')
+            setWriteError(serverMessage(error.originalError || error) || 'Failed to delete tag')
         }
     }
 
@@ -148,6 +150,7 @@ export default function TagManager({
 
     return (
         <div className="space-y-3">
+            {writeError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{writeError}</p>}
             {pendingDelete && (
                 <div role="dialog" aria-label="Delete tag" className="rounded-lg border p-3 space-y-2">
                     <p>{pendingDelete.shared

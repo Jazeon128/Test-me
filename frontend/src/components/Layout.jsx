@@ -6,7 +6,7 @@ import SearchModal from './SearchModal'
 import { progressAPI } from '../services/api'
 
 const links = [
-  { to: '/', label: 'Notebooks', icon: BookOpen },
+  { to: import.meta.env.VITE_DEMO === 'true' ? '/notebooks' : '/', label: 'Notebooks', icon: BookOpen },
   { to: '/review', label: 'Review', icon: RotateCcw },
 ]
 
@@ -79,8 +79,8 @@ export default function Layout({ children }) {
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
               {isDark ? <Sun size={19} /> : <Moon size={19} />}
             </button>
-            <Link to="/settings" className="icon-button nav-settings" aria-label="Settings"
-              aria-current={active('/settings') ? 'page' : undefined}><Settings size={19} /></Link>
+            {import.meta.env.VITE_DEMO !== 'true' && <Link to="/settings" className="icon-button nav-settings" aria-label="Settings"
+              aria-current={active('/settings') ? 'page' : undefined}><Settings size={19} /></Link>}
             <button className="icon-button mobile-menu-toggle" aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={isMobileMenuOpen} aria-controls="mobile-navigation"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
@@ -89,7 +89,7 @@ export default function Layout({ children }) {
           </div>
           {isMobileMenuOpen && (
             <div id="mobile-navigation" className="mobile-navigation lg:hidden">
-              {[...links, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => (
+              {[...links, ...(import.meta.env.VITE_DEMO === 'true' ? [] : [{ to: '/settings', label: 'Settings', icon: Settings }])].map(({ to, label, icon: Icon }) => (
                 <Link key={to} to={to} className={`nav-link ${active(to) ? 'is-active' : ''}`}
                   aria-current={active(to) ? 'page' : undefined}
                   aria-label={to === '/review' && dueCount > 0 ? `Review, ${dueCount} due` : undefined}>
@@ -101,6 +101,10 @@ export default function Layout({ children }) {
           )}
         </nav>
       </header>
+      {import.meta.env.VITE_DEMO === 'true' && <aside className="demo-banner">
+        <span>Demo notebook: the learning pyramid. Nothing you do here is saved.</span>
+        <a href="https://github.com/Jazeon128/Test-me" target="_blank" rel="noopener noreferrer">Get Test Me</a>
+      </aside>}
       <main id="main-content" tabIndex={-1} className="app-content">{children}</main>
       <footer className="app-footer"><span>Test Me</span><span>Make room for what you’ll learn next.</span></footer>
     </div>

@@ -11,6 +11,8 @@ import Settings from './pages/Settings'
 // The canvas pulls in React Flow and elkjs, roughly 1.6 MB. Loading it lazily
 // keeps that off every other page in the app.
 const Canvas = lazy(() => import('./pages/Canvas'))
+const DemoHome = import.meta.env.VITE_DEMO === 'true' ? lazy(() => import('./demo/DemoHome')) : null
+const DemoNotice = import.meta.env.VITE_DEMO === 'true' ? lazy(() => import('./demo/DemoNotice')) : null
 import WelcomeScreen from './components/WelcomeScreen'
 import UpdateNotification from './components/UpdateNotification'
 import { ThemeProvider } from './context/ThemeContext'
@@ -22,6 +24,7 @@ function App() {
   useEffect(() => {
     // Browser completion stores no credentials, only the welcome preference.
     const checkFirstRun = async () => {
+      if (import.meta.env.VITE_DEMO === 'true') { setIsCheckingWelcome(false); return }
       if (window.electronAPI) {
         try {
           const response = await window.electronAPI.getSettings()
@@ -65,7 +68,8 @@ function App() {
       <UpdateNotification />
       <Layout>
         <Routes>
-          <Route path="/" element={<Notebooks />} />
+          <Route path="/" element={DemoHome ? <Suspense fallback={<CanvasLoading />}><DemoHome /></Suspense> : <Notebooks />} />
+          <Route path="/notebooks" element={DemoHome ? <Notebooks /> : <Navigate to="/" replace />} />
           <Route path="/notebooks/:notebookId" element={<NotebookWorkspace />} />
           <Route path="/upload" element={<RedirectUpload />} />
           <Route path="/decks" element={<Navigate to="/" replace />} />
@@ -90,7 +94,7 @@ function App() {
             }
           />
           <Route path="/progress" element={<Navigate to="/#progress" replace />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={DemoNotice ? <Suspense fallback={<CanvasLoading />}><DemoNotice /></Suspense> : <Settings />} />
 
           {/* Unknown paths land on the notebook list rather than an empty
               shell. Covers /dashboard, which used to be a second home

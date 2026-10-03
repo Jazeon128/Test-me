@@ -13,6 +13,7 @@ const errorMessage = error => {
 export default function ChatPanel({ notebookId, sourceIds, sources }) {
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
+  const [demoPrompts, setDemoPrompts] = useState([])
   const [loading, setLoading] = useState(true)
   const [paging, setPaging] = useState(false)
   const [hasEarlier, setHasEarlier] = useState(false)
@@ -34,6 +35,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
     notebooksAPI.chatHistory(notebookId, { limit: 50 }).then(({ data }) => {
       if (cancelled) return
       setMessages(data)
+      if (import.meta.env.VITE_DEMO === 'true') setDemoPrompts([...new Set(data.filter(item => item.role === 'user').map(item => item.content))].slice(0, 3))
       setHasEarlier(data.length === 50)
       scrollNeeded.current = true
     }).catch(err => { if (!cancelled) setError(errorMessage(err)) })
@@ -137,6 +139,7 @@ export default function ChatPanel({ notebookId, sourceIds, sources }) {
       <button type="button" disabled={busy || loading || paging || clearing} onClick={clear}>Clear</button>
       <button type="button" disabled={clearing} onClick={() => setConfirmClear(false)}>Cancel</button>
     </div>}
+    {demoPrompts.length > 0 && <div className="chat-prompts">{demoPrompts.map(prompt => <button key={prompt} type="button" disabled={disabled} onClick={() => setDraft(prompt)}>{prompt}</button>)}</div>}
     <div ref={scroll} className="chat-history" aria-label="Chat history" onScroll={() => {
       const element = scroll.current
       scrolledUp.current = element.scrollHeight - element.scrollTop - element.clientHeight > 200

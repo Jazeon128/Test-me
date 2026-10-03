@@ -14,6 +14,14 @@ const api = axios.create({
   },
 })
 
+if (import.meta.env.VITE_DEMO === 'true') {
+  let demoAdapter
+  api.defaults.adapter = async config => {
+    demoAdapter ||= import('../demo/adapter.js').then(module => module.default)
+    return (await demoAdapter)(config)
+  }
+}
+
 /**
  * Resolve the Electron backend URL once, on the first request.
  * Resolving at module scope would need a top-level await, which esbuild cannot

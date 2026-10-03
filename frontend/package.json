@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:demo": "vite build --mode demo --outDir dist-demo",
+    "demo:snapshot": "node demo/snapshot.js",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives",
     "lint:fix": "eslint . --ext js,jsx --fix",

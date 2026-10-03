@@ -13,10 +13,13 @@ function sourceFiles(directory) {
   })
 }
 
-it('imports axios only in the shared API client', () => {
+it('imports the axios client only in the shared API client', () => {
   const directImports = sourceFiles(sourceRoot)
     .filter(path => relative(sourceRoot, path).replaceAll('\\', '/') !== 'services/api.js')
-    .filter(path => /\b(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)['"]axios['"]/.test(readFileSync(path, 'utf8')))
+    // Adapters need AxiosError to reject responses, but must not create clients.
+    .filter(path => /\b(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*)['"]axios['"]/.test(
+      readFileSync(path, 'utf8').replace(/import\s*\{\s*AxiosError\s*\}\s*from\s*['"]axios['"]/g, '')
+    ))
     .map(path => relative(sourceRoot, path))
 
   expect(directImports).toEqual([])

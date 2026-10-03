@@ -29,7 +29,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
     canvasAPI.savedQuestionsForNode(canvasId, node.id).then(response => {
       if (active) setResult(response.data)
     }).catch(err => {
-      if (active) setError(serverMessage(err) || 'Could not load questions for this node.')
+      if (active) setError(serverMessage(err.originalError || err) || 'Could not load questions for this node.')
     }).finally(() => {
       if (active) setLoading(false)
     })
@@ -45,7 +45,7 @@ export default function NodePanel({ canvasId, node, source, onClose }) {
         : await canvasAPI.questionsForNode(canvasId, node.id)
       setResult(response.data)
     } catch (err) {
-      setError(serverMessage(err) || 'Could not generate questions for this node.')
+      setError(serverMessage(err.originalError || err) || 'Could not generate questions for this node.')
     } finally {
       setLoading(false)
     }

@@ -1,3 +1,4 @@
+import { serverMessage } from '../utils/serverMessage'
 import { plural } from '../utils/plural'
 import ProgressOverview from '../components/ProgressOverview'
 import { displayIcon } from '../utils/displayIcon'
@@ -68,7 +69,7 @@ export default function Notebooks() {
       setCreating(false)
       navigate(`/notebooks/${data.id}`)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Could not create that notebook.')
+      setError(serverMessage(err.originalError || err) || 'Could not create that notebook.')
     }
   }
 

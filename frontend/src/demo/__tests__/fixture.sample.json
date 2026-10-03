@@ -1,0 +1,402 @@
+{
+  "notebook": {"id": 1, "name": "The learning pyramid", "description": "A tiny demo fixture.", "icon": "\ud83d\udcd8", "sources": 1, "decks": 2, "canvases": 1},
+  "routes": {
+    "GET /activity/": {
+      "heatmap": [],
+      "longest_streak": 0,
+      "mood": {"state": "sleepy"},
+      "streak": 0,
+      "totals": {"answers": 0, "correct": 0, "points": 0, "canvases": 0}
+    },
+    "GET /activity/awards": {
+      "earned": [],
+      "locked": []
+    },
+    "GET /activity/mood": {"state": "sleepy"},
+    "GET /canvas/": [
+      {"id": 1, "title": "Learning practice", "notebook_id": 1, "node_count": 3}
+    ],
+    "GET /canvas/1": {
+      "document_id": 1,
+      "document_name": "Learning notes",
+      "edited": null,
+      "has_edits": false,
+      "id": 1,
+      "layout": null,
+      "notebook_id": 1,
+      "notebook_name": "The learning pyramid",
+      "payload": {
+        "edges": [
+          {"source": "recall", "target": "evidence"},
+          {"source": "evidence", "target": "practice"}
+        ],
+        "nodes": [
+          {"id": "recall", "label": "Active recall", "source_section_id": 0},
+          {"id": "evidence", "label": "Check evidence", "source_section_id": 1},
+          {"id": "practice", "label": "Spaced practice", "source_section_id": 2}
+        ]
+      },
+      "request_text": "Show learning practice",
+      "source_ids": [
+        1
+      ],
+      "source_name": "Learning notes",
+      "sources": [
+        {"id": 1, "name": "Learning notes"}
+      ],
+      "template": "flowchart",
+      "template_title": "Flowchart",
+      "title": "Learning practice"
+    },
+    "GET /canvas/1/nodes/evidence/questions": {
+      "deck_id": 1,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "evidence",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/1/nodes/evidence/source": {
+      "label": "Check evidence",
+      "node_id": "evidence",
+      "section": {"ordinal": 1, "page": 1, "heading": "Evidence", "text": "Fixed learning pyramid percentages need evidence.", "id": 1, "document_id": 1, "source_name": "Learning notes"}
+    },
+    "GET /canvas/1/nodes/practice/questions": {
+      "deck_id": 1,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "practice",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/1/nodes/practice/source": {
+      "label": "Spaced practice",
+      "node_id": "practice",
+      "section": {"ordinal": 2, "page": 1, "heading": "Practice", "text": "Space practice across several sessions.", "id": 2, "document_id": 1, "source_name": "Learning notes"}
+    },
+    "GET /canvas/1/nodes/recall/questions": {
+      "deck_id": 1,
+      "generated": false,
+      "held_back": 0,
+      "node_id": "recall",
+      "notebook_id": 1,
+      "questions": []
+    },
+    "GET /canvas/1/nodes/recall/source": {
+      "label": "Active recall",
+      "node_id": "recall",
+      "section": {"ordinal": 0, "page": 1, "heading": "Recall", "text": "Active recall means retrieving from memory.", "id": 0, "document_id": 1, "source_name": "Learning notes"}
+    },
+    "GET /canvas/document/1": [
+      {
+        "document_id": 1,
+        "document_name": "Learning notes",
+        "edited": null,
+        "has_edits": false,
+        "id": 1,
+        "layout": null,
+        "notebook_id": 1,
+        "notebook_name": "The learning pyramid",
+        "payload": {
+          "edges": [
+            {"source": "recall", "target": "evidence"},
+            {"source": "evidence", "target": "practice"}
+          ],
+          "nodes": [
+            {"id": "recall", "label": "Active recall", "source_section_id": 0},
+            {"id": "evidence", "label": "Check evidence", "source_section_id": 1},
+            {"id": "practice", "label": "Spaced practice", "source_section_id": 2}
+          ]
+        },
+        "request_text": "Show learning practice",
+        "source_ids": [
+          1
+        ],
+        "source_name": "Learning notes",
+        "sources": [
+          {"id": 1, "name": "Learning notes"}
+        ],
+        "template": "flowchart",
+        "template_title": "Flowchart",
+        "title": "Learning practice"
+      }
+    ],
+    "GET /canvas/templates": [],
+    "GET /decks/": [
+      {
+        "due_count": 0,
+        "held_back_count": 0,
+        "id": 1,
+        "kind": "quiz",
+        "name": "Learning quiz",
+        "new_count": 2,
+        "notebook_id": 1,
+        "num_questions": 2,
+        "question_count": 2,
+        "source_ids": [
+          1
+        ]
+      },
+      {
+        "due_count": 0,
+        "held_back_count": 0,
+        "id": 2,
+        "kind": "flashcards",
+        "name": "Learning cards",
+        "new_count": 2,
+        "notebook_id": 1,
+        "num_questions": 2,
+        "question_count": 2,
+        "source_ids": [
+          1
+        ]
+      }
+    ],
+    "GET /decks/1": {
+      "documents": [
+        {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+      ],
+      "due_count": 0,
+      "held_back_count": 0,
+      "id": 1,
+      "kind": "quiz",
+      "name": "Learning quiz",
+      "new_count": 2,
+      "notebook_id": 1,
+      "num_questions": 2,
+      "question_count": 2,
+      "questions": [
+        {"card_type": "mcq", "difficulty": "easy", "document_id": 1, "explanation": "Active recall helps learning.", "id": 1, "options": [{"option": "A", "text": "Active recall", "is_correct": true}, {"option": "B", "text": "Ignoring the source", "is_correct": false}], "question_text": "What helps learning?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+        {"card_type": "mcq", "difficulty": "medium", "document_id": 1, "explanation": "Exact percentages need evidence.", "id": 2, "options": [{"option": "A", "text": "Always", "is_correct": false}, {"option": "B", "text": "They need evidence", "is_correct": true}], "question_text": "Are fixed pyramid percentages reliable?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []}
+      ],
+      "source_ids": [
+        1
+      ]
+    },
+    "GET /decks/2": {
+      "documents": [
+        {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+      ],
+      "due_count": 0,
+      "held_back_count": 0,
+      "id": 2,
+      "kind": "flashcards",
+      "name": "Learning cards",
+      "new_count": 2,
+      "notebook_id": 1,
+      "num_questions": 2,
+      "question_count": 2,
+      "questions": [
+        {"card_type": "flashcard", "difficulty": "easy", "document_id": 1, "explanation": "Retrieve information from memory.", "id": 3, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Active recall", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+        {"card_type": "flashcard", "difficulty": "medium", "document_id": 1, "explanation": "Review across separated sessions.", "id": 4, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Spaced practice", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []}
+      ],
+      "source_ids": [
+        1
+      ]
+    },
+    "GET /documents/": [
+      {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+    ],
+    "GET /documents/1": {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"},
+    "GET /documents/1/passages": {
+      "document_id": 1,
+      "passages": [
+        {"ordinal": 0, "page": 1, "heading": "Recall", "text": "Active recall means retrieving from memory."},
+        {"ordinal": 1, "page": 1, "heading": "Evidence", "text": "Fixed learning pyramid percentages need evidence."},
+        {"ordinal": 2, "page": 1, "heading": "Practice", "text": "Space practice across several sessions."}
+      ]
+    },
+    "GET /flagged": [],
+    "GET /notebooks/": [
+      {"id": 1, "name": "The learning pyramid", "description": "A tiny demo fixture.", "icon": "\ud83d\udcd8", "sources": 1, "decks": 2, "canvases": 1}
+    ],
+    "GET /notebooks/1": {
+      "canvases": [
+        {
+          "document_id": 1,
+          "document_name": "Learning notes",
+          "edited": null,
+          "has_edits": false,
+          "id": 1,
+          "layout": null,
+          "notebook_id": 1,
+          "notebook_name": "The learning pyramid",
+          "payload": {
+            "edges": [
+              {"source": "recall", "target": "evidence"},
+              {"source": "evidence", "target": "practice"}
+            ],
+            "nodes": [
+              {"id": "recall", "label": "Active recall", "source_section_id": 0},
+              {"id": "evidence", "label": "Check evidence", "source_section_id": 1},
+              {"id": "practice", "label": "Spaced practice", "source_section_id": 2}
+            ]
+          },
+          "request_text": "Show learning practice",
+          "source_ids": [
+            1
+          ],
+          "source_name": "Learning notes",
+          "sources": [
+            {"id": 1, "name": "Learning notes"}
+          ],
+          "template": "flowchart",
+          "template_title": "Flowchart",
+          "title": "Learning practice"
+        }
+      ],
+      "decks": [
+        {
+          "documents": [
+            {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+          ],
+          "due_count": 0,
+          "held_back_count": 0,
+          "id": 1,
+          "kind": "quiz",
+          "name": "Learning quiz",
+          "new_count": 2,
+          "notebook_id": 1,
+          "num_questions": 2,
+          "question_count": 2,
+          "questions": [
+            {"card_type": "mcq", "difficulty": "easy", "document_id": 1, "explanation": "Active recall helps learning.", "id": 1, "options": [{"option": "A", "text": "Active recall", "is_correct": true}, {"option": "B", "text": "Ignoring the source", "is_correct": false}], "question_text": "What helps learning?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+            {"card_type": "mcq", "difficulty": "medium", "document_id": 1, "explanation": "Exact percentages need evidence.", "id": 2, "options": [{"option": "A", "text": "Always", "is_correct": false}, {"option": "B", "text": "They need evidence", "is_correct": true}], "question_text": "Are fixed pyramid percentages reliable?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []}
+          ],
+          "source_ids": [
+            1
+          ]
+        },
+        {
+          "documents": [
+            {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+          ],
+          "due_count": 0,
+          "held_back_count": 0,
+          "id": 2,
+          "kind": "flashcards",
+          "name": "Learning cards",
+          "new_count": 2,
+          "notebook_id": 1,
+          "num_questions": 2,
+          "question_count": 2,
+          "questions": [
+            {"card_type": "flashcard", "difficulty": "easy", "document_id": 1, "explanation": "Retrieve information from memory.", "id": 3, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Active recall", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+            {"card_type": "flashcard", "difficulty": "medium", "document_id": 1, "explanation": "Review across separated sessions.", "id": 4, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Spaced practice", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []}
+          ],
+          "source_ids": [
+            1
+          ]
+        }
+      ],
+      "description": "A tiny demo fixture.",
+      "documents": [
+        {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+      ],
+      "icon": "\ud83d\udcd8",
+      "id": 1,
+      "name": "The learning pyramid",
+      "sources": 1
+    },
+    "GET /notebooks/1/chat": [
+      {"id": 1, "role": "user", "content": "What is active recall?"},
+      {
+        "citations": [
+          {"n": 1, "document_id": 1, "source_name": "Learning notes", "display_name": "Learning notes", "locator": "Page 1", "ordinal": 0, "page": 1, "quote": "Active recall means retrieving from memory."}
+        ],
+        "content": "Retrieve information from memory. [1]",
+        "id": 2,
+        "invalid_citations": false,
+        "refused": false,
+        "role": "assistant",
+        "uncited": false
+      }
+    ],
+    "GET /notebooks/1/held-back": [],
+    "GET /notebooks/1/questions": {
+      "items": [
+        {"card_type": "flashcard", "created_at": "2026-01-01T00:00:00", "decks": [{"id": 2, "name": "Learning cards"}], "difficulty": "medium", "document_id": 1, "edited": false, "explanation": "Review across separated sessions.", "id": 4, "next_review_date": null, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Spaced practice", "source": {"id": 1, "name": "Learning notes"}, "source_reference": {"document_id": 1, "page": 1, "section": 0}, "status": "new", "tags": [], "times_correct": 0, "times_seen": 0},
+        {"card_type": "flashcard", "created_at": "2026-01-01T00:00:00", "decks": [{"id": 2, "name": "Learning cards"}], "difficulty": "easy", "document_id": 1, "edited": false, "explanation": "Retrieve information from memory.", "id": 3, "next_review_date": null, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Active recall", "source": {"id": 1, "name": "Learning notes"}, "source_reference": {"document_id": 1, "page": 1, "section": 0}, "status": "new", "tags": [], "times_correct": 0, "times_seen": 0},
+        {"card_type": "mcq", "created_at": "2026-01-01T00:00:00", "decks": [{"id": 1, "name": "Learning quiz"}], "difficulty": "medium", "document_id": 1, "edited": false, "explanation": "Exact percentages need evidence.", "id": 2, "next_review_date": null, "options": [{"option": "A", "text": "Always", "is_correct": false}, {"option": "B", "text": "They need evidence", "is_correct": true}], "question_text": "Are fixed pyramid percentages reliable?", "source": {"id": 1, "name": "Learning notes"}, "source_reference": {"document_id": 1, "page": 1, "section": 0}, "status": "new", "tags": [], "times_correct": 0, "times_seen": 0},
+        {"card_type": "mcq", "created_at": "2026-01-01T00:00:00", "decks": [{"id": 1, "name": "Learning quiz"}], "difficulty": "easy", "document_id": 1, "edited": false, "explanation": "Active recall helps learning.", "id": 1, "next_review_date": null, "options": [{"option": "A", "text": "Active recall", "is_correct": true}, {"option": "B", "text": "Ignoring the source", "is_correct": false}], "question_text": "What helps learning?", "source": {"id": 1, "name": "Learning notes"}, "source_reference": {"document_id": 1, "page": 1, "section": 0}, "status": "new", "tags": [], "times_correct": 0, "times_seen": 0}
+      ],
+      "limit": 50,
+      "offset": 0,
+      "total": 4
+    },
+    "GET /notebooks/1/workspace": {
+      "artifacts": {
+        "canvases": [
+          {"id": 1, "title": "Learning practice", "document_id": 1}
+        ],
+        "decks": [
+          {
+            "due_count": 0,
+            "held_back_count": 0,
+            "id": 1,
+            "kind": "quiz",
+            "name": "Learning quiz",
+            "new_count": 2,
+            "notebook_id": 1,
+            "num_questions": 2,
+            "question_count": 2,
+            "source_ids": [
+              1
+            ]
+          },
+          {
+            "due_count": 0,
+            "held_back_count": 0,
+            "id": 2,
+            "kind": "flashcards",
+            "name": "Learning cards",
+            "new_count": 2,
+            "notebook_id": 1,
+            "num_questions": 2,
+            "question_count": 2,
+            "source_ids": [
+              1
+            ]
+          }
+        ]
+      },
+      "jobs": [],
+      "notebook": {"id": 1, "name": "The learning pyramid", "description": "A tiny demo fixture.", "icon": "\ud83d\udcd8", "sources": 1, "decks": 2, "canvases": 1},
+      "progress": {"question_count": 4, "answered_count": 0, "correct_rate": null, "due_count": 0},
+      "sources": [
+        {"id": 1, "display_name": "Learning notes", "name": "Learning notes", "title": "Learning notes", "filename": "learning.md", "file_type": "md", "num_pages": 1, "status": "ready", "passage_count": 3, "notebook_id": 1, "created_at": "2026-01-01T00:00:00"}
+      ]
+    },
+    "GET /progress/question/1": {"question_id": 1, "never_seen": true},
+    "GET /progress/question/2": {"question_id": 2, "never_seen": true},
+    "GET /progress/question/3": {"question_id": 3, "never_seen": true},
+    "GET /progress/question/4": {"question_id": 4, "never_seen": true},
+    "GET /progress/stats": {"total_questions_seen": 0, "total_attempts": 0, "overall_success_rate": 0, "questions_mastered": 0, "current_streak": 0, "best_streak": 0, "questions_due": 0},
+    "GET /progress/stats/by-notebook": [
+      {"notebook_id": 1, "name": "The learning pyramid", "icon": "\ud83d\udcd8", "total_questions": 4, "questions_seen": 0, "total_attempts": 0, "success_rate": 0, "questions_mastered": 0, "mastery_rate": 0, "questions_due": 0, "last_studied": null}
+    ],
+    "GET /questions/1": {"card_type": "mcq", "difficulty": "easy", "document_id": 1, "explanation": "Active recall helps learning.", "id": 1, "options": [{"option": "A", "text": "Active recall", "is_correct": true}, {"option": "B", "text": "Ignoring the source", "is_correct": false}], "question_text": "What helps learning?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+    "GET /questions/1/suggested-tags": {
+      "suggested": []
+    },
+    "GET /questions/2": {"card_type": "mcq", "difficulty": "medium", "document_id": 1, "explanation": "Exact percentages need evidence.", "id": 2, "options": [{"option": "A", "text": "Always", "is_correct": false}, {"option": "B", "text": "They need evidence", "is_correct": true}], "question_text": "Are fixed pyramid percentages reliable?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+    "GET /questions/2/suggested-tags": {
+      "suggested": []
+    },
+    "GET /questions/3": {"card_type": "flashcard", "difficulty": "easy", "document_id": 1, "explanation": "Retrieve information from memory.", "id": 3, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Active recall", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+    "GET /questions/3/suggested-tags": {
+      "suggested": []
+    },
+    "GET /questions/4": {"card_type": "flashcard", "difficulty": "medium", "document_id": 1, "explanation": "Review across separated sessions.", "id": 4, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Spaced practice", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+    "GET /questions/4/suggested-tags": {
+      "suggested": []
+    },
+    "GET /questions/document/1": [
+      {"card_type": "mcq", "difficulty": "easy", "document_id": 1, "explanation": "Active recall helps learning.", "id": 1, "options": [{"option": "A", "text": "Active recall", "is_correct": true}, {"option": "B", "text": "Ignoring the source", "is_correct": false}], "question_text": "What helps learning?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+      {"card_type": "mcq", "difficulty": "medium", "document_id": 1, "explanation": "Exact percentages need evidence.", "id": 2, "options": [{"option": "A", "text": "Always", "is_correct": false}, {"option": "B", "text": "They need evidence", "is_correct": true}], "question_text": "Are fixed pyramid percentages reliable?", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+      {"card_type": "flashcard", "difficulty": "easy", "document_id": 1, "explanation": "Retrieve information from memory.", "id": 3, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Active recall", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []},
+      {"card_type": "flashcard", "difficulty": "medium", "document_id": 1, "explanation": "Review across separated sessions.", "id": 4, "options": [{"option": "A", "text": "Flip to see answer", "is_correct": true}], "question_text": "Spaced practice", "source_reference": {"document_id": 1, "page": 1, "section": 0}, "tags": []}
+    ],
+    "GET /tags/": []
+  }
+}

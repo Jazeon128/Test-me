@@ -4,7 +4,7 @@ import { notebooksAPI } from '../../services/api'
 import GenerationProgress from '../GenerationProgress'
 import ArtifactList from './ArtifactList'
 
-export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs, artifacts, progress, refresh, onJob, open, onCanvas, onOpenCanvas }) {
+export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs, artifacts, progress, refresh, onJob, open, onCanvas, onOpenCanvas, onDeleteCanvas }) {
   const [dismissed, setDismissed] = useState([])
   const [kind, setKind] = useState(null)
   const [count, setCount] = useState(10)
@@ -75,6 +75,6 @@ export default function StudioPanel({ notebookId, sourceIds, sources = [], jobs,
           <button onClick={() => setDismissed(current => [...current, job.job_id || job.id])}>Continue</button>}
       </div>)}
     </div>
-    <ArtifactList notebookId={notebookId} onOpenCanvas={onOpenCanvas} artifacts={artifacts} progress={progress} open={open} />
+    <ArtifactList notebookId={notebookId} onOpenCanvas={onOpenCanvas} onDeleteCanvas={onDeleteCanvas} artifacts={artifacts} progress={progress} open={open} />
   </>
 }

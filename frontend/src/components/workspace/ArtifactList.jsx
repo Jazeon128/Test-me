@@ -1,8 +1,25 @@
 import { canvasTitle } from '../../canvas/canvasTitle'
 import { Layers, ListChecks, Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { serverMessage } from '../../utils/serverMessage'
 
-export default function ArtifactList({ artifacts, progress, open, notebookId, onOpenCanvas }) {
+export default function ArtifactList({ artifacts, progress, open, notebookId, onOpenCanvas, onDeleteCanvas }) {
+  const [confirmId, setConfirmId] = useState(null)
+  const [busyId, setBusyId] = useState(null)
+  const [errors, setErrors] = useState({})
+  const cancel = useRef(null)
+  useEffect(() => { if (confirmId !== null) cancel.current?.focus() }, [confirmId])
+  const deleteCanvas = async id => {
+    setBusyId(id)
+    setErrors(current => ({ ...current, [id]: '' }))
+    try {
+      await onDeleteCanvas(id)
+      setConfirmId(null)
+    } catch (error) {
+      setErrors(current => ({ ...current, [id]: serverMessage(error) || error.message || 'Canvas could not be deleted.' }))
+    } finally { setBusyId(null) }
+  }
   const groups = [
     { title: 'Quizzes', items: artifacts.decks.filter(deck => deck.kind !== 'flashcards') },
     { title: 'Flashcards', items: artifacts.decks.filter(deck => deck.kind === 'flashcards') },
@@ -39,7 +56,14 @@ export default function ArtifactList({ artifacts, progress, open, notebookId, on
             event.preventDefault()
             onOpenCanvas(canvas.id, event.currentTarget)
           }
-        }}><span className="sr-only">Open </span>{canvasTitle(canvas.title)}</Link></li>)}
+        }}><span className="sr-only">Open </span>{canvasTitle(canvas.title)}</Link>
+          {confirmId === canvas.id ? <div>
+            <p>Delete this canvas? Its quiz deck stays.</p>
+            <button className="btn-secondary workspace-small-button" disabled={busyId !== null} onClick={() => deleteCanvas(canvas.id)}>Delete canvas</button>
+            <button ref={cancel} className="btn-secondary workspace-small-button" disabled={busyId !== null} onClick={() => setConfirmId(null)}>Cancel</button>
+          </div> : <button className="btn-secondary workspace-small-button" aria-label={`Delete canvas ${canvasTitle(canvas.title)}`} disabled={busyId !== null} onClick={() => setConfirmId(canvas.id)}>Delete</button>}
+          {errors[canvas.id] && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{errors[canvas.id]}</p>}
+        </li>)}
       </ul>
     </section>}
     {!artifacts.decks.length && !artifacts.canvases.length && <p className="mt-6">Nothing made yet. Tick sources and choose Quiz, Flashcards or Canvas.</p>}

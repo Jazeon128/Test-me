@@ -522,6 +522,22 @@ async def get_canvas(canvas_id: int, db: Session = Depends(get_db)):
     return _serialize(canvas)
 
 
+@router.delete("/{canvas_id}")
+async def delete_canvas(canvas_id: int, db: Session = Depends(get_db)):
+    canvas = db.query(Canvas).filter(Canvas.id == canvas_id).first()
+    if not canvas:
+        raise HTTPException(status_code=404, detail="Canvas not found")
+    deck = db.query(Deck).filter(Deck.canvas_id == canvas_id).first()
+    if deck is not None:
+        deck.canvas_id = None
+    db.query(CanvasRoutingLog).filter(CanvasRoutingLog.canvas_id == canvas_id).delete(
+        synchronize_session="fetch")
+    db.delete(canvas)
+    db.commit()
+    invalidate_stats_cache()
+    return {"message": "Canvas deleted"}
+
+
 @router.patch("/{canvas_id}")
 async def update_canvas(
     canvas_id: int, request: UpdateCanvasRequest, db: Session = Depends(get_db)

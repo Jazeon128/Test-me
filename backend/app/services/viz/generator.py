@@ -107,6 +107,10 @@ RULES
 - Pick the section the node's content actually came from. Do not guess.
 - Labels are short. A label longer than 6 words belongs in detail instead.
 - Use the words the source uses. Do not invent terminology it does not contain.
+- Keep who said what. When the source attributes a claim to a person, organisation or document ("X said", "X claims", "according to X", or a pronoun such as "It said" or "They said"), the node's label and detail both keep that attribution. Never restate an attributed, reported or disputed claim as plain fact.
+  Source: "In 2009 the institute replied. It said it had developed the chart in the 1960s."
+  Wrong label: "Institute develops chart". Right label: "Institute says it developed chart".
+- On a timeline, place an attributed claim at the date the claim was made, and mention the date it refers to in the detail.
 - If the source does not support part of the request, leave it out rather than filling it in.
 - Lay the diagram out {orientation}ly.
 - {grouping_line}

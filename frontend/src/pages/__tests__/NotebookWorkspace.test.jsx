@@ -3,9 +3,10 @@ import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-rou
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import NotebookWorkspace from '../NotebookWorkspace'
 import { readFileSync } from 'node:fs'
-import { notebooksAPI, statusAPI, documentsAPI } from '../../services/api'
+import { canvasAPI, notebooksAPI, statusAPI, documentsAPI } from '../../services/api'
 
 vi.mock('../../services/api', () => ({
+  canvasAPI: { delete: vi.fn() },
   notebooksAPI: { workspace: vi.fn(), addSources: vi.fn(), generate: vi.fn(), chatHistory: vi.fn() },
   statusAPI: { get: vi.fn() },
   documentsAPI: { get: vi.fn(), passages: vi.fn() },
@@ -60,6 +61,24 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('Notebook workspace', () => {
+  it('deletes the open canvas, refreshes artifacts and closes the centre', async () => {
+    mount('?view=canvas&canvas=5')
+    await screen.findByText('Canvas sources 1,2')
+    click('Expand studio')
+    canvasAPI.delete.mockResolvedValue({ data: { message: 'Canvas deleted' } })
+    const refreshed = fixture()
+    refreshed.artifacts.canvases = []
+    notebooksAPI.workspace.mockResolvedValue({ data: refreshed })
+    click('Delete canvas Cell diagram')
+    click('Delete canvas')
+    await waitFor(() => expect(canvasAPI.delete).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(screen.getByLabelText('Location')).toHaveTextContent('/notebooks/7'))
+    await waitFor(() => expect(screen.getByLabelText('Location')).not.toHaveTextContent('canvas='))
+    expect(screen.queryByText('Canvas sources 1,2')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open Cell diagram' })).not.toBeInTheDocument()
+    expect(notebooksAPI.workspace).toHaveBeenCalledTimes(2)
+  })
+
   it('opens a canvas with all selected sources in tick order and notebook context', async () => {
     mount()
     await loaded()

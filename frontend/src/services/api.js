@@ -288,6 +288,7 @@ export const canvasAPI = {
   get: (canvasId) => api.get(`/canvas/${canvasId}`),
   listForDocument: (documentId) => api.get(`/canvas/document/${documentId}`),
   update: (canvasId, body) => api.patch(`/canvas/${canvasId}`, body),
+  delete: (canvasId) => api.delete(`/canvas/${canvasId}`),
   nodeSource: (canvasId, nodeId) => api.get(`/canvas/${canvasId}/nodes/${nodeId}/source`),
   savedQuestionsForNode: (canvasId, nodeId) => api.get(`/canvas/${canvasId}/nodes/${nodeId}/questions`),
   questionsForNode: (canvasId, nodeId, count = 3, more = false) =>

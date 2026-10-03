@@ -1,7 +1,7 @@
 import { canvasTitle as readableCanvasTitle } from '../canvas/canvasTitle'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { notebooksAPI, statusAPI } from '../services/api'
+import { canvasAPI, notebooksAPI, statusAPI } from '../services/api'
 import QuestionBank from '../components/bank/QuestionBank'
 import PracticeSession from '../components/PracticeSession'
 import DeckEditor from '../components/DeckEditor'
@@ -142,8 +142,8 @@ function Workspace({ notebookId }) {
     const timer = setInterval(refresh, 2000)
     return () => clearInterval(timer)
   }, [shouldPoll, refresh])
-  const close = useCallback(async () => {
-    if (hasOpenCanvas && canvasRef.current && !await canvasRef.current.flush()) return
+  const close = useCallback(async ({ deletedCanvas = false } = {}) => {
+    if (!deletedCanvas && hasOpenCanvas && canvasRef.current && !await canvasRef.current.flush()) return
     if (hasOpenSource) {
       setParams(previousCentre.current || new URLSearchParams())
       previousCentre.current = null
@@ -159,6 +159,11 @@ function Workspace({ notebookId }) {
     })
     refresh()
   }, [setParams, refresh, hasSelectionPractice, hasOpenCanvas, hasOpenSource])
+  const deleteCanvas = async id => {
+    await canvasAPI.delete(id)
+    if (hasOpenCanvas && String(id) === canvasId) await close({ deletedCanvas: true })
+    else await refresh()
+  }
   const open = useCallback((id, view, trigger) => {
     if (trigger) opener.current = trigger
     setDrawer(null)
@@ -213,7 +218,7 @@ function Workspace({ notebookId }) {
     sources: <SourcesPanel notebookId={notebookId} sources={workspace.sources}
       selected={selected} setSelected={setSelected} refresh={refresh} onOpenSource={openSource} />,
     studio: <StudioPanel notebookId={notebookId} sourceIds={sourceIds} sources={workspace.sources} jobs={jobs}
-      artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas} onOpenCanvas={openCanvas}
+      artifacts={workspace.artifacts} progress={workspace.progress} refresh={refresh} open={open} onCanvas={onCanvas} onOpenCanvas={openCanvas} onDeleteCanvas={deleteCanvas}
       onJob={job => { localJobs.current.set(jobId(job), job); setJobs(current => [...current, job]) }} />,
   }
   const counts = { sources: workspace.sources.length,
